@@ -2,7 +2,10 @@
 name = "krobots"
 version = "0.1.0"
 edition = "2018"
+build = "build.rs"
 
+[build-dependencies]
+prost-build = "0.9"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -11,3 +14,6 @@ macroquad = { version = "*"}
 macroquad-profiler = {version = "*"}
 glam = {version = "0.14.0"}
 nalgebra = {version = "*",features = [ "convert-glam014" ]  }
+env_logger = {version = "*"}
+log = {version = "*", features = ["max_level_debug"]}
+prost = "0.9"

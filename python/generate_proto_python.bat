@@ -1,0 +1,1 @@
+protoc-3.19.1-win64\bin\protoc.exe -I=..\src\ tank.proto --python_out=ktanks 

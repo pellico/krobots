@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package protobuffer.tank;
+
+message TankStatus {
+    uint32 tick =1;
+    float velocity =2; //Velocity in m/sec
+    float angle = 3; // Angle in rad
+    float cannon_angle = 4; // Angle in rad
+    float damage = 5; 
+    float energy = 6; //Energy when 0 movement no longer possible
+    }
+
+message RadarResult {
+    uint32 tick = 1;
+    float angle = 2;
+    repeated TankStatus tanks =3; //First 4 tanks
+      }
+
+message CommandResult {
+    uint32 tick = 1;
+    bool success = 2; 
+}
+
+message Command {
+    fixed32 index =1;
+    enum CommandId {
+        GET_STATUS =0; //arguments ignored -->  TankStatus
+        GET_RADAR_RESULT =1; //arguments ignored -->  RadarResult
+        SET_ENGINE_POWER =2; //Argument1: In fraction of max speed from -1.0 to +1.0. Values that exceed are wrapped
+        FIRE_CANNON =3; //arguments are ignored -->  CommandResult (always successfully)
+        SET_TURNING_SPEED =4; //argument1 turning speed from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped --> CommandResult
+        SET_CANNON_TURNING_SPEED = 5; //argument1 turning speed from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped --> CommandResult
+        SET_RADAR_SPEED = 6; //argument1 turning speed from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped --> CommandResult
+    }
+    CommandId command =2;
+    float argument1 =3;
+  
+    }
+message RegisterTank {
+    string name = 1;
+}      
