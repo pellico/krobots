@@ -73,6 +73,7 @@ if __name__ == '__main__':
         status=comm.set_engine_power(1.0)
         print(status)
         status = comm.set_turning_impulse(1.0)
+        print(status)
         sleep(1)
         
     

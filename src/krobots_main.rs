@@ -1,17 +1,20 @@
-use crate::conf;
-use crate::conf::*;
 use macroquad::prelude::*;
 use crate::networking::RobotServer;
 use crate::physics::{*};
 use macroquad::telemetry::{begin_zone,end_zone};
 use macroquad_profiler;
+use macroquad::ui::{
+    hash, root_ui,
+    widgets::{self, Group},
+    Drag, Ui,
+};
 use log::{debug, error, log_enabled, info};
-use std::sync::{Arc, Mutex};
 use std::thread;
+use std::sync::mpsc;
 use std::time;
-struct Tank {
-    p_index :usize,
-    texture_body : Texture2D
+struct GTank<'a> {
+    texture_body : Texture2D,
+    name : &'a str
 
 }
 
@@ -20,21 +23,21 @@ fn draw_polyline(polyline:&Vec<Point2<Real>>,scaling_factor:f32) {
     for index in 1..polyline_size {
         let point1 = &polyline[index-1];
         let point2 = &polyline[index];
-        draw_line(point1.x * scaling_factor, -point1.y * scaling_factor, point2.x * scaling_factor, -point2.y * scaling_factor,2.0,RED);
+        draw_line(point1.x * scaling_factor, point1.y * scaling_factor, point2.x * scaling_factor, point2.y * scaling_factor,2.0,RED);
     }
     let last_point=&polyline[polyline_size-1];
     let first_point=&polyline[0];
     //Close shape
-    draw_line(last_point.x * scaling_factor, -last_point.y * scaling_factor, first_point.x * scaling_factor, -first_point.y * scaling_factor,2.0,RED);
+    draw_line(last_point.x * scaling_factor, last_point.y * scaling_factor, first_point.x * scaling_factor, first_point.y * scaling_factor,2.0,RED);
     
 }
 
-impl Tank {
-    fn draw(&self,p_engine : &PhysicsEngine,scaling_factor:f32) {
-        let p_tank_position = p_engine.get_tank_position(self.p_index);
+impl <'a>GTank<'a> {
+    fn draw(&self,p_tank : &Tank,scaling_factor:f32) {
+        let p_tank_position = p_tank.position;
         let g_x:f32 = p_tank_position.translation.x * scaling_factor- self.texture_body.width() / 2.;
-        let g_y:f32 = -p_tank_position.translation.y * scaling_factor- self.texture_body.height() / 2.;
-        let angle : f32 = -p_tank_position.rotation.angle();
+        let g_y:f32 = p_tank_position.translation.y * scaling_factor- self.texture_body.height() / 2.;
+        let angle : f32 = p_tank_position.rotation.angle() + std::f32::consts::FRAC_PI_2;
         draw_texture_ex(self.texture_body, g_x, g_y, BLUE,DrawTextureParams{
             dest_size:None,
             source : None,
@@ -44,20 +47,20 @@ impl Tank {
 
     }
     
-    fn draw_collider(&self,p_engine : &PhysicsEngine,scaling_factor:f32) {
-        let multi_polyline = p_engine.get_collider_polyline(self.p_index);
-        for polyline in &multi_polyline {
-            draw_polyline(polyline,scaling_factor);
-        }
+    fn draw_collider(&self,p_tank : &Tank,scaling_factor:f32) {
+        draw_polyline(&p_tank.shape_polyline,scaling_factor);
+        draw_polyline(&p_tank.turret.shape_polyline,scaling_factor);
     
     }
 }
 
 
-fn draw_tanks <'a,'b>(tanks:&'a Vec<Tank>,p_engine : &'b PhysicsEngine,scaling_factor:f32) {
-    for tank in tanks {
-        tank.draw(p_engine,scaling_factor);
-        tank.draw_collider(p_engine, scaling_factor);
+fn draw_tanks <'a,'b>(tanks:&'a Vec<GTank<'a>>,p_tanks : &'b Vec<Tank>,scaling_factor:f32) {
+    for index in 0..tanks.len() {
+        let g_tank = &tanks[index];
+        let p_tank = &p_tanks[index];
+        g_tank.draw(p_tank,scaling_factor);
+        g_tank.draw_collider(p_tank, scaling_factor);
     }
 }
 
@@ -140,11 +143,36 @@ fn scaling_factor()->f32{
 }
 
 
+fn robot_data_ui(tanks: &Vec<GTank>, p_tanks:&Vec<Tank>){
+    widgets::Window::new(hash!(), vec2(0., 0.), vec2(300., 300.))
+    .label("Robots")
+    .ui(&mut *root_ui(), |ui| {
+        for index in 0..tanks.len() {
+        let p_tank = &p_tanks[index];
+        ui.tree_node(hash!(), tanks[index].name, |ui| {
+            ui.label(None, &format!("Speed abs {:.3}",p_tank.linear_velocity()));
+            ui.label(None, &format!("Speed vector {:.5} {:.5}",p_tank.linvel.x,p_tank.linvel.y));
+            ui.label(None, &format!("Forward abs {:.3} ",p_tank.forward_velocity()));
+            ui.label(None, &format!("Angle {:.3}",p_tank.position.rotation.angle()));
+            ui.label(None, &format!("Engine power {:.3}",p_tank.engine_power));
+            ui.label(None, &format!("Turning_impulse {:.3}",p_tank.turning_impulse));
+            ui.label(None, &format!("Angular velocity {:.3}",p_tank.angular_velocity));
+        });
+    }
+
+
+ 
+    });
+    
+}
+
+
 pub async fn main() { 
     info!("Started");
     let mut p_engine = create_physics_engine();
-    let server = RobotServer::new(1,&mut p_engine);
-    let mut tanks : Vec<Tank> = Vec::with_capacity(p_engine.tanks.len());
+    let mut server = RobotServer::new();
+    let tanks_names = server.wait_connections(1,&mut p_engine);
+    let mut tanks : Vec<GTank> = Vec::with_capacity(p_engine.tanks.len());
     let mut zoom = 0.0036126904;
     let mut camera = Camera2D {
         zoom: vec2(zoom, zoom* screen_width() / screen_height()),
@@ -154,38 +182,61 @@ pub async fn main() {
     let mut selected_tank:usize = 0;
     for index in 0..a.tanks.len() {
         let texture_body : Texture2D = load_texture("body.png").await.unwrap();
-        tanks.push(Tank{
-            p_index : index,
+        tanks.push(GTank{
             texture_body : texture_body,
+            name : &tanks_names[index]
         });
     }; 
-
+    let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
+    let (tx_data, rx_data) = mpsc::channel::<Vec<Tank>>();
+    let mut p_tanks = p_engine.tanks.clone();
+    let one_sixty = time::Duration::from_millis(30);
+    //Create thread that perform physics simulation
     thread::spawn(move || {
        loop{
            {
-           thread::sleep(time::Duration::from_secs(10));
-           
-            
+            let start = time::Instant::now();
+            input_tanks(& mut selected_tank,& mut p_engine);
+            server.process_request(& mut p_engine);
+            p_engine.step();
+           match rx_trigger.try_recv() {
+               Ok(_) => {
+                tx_data.send(p_engine.tanks.clone()).unwrap();
+               },
+               Err(_) => continue,
+           };
+           thread::sleep(one_sixty-start.elapsed());
            }
        }
     });
-    println!("Hellp worlds");
+ 
+    /*
+    Used to track when received an update in order to avoid too many message
+    from physics engine.
+    Assumption that physics engine is faster than graphical engine.
+    */
+    let mut received = true; 
     loop {
         //macroquad_profiler::profiler(Default::default());
+        match rx_data.try_recv(){
+            Ok(value) => {
+                p_tanks=value;
+                received=true;
+
+            },
+            Err(_)=> ()
+        };
+        if received == true{
+            tx_trigger.send(1).unwrap();
+            received=false;
+        }
         update_camera(&mut zoom,&mut camera);
         set_camera(&camera);
-        let scaling_factor:f32 = scaling_factor();
-       
-        input_tanks(& mut selected_tank,& mut p_engine);
-        server.process_request(& mut p_engine);
-        p_engine.step();
-        draw_tanks(&tanks,&p_engine,scaling_factor);
-           
-            
         
+        let scaling_factor:f32 = scaling_factor();
+        draw_tanks(&tanks,&p_tanks,scaling_factor);
+        robot_data_ui(&tanks,&p_tanks);
         next_frame().await;
-       
-       
     }
     //handle.join().unwrap();
 }

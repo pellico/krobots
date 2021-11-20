@@ -1,5 +1,5 @@
 use crate::conf::*;
-use nalgebra::{vector, Isometry2, SVector,Rotation2};
+use nalgebra::{vector, Isometry2};
 pub use nalgebra::{Point2, Vector2};
 pub use rapier2d::prelude::Real;
 use rapier2d::prelude::*;
@@ -7,23 +7,46 @@ use rapier2d::prelude::*;
 const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b01, 0b01);
 const TURRET_GROUP: InteractionGroups = InteractionGroups::new(0b10, 0b10);
 
+#[derive(Clone)]
 pub struct Turret {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
+    pub angle : f32, //Updated during step
+    pub shape_polyline : Vec<Point2<Real>>,
 }
 
+#[derive(Clone)]
 pub struct Tank {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
-    turret: Turret,
-    damage: f32,
-    energy: f32,
-    name: String,
-    engine_power : f32, // [-1.0,1.0]
-    max_engine_power : f32,
-    turning_impulse : f32
+    pub turret: Turret,
+    pub damage: f32,
+    pub energy: f32,
+    pub engine_power : f32, // [-1.0,1.0]
+    pub max_engine_power : f32,
+    pub turning_impulse : f32,
+    pub shape_polyline:Vec<Point2<Real>>,
+    pub position: Isometry<Real>,
+    pub linvel: Vector<Real>,
+    pub angular_velocity: Real
 }
 
+
+impl Tank {
+
+    #[inline]
+    pub fn linear_velocity(&self) -> Real {
+
+        self.linvel.norm()
+    }
+
+    #[inline]
+    pub fn forward_velocity(&self) ->  Real {
+        let unit_vector = Vector2::<f32>::identity();
+        let direction_vector = self.position * unit_vector;
+        direction_vector.dot(&self.linvel)
+    }
+}
 
 pub struct PhysicsEngine {
     pub tanks: Vec<Tank>,
@@ -46,7 +69,7 @@ impl PhysicsEngine {
         
     }
 
-    pub fn add_tank(&mut self,name :String) {
+    pub fn add_tank(&mut self) {
         let index_tank = self.tanks.len() + 1;
         let tank_position = Isometry::new(
             vector![0.0, (TANK_DEPTH_M * 2.0) * (index_tank as f32)],
@@ -65,6 +88,8 @@ impl PhysicsEngine {
             .density(COLLIDER_DENSITY)
             .collision_groups(TANK_GROUP)
             .build();
+        let shape_polyline_tank = Self::get_collider_polyline_cuboid(&collider);
+        
         let collider_handle = self.collider_set.insert_with_parent(
             collider,
             rigid_body_handle,
@@ -81,6 +106,8 @@ impl PhysicsEngine {
         .density(COLLIDER_DENSITY)
         .collision_groups(TURRET_GROUP)
         .build(); 
+
+        let shape_polyline_turret = Self::get_collider_polyline_cuboid(&turret_collider);
 
         let collider_turret_handle = self.collider_set.insert_with_parent(
             turret_collider,
@@ -101,12 +128,18 @@ impl PhysicsEngine {
             damage: 0.0,
             turret: Turret {
                 phy_body_handle : rigid_body_turret_handle,
-                collider_handle : collider_turret_handle
+                collider_handle : collider_turret_handle,
+                angle : 0.0,
+                shape_polyline :shape_polyline_turret
             },
-            name : name,
             engine_power : 0.0,
             max_engine_power : MAX_ENGINE_POWER,
-            turning_impulse : 0.0
+            turning_impulse : 0.0,
+            shape_polyline : shape_polyline_tank,
+            position : Isometry2::identity(),
+            linvel : Vector2::identity(),
+            angular_velocity : 0.0,
+
         };
         self.tanks.push(tank);
     }
@@ -132,6 +165,24 @@ impl PhysicsEngine {
             &self.event_handler,
         );
         self.tick +=1;
+        //Read back present status
+        for tank in &mut self.tanks {
+            let tank_rigid_body = & self.rigid_body_set[tank.phy_body_handle];
+            tank.position = *tank_rigid_body.position();
+            tank.linvel = *tank_rigid_body.linvel();
+            tank.angular_velocity = tank_rigid_body.angvel();
+
+            let turret_rigid_body = &self.rigid_body_set[tank.turret.phy_body_handle];
+            tank.turret.angle = turret_rigid_body.position().rotation.angle();
+
+            let collider = &self.collider_set[tank.collider_handle];
+            tank.shape_polyline = Self::get_collider_polyline_cuboid(collider);
+
+            let collider_turret = &self.collider_set[tank.turret.collider_handle];
+            tank.turret.shape_polyline = Self::get_collider_polyline_cuboid(collider_turret);
+
+        }
+
     }
 
     #[inline]
@@ -154,11 +205,6 @@ impl PhysicsEngine {
             energy
         };
         tank.engine_power = energy*tank.max_engine_power;
-    }
-
-    #[inline]
-    pub fn tank_name(&self,tank_id:usize) -> &str {
-        &self.tanks[tank_id].name[..]
     }
 
     pub fn get_position(&self, tank: &Tank) -> &Isometry<Real> {
@@ -203,7 +249,7 @@ impl PhysicsEngine {
     fn apply_engine_energy(tank_rigid_body:&mut RigidBody, energy: f32) {
         if energy != 0.0 {
             let force = energy/tank_rigid_body.linvel().norm();
-            let force_forward_vector = tank_rigid_body.position() * vector![0.0, force];
+            let force_forward_vector = tank_rigid_body.position() * vector![force,0.0];
             tank_rigid_body.apply_force(force_forward_vector, true);
         }
     }
@@ -227,8 +273,7 @@ impl PhysicsEngine {
         speed - direction_vector.dot(speed) * direction_vector
     }
 
-    fn get_collider_polyline_cuboid(&self,collider_handle:ColliderHandle)-> Vec<Point2<Real>> {
-        let collider = &self.collider_set[collider_handle];
+    fn get_collider_polyline_cuboid(collider:&Collider)-> Vec<Point2<Real>> {
         let cuboid = collider.shape().as_cuboid().unwrap();
         let mut vertexs = cuboid.to_polyline();
         let position = collider.position();
@@ -238,15 +283,8 @@ impl PhysicsEngine {
         return vertexs;
 
     } 
-
-    pub fn get_collider_polyline(&self, tank_id: usize) -> [Vec<Point2<Real>>;2] {
-        let tank = &self.tanks[tank_id];
-        let body_polyline = self.get_collider_polyline_cuboid(tank.collider_handle);
-        let turret_polyline =  self.get_collider_polyline_cuboid(tank.turret.collider_handle);
-        [body_polyline,turret_polyline]
-
         
-    }
+    
 }
 
 pub fn create_physics_engine() -> PhysicsEngine {

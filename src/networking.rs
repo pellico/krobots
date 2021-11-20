@@ -18,12 +18,17 @@ pub struct RobotServer {
 
 
 impl RobotServer {
-    pub fn new(expected_connections:u32,p_engine: &mut PhysicsEngine) -> RobotServer {
+    pub fn new() -> RobotServer{
+        RobotServer {
+            connected_robots : Vec::new()
+        }
+    }
+    pub fn wait_connections(&mut self,expected_connections:u32,p_engine: &mut PhysicsEngine) -> Vec<String> {
         let mut dedicated_connection_port = UDP_PORT;
         info!("Waiting connections on port {}",UDP_PORT);
         let socket = UdpSocket::bind(("127.0.0.1", UDP_PORT)).expect("Not able to open socket: {}");
-        let mut connections = Vec::new();
         let mut buffer : [u8;BUFFER_SIZE] = [0;BUFFER_SIZE];
+        let mut names = Vec::<String>::new();
         for _ in 0..expected_connections {
             let (amt, src) = socket.recv_from(&mut buffer).expect("Not received data");
             debug!("Received a packet from {}",src);
@@ -38,9 +43,7 @@ impl RobotServer {
             println!("tanksname{}",tank_id.name);
             debug!("Assigned port{:?}",dedicated_connection_port);
             dedicated_socket.connect(src).unwrap();
-            
-            dedicated_socket.set_read_timeout(Some(Duration::from_millis(1))).unwrap();
-            dedicated_socket.set_write_timeout(Some(Duration::from_millis(1))).unwrap();
+            dedicated_socket.set_nonblocking(true).unwrap();
             // Send answer asap
             let mut answer = CommandResult::default();
             answer.tick = p_engine.tick();
@@ -48,16 +51,12 @@ impl RobotServer {
             let mut transmit_buff = Vec::new();
             answer.encode(&mut transmit_buff).expect("Failed to encode CommandResult");
             dedicated_socket.send(&transmit_buff).unwrap();
-            connections.push(ConnectedRobot{socket : dedicated_socket});
-            p_engine.add_tank(tank_id.name);
+            self.connected_robots.push(ConnectedRobot{socket : dedicated_socket});
+            p_engine.add_tank();
+            names.push(tank_id.name);
             
-        }
-      
-        RobotServer {
-            connected_robots : connections
-        }
-        
-
+        } 
+        names
     }
 
     fn get_status(p_engine : &PhysicsEngine, tank_index :usize) -> TankStatus {

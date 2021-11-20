@@ -17,3 +17,6 @@ nalgebra = {version = "*",features = [ "convert-glam014" ]  }
 env_logger = {version = "*"}
 log = {version = "*", features = ["max_level_debug"]}
 prost = "0.9"
+
+[profile.dev.package.rapier2d]
+opt-level = 3
