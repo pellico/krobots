@@ -69,12 +69,8 @@ impl PhysicsEngine {
         
     }
 
-    pub fn add_tank(&mut self) {
-        let index_tank = self.tanks.len() + 1;
-        let tank_position = Isometry::new(
-            vector![0.0, (TANK_DEPTH_M * 2.0) * (index_tank as f32)],
-            0.0,
-        );
+    pub fn add_tank(&mut self,tank_position:Isometry2<Real>) {
+        
         let body = RigidBodyBuilder::new_dynamic()
             .position(tank_position)
             .linear_damping(LINEAR_DAMPING)

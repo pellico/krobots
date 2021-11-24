@@ -1,7 +1,7 @@
 from ktanks.tank_pb2 import *
 import socket
 from time import sleep
-
+from multiprocessing import Process
 
 class Comm:
     
@@ -21,6 +21,8 @@ class Comm:
         result = CommandResult()
         result.ParseFromString(answer)
         print(result.tick)
+        #wait for start packet
+        self.txSocket.recvfrom(2048)
 
 
     def send_receive_command(self,data):
@@ -65,19 +67,21 @@ class Comm:
             except Exception as e:
                 print(e)
 
-if __name__ == '__main__':
-    comm = Comm("oreste","127.0.0.1",55230)
+def run_my_robot(name):
+    comm = Comm(name,"127.0.0.1",55230)
     while True:
         status = comm.get_status()
         print(status)
-        status=comm.set_engine_power(1.0)
-        print(status)
-        status = comm.set_turning_impulse(1.0)
-        print(status)
+        #status=comm.set_engine_power(1.0)
+        #print(status)
+        #status = comm.set_turning_impulse(1.0)
+        #print(status)
         sleep(1)
-        
-    
-
-   
 
 
+
+if __name__ == '__main__':
+    t1 = Process(target=run_my_robot, args=('bob',))
+    t1.start()
+    t2 = Process(target=run_my_robot, args=('oreste',))
+    t2.start()

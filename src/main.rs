@@ -12,12 +12,14 @@ use macroquad::prelude::*;
 fn window_conf() -> Conf {
     Conf {
         window_title: "ETank".to_owned(),
-        fullscreen: true,
+        window_width: 800,
+        window_height: 600,
+        //fullscreen: true,
         ..Default::default()
     }
 }
 
-#[macroquad::main("window_conf")]
+#[macroquad::main(window_conf)]
 async fn main() {
     env_logger::init();
     krobots_main::main().await;

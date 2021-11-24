@@ -12,9 +12,72 @@ use log::{debug, error, log_enabled, info};
 use std::thread;
 use std::sync::mpsc;
 use std::time;
-struct GTank<'a> {
+
+
+struct GTank {
     texture_body : Texture2D,
-    name : &'a str
+    name : String
+
+}
+
+struct GameUI {
+    tanks : Vec<GTank>,
+    ui_visible : bool,
+}
+
+impl GameUI {
+    async fn initialize(&mut self,p_engine:&PhysicsEngine,mut tanks_names: Vec<String>) {
+        
+        
+        for _ in 0..p_engine.tanks.len() {
+            let texture_body : Texture2D = load_texture("body.png").await.unwrap();
+            self.tanks.push(GTank{
+                texture_body : texture_body,
+                name : tanks_names.remove(0),
+            });
+        }; 
+    }
+
+    fn draw_tanks <'b>(&self,p_tanks : &'b Vec<Tank>,scaling_factor:f32) {
+        for index in 0..self.tanks.len() {
+            let g_tank = &self.tanks[index];
+            let p_tank = &p_tanks[index];
+            g_tank.draw(p_tank,scaling_factor);
+            g_tank.draw_collider(p_tank, scaling_factor);
+        }
+    }
+
+    fn robot_data_ui(&mut self, p_tanks:&Vec<Tank>){
+        if is_key_down(KeyCode::Q) {
+            self.ui_visible ^= true;
+        }
+        if self.ui_visible == false {
+            return;
+        }
+        widgets::Window::new(hash!(), vec2(0., 0.), vec2(250., 300.))
+        .label("Robots")
+        .titlebar(true)
+        .ui(&mut *root_ui(), |ui| {
+            for index in 0..self.tanks.len() {
+            let p_tank = &p_tanks[index];
+            ui.tree_node(hash!(&self.tanks[index].name), &self.tanks[index].name, |ui| {
+                ui.label(None, &format!("Speed abs {:.3}",p_tank.linear_velocity()));
+                ui.label(None, &format!("Speed vector {:.5} {:.5}",p_tank.linvel.x,p_tank.linvel.y));
+                ui.label(None, &format!("Forward abs {:.3} ",p_tank.forward_velocity()));
+                ui.label(None, &format!("Angle {:.3}",p_tank.position.rotation.angle()));
+                ui.label(None, &format!("Engine power {:.3}",p_tank.engine_power));
+                ui.label(None, &format!("Turning_impulse {:.3}",p_tank.turning_impulse));
+                ui.label(None, &format!("Angular velocity {:.3}",p_tank.angular_velocity));
+            });
+            ui.separator();
+            
+        }
+    
+    
+     
+        });
+        
+    }
 
 }
 
@@ -32,7 +95,7 @@ fn draw_polyline(polyline:&Vec<Point2<Real>>,scaling_factor:f32) {
     
 }
 
-impl <'a>GTank<'a> {
+impl GTank {
     fn draw(&self,p_tank : &Tank,scaling_factor:f32) {
         let p_tank_position = p_tank.position;
         let g_x:f32 = p_tank_position.translation.x * scaling_factor- self.texture_body.width() / 2.;
@@ -52,17 +115,11 @@ impl <'a>GTank<'a> {
         draw_polyline(&p_tank.turret.shape_polyline,scaling_factor);
     
     }
+
 }
 
 
-fn draw_tanks <'a,'b>(tanks:&'a Vec<GTank<'a>>,p_tanks : &'b Vec<Tank>,scaling_factor:f32) {
-    for index in 0..tanks.len() {
-        let g_tank = &tanks[index];
-        let p_tank = &p_tanks[index];
-        g_tank.draw(p_tank,scaling_factor);
-        g_tank.draw_collider(p_tank, scaling_factor);
-    }
-}
+
 
 
 
@@ -121,18 +178,18 @@ fn update_camera(zoom:&mut f32,camera : &mut Camera2D) {
     camera.zoom = vec2(*zoom, *zoom* screen_width() / screen_height());
     
     if is_key_down(KeyCode::A) {
-        camera.target.x -= 1.0;
+        camera.target.x -= 5.0;
     }
 
     if is_key_down(KeyCode::D) {
-        camera.target.x += 1.0;
+        camera.target.x += 5.0;
     }
     if is_key_down(KeyCode::W) {
-        camera.target.y -= 1.0;
+        camera.target.y -= 5.0;
     }
 
     if is_key_down(KeyCode::S) {
-        camera.target.y += 1.0;
+        camera.target.y += 5.0;
     }
     
 
@@ -143,69 +200,49 @@ fn scaling_factor()->f32{
 }
 
 
-fn robot_data_ui(tanks: &Vec<GTank>, p_tanks:&Vec<Tank>){
-    widgets::Window::new(hash!(), vec2(0., 0.), vec2(300., 300.))
-    .label("Robots")
-    .ui(&mut *root_ui(), |ui| {
-        for index in 0..tanks.len() {
-        let p_tank = &p_tanks[index];
-        ui.tree_node(hash!(), tanks[index].name, |ui| {
-            ui.label(None, &format!("Speed abs {:.3}",p_tank.linear_velocity()));
-            ui.label(None, &format!("Speed vector {:.5} {:.5}",p_tank.linvel.x,p_tank.linvel.y));
-            ui.label(None, &format!("Forward abs {:.3} ",p_tank.forward_velocity()));
-            ui.label(None, &format!("Angle {:.3}",p_tank.position.rotation.angle()));
-            ui.label(None, &format!("Engine power {:.3}",p_tank.engine_power));
-            ui.label(None, &format!("Turning_impulse {:.3}",p_tank.turning_impulse));
-            ui.label(None, &format!("Angular velocity {:.3}",p_tank.angular_velocity));
-        });
-    }
 
-
- 
-    });
-    
-}
 
 
 pub async fn main() { 
     info!("Started");
+    let num_tank = 2;
     let mut p_engine = create_physics_engine();
     let mut server = RobotServer::new();
-    let tanks_names = server.wait_connections(1,&mut p_engine);
-    let mut tanks : Vec<GTank> = Vec::with_capacity(p_engine.tanks.len());
+    let tanks_names = server.wait_connections(num_tank,&mut p_engine);
+    let mut game_ui = GameUI {
+        tanks : Vec::<GTank>::with_capacity(p_engine.tanks.len()),
+        ui_visible : true,
+    };
+    game_ui.initialize(&p_engine, tanks_names).await;
     let mut zoom = 0.0036126904;
     let mut camera = Camera2D {
         zoom: vec2(zoom, zoom* screen_width() / screen_height()),
+        target: Vec2::new(0.0,0.0),
         ..Default::default()
     };
     let a = &p_engine;
-    let mut selected_tank:usize = 0;
-    for index in 0..a.tanks.len() {
-        let texture_body : Texture2D = load_texture("body.png").await.unwrap();
-        tanks.push(GTank{
-            texture_body : texture_body,
-            name : &tanks_names[index]
-        });
-    }; 
-    let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
-    let (tx_data, rx_data) = mpsc::channel::<Vec<Tank>>();
+  
+    //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
+    let (tx_data, rx_data) = mpsc::sync_channel::<Vec<Tank>>(1);
     let mut p_tanks = p_engine.tanks.clone();
     let one_sixty = time::Duration::from_millis(30);
     //Create thread that perform physics simulation
     thread::spawn(move || {
+       let mut selected_tank : usize =0;
        loop{
            {
-            let start = time::Instant::now();
-            input_tanks(& mut selected_tank,& mut p_engine);
+            //let start = time::Instant::now();
+            input_tanks(&mut selected_tank,& mut p_engine);
             server.process_request(& mut p_engine);
             p_engine.step();
-           match rx_trigger.try_recv() {
-               Ok(_) => {
-                tx_data.send(p_engine.tanks.clone()).unwrap();
-               },
-               Err(_) => continue,
-           };
-           thread::sleep(one_sixty-start.elapsed());
+            tx_data.send(p_engine.tanks.clone()).unwrap();
+        //    match rx_trigger.try_recv() {
+        //        Ok(_) => {
+        //         tx_data.send(p_engine.tanks.clone()).unwrap();
+        //        },
+        //        Err(_) => continue,
+        //    };
+           //thread::sleep(one_sixty-start.elapsed());
            }
        }
     });
@@ -226,16 +263,16 @@ pub async fn main() {
             },
             Err(_)=> ()
         };
-        if received == true{
-            tx_trigger.send(1).unwrap();
-            received=false;
-        }
+        // if received == true{
+        //     tx_trigger.send(1).unwrap();
+        //     received=false;
+        // }
         update_camera(&mut zoom,&mut camera);
         set_camera(&camera);
         
         let scaling_factor:f32 = scaling_factor();
-        draw_tanks(&tanks,&p_tanks,scaling_factor);
-        robot_data_ui(&tanks,&p_tanks);
+        game_ui.draw_tanks(&p_tanks,scaling_factor);
+        game_ui.robot_data_ui(&p_tanks);
         next_frame().await;
     }
     //handle.join().unwrap();
