@@ -12,6 +12,8 @@ use log::{debug, error, log_enabled, info};
 use std::thread;
 use std::sync::mpsc;
 use std::time;
+use nalgebra;
+use crate::conf::{*};
 
 
 struct GTank {
@@ -44,6 +46,7 @@ impl GameUI {
             let p_tank = &p_tanks[index];
             g_tank.draw(p_tank,scaling_factor);
             g_tank.draw_collider(p_tank, scaling_factor);
+            g_tank.draw_radar_range(p_tank, scaling_factor);
         }
     }
 
@@ -68,6 +71,7 @@ impl GameUI {
                 ui.label(None, &format!("Engine power {:.3}",p_tank.engine_power));
                 ui.label(None, &format!("Turning_impulse {:.3}",p_tank.turning_impulse));
                 ui.label(None, &format!("Angular velocity {:.3}",p_tank.angular_velocity));
+                ui.label(None, &format!("Radar angle {:.3}",p_tank.radar_position));
             });
             ui.separator();
             
@@ -116,6 +120,17 @@ impl GTank {
     
     }
 
+    fn draw_radar_range(&self,p_tank : &Tank,scaling_factor:f32) {
+        //:TODO: optimize speed . use glam  
+        let v1 = p_tank.position.translation.vector*scaling_factor;
+        let (min_angle,max_angle) = p_tank.min_max_radar_angle();
+        let scaled_distance = RADAR_MAX_DETECTION_DISTANCE*scaling_factor;
+        let v2 = (nalgebra::Isometry2::rotation(min_angle) * nalgebra::vector![scaled_distance,0.0])+v1;
+        let v3 = (nalgebra::Isometry2::rotation(max_angle) * nalgebra::vector![scaled_distance,0.0])+v1;
+    
+        draw_triangle_lines(v1.into(), v2.into(), v3.into(), 1.0,GREEN);
+    }
+
 }
 
 
@@ -130,11 +145,11 @@ fn exit_application() -> ! {
 
 fn input_tanks (selected_tank:& mut usize,p_engine : &mut PhysicsEngine) {
     if is_key_down(KeyCode::Left) {
-        p_engine.set_tank_angle_speed(-1.0, *selected_tank);
+        p_engine.set_tank_angle_impulse(-1.0, *selected_tank);
     }
 
     if is_key_down(KeyCode::Right) {
-        p_engine.set_tank_angle_speed(1.0, *selected_tank);
+        p_engine.set_tank_angle_impulse(1.0, *selected_tank);
     }
 
     if is_key_down(KeyCode::Up) {
@@ -149,7 +164,7 @@ fn input_tanks (selected_tank:& mut usize,p_engine : &mut PhysicsEngine) {
 
     if is_key_down(KeyCode::Key0) {
         p_engine.set_tank_engine_power(0.0, *selected_tank);
-        p_engine.set_tank_angle_speed(0.0, *selected_tank);
+        p_engine.set_tank_angle_impulse(0.0, *selected_tank);
     }
 
     if is_key_down(KeyCode::F1) {
@@ -214,7 +229,7 @@ pub async fn main() {
         ui_visible : true,
     };
     game_ui.initialize(&p_engine, tanks_names).await;
-    let mut zoom = 0.0036126904;
+    let mut zoom = 0.00048;
     let mut camera = Camera2D {
         zoom: vec2(zoom, zoom* screen_width() / screen_height()),
         target: Vec2::new(0.0,0.0),

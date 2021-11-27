@@ -1,8 +1,9 @@
 use crate::conf::*;
-use nalgebra::{vector, Isometry2};
+use nalgebra::{vector, Isometry2,Rotation2};
 pub use nalgebra::{Point2, Vector2};
 pub use rapier2d::prelude::Real;
 use rapier2d::prelude::*;
+use std::f32::consts::PI;
 
 const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b01, 0b01);
 const TURRET_GROUP: InteractionGroups = InteractionGroups::new(0b10, 0b10);
@@ -24,13 +25,27 @@ pub struct Tank {
     pub energy: f32,
     pub engine_power : f32, // [-1.0,1.0]
     pub max_engine_power : f32,
-    pub turning_impulse : f32,
+    pub max_turning_impulse : f32,
+    pub turning_impulse : f32, // [-1.0,1.0]
     pub shape_polyline:Vec<Point2<Real>>,
     pub position: Isometry<Real>,
     pub linvel: Vector<Real>,
-    pub angular_velocity: Real
+    pub angular_velocity: Real,
+    pub radar_position : f32,
+    pub radar_width : f32,
+    pub detected_tank : Vec<Tank>
 }
 
+fn wrap_value<T:PartialOrd + Copy>(value:T,lower:T,upper:T)->T {
+    if value > upper {
+        upper
+    } else if value < lower {
+        lower
+    } else {
+        value
+    }
+
+}
 
 impl Tank {
 
@@ -45,6 +60,16 @@ impl Tank {
         let unit_vector = Vector2::<f32>::identity();
         let direction_vector = self.position * unit_vector;
         direction_vector.dot(&self.linvel)
+    }
+
+    /*
+    Get min max angle in world coordinates
+    */
+    pub fn min_max_radar_angle(&self) -> (f32,f32) {
+        let world_angle = self.radar_position + self.position.rotation.angle();
+        let max_angle = world_angle + self.radar_width/2.0;
+        let min_angle = world_angle - self.radar_width/2.0;
+        (min_angle,max_angle)
     }
 }
 
@@ -120,22 +145,25 @@ impl PhysicsEngine {
         let tank = Tank {
             phy_body_handle: rigid_body_handle,
             collider_handle: collider_handle,
-            energy: ENERGY_MAX,
+            energy: TANK_ENERGY_MAX,
             damage: 0.0,
             turret: Turret {
                 phy_body_handle : rigid_body_turret_handle,
                 collider_handle : collider_turret_handle,
                 angle : 0.0,
-                shape_polyline :shape_polyline_turret
+                shape_polyline :shape_polyline_turret,
             },
             engine_power : 0.0,
-            max_engine_power : MAX_ENGINE_POWER,
+            max_engine_power : TANK_ENGINE_POWER_MAX,
             turning_impulse : 0.0,
+            max_turning_impulse : TURNING_IMPULSE_MAX,
             shape_polyline : shape_polyline_tank,
             position : Isometry2::identity(),
             linvel : Vector2::identity(),
             angular_velocity : 0.0,
-
+            radar_position : 0.0,
+            radar_width : RADAR_WIDTH_MAX,
+            detected_tank : Vec::new()
         };
         self.tanks.push(tank);
     }
@@ -188,7 +216,7 @@ impl PhysicsEngine {
 
     #[inline]
     pub fn tank_engine_power_percentage(&self,tank_id:usize) -> f32 {
-        self.tanks[tank_id].engine_power/MAX_ENGINE_POWER
+        self.tanks[tank_id].engine_power/TANK_ENGINE_POWER_MAX
     }
     
     pub fn set_tank_engine_power(&mut self, energy: f32, tank_id: usize) {
@@ -211,12 +239,11 @@ impl PhysicsEngine {
         self.get_position(&self.tanks[tank_id])
     }
 
-
-    pub fn tank_velocity(&self,tank_id: usize) -> f32 {
+    pub fn tank_velocity(&self,tank_id: usize) -> Vector<Real> {
         let tank = &self.tanks[tank_id];
-        let rigig_body = &self.rigid_body_set[tank.phy_body_handle];
-        let velocity = rigig_body.linvel().norm();
-        velocity
+        let rigid_body = &self.rigid_body_set[tank.phy_body_handle];
+        *rigid_body.linvel()
+        
     }
 
     #[inline]
@@ -251,16 +278,16 @@ impl PhysicsEngine {
     }
 
 
-    pub fn set_tank_angle_speed(&mut self, speed_fraction: f32, tank_id: usize) {
+    pub fn set_tank_angle_impulse(&mut self, impulse_fraction: f32, tank_id: usize) {
         let tank = &mut self.tanks[tank_id];
-        let speed_fraction = if speed_fraction > 1.0 {
+        let speed_fraction = if impulse_fraction > 1.0 {
             1.0 
-        } else if speed_fraction < -1.0 {
+        } else if impulse_fraction < -1.0 {
             -1.0
         } else {
-            speed_fraction
+            impulse_fraction
         };
-        tank.turning_impulse = TANK_ANGULAR_IMPULSE_MAX * speed_fraction;
+        tank.turning_impulse = tank.max_turning_impulse * speed_fraction;
     }
 
     fn get_forward_speed(position: &Isometry2<Real>, speed: &Vector2<f32>) -> Vector2<f32> {
@@ -279,6 +306,49 @@ impl PhysicsEngine {
         return vertexs;
 
     } 
+
+    pub fn update_radar_attribute(&mut self,tank_id:usize,radar_increment:f32,radar_width:f32) {
+        let radar_incr = wrap_value(radar_increment,-RADAR_ANGLE_INCREMENT_MAX,RADAR_ANGLE_INCREMENT_MAX);
+        let radar_w = wrap_value(radar_width,0.0,RADAR_WIDTH_MAX);
+        let tank = &mut self.tanks[tank_id];
+        tank.radar_position += radar_incr;
+        //Keep in expected range
+        tank.radar_position =  if tank.radar_position > 2.0*PI {
+            tank.radar_position - 2.0*PI
+        } else if tank.radar_position < -2.0*PI {
+            tank.radar_position + 2.0*PI
+        } else {
+            tank.radar_position
+        };
+        tank.radar_width = radar_w;
+
+    }
+
+    pub fn get_radar_result(&self,tank_id:usize) -> (f32,Vec<(&Tank,f32)>) {
+        let mut result = Vec::new();
+        let tank = &self.tanks[tank_id];
+        let tank_position = tank.position.translation.vector;
+        //Search detected tank
+        for target_tank in &self.tanks {
+            //Tank don't detect itself
+            if std::ptr::eq(target_tank,tank) {
+                continue
+            }
+            let relative_vector = target_tank.position.translation.vector - tank_position;
+            let distance = relative_vector.norm();
+        
+            if  distance < RADAR_MAX_DETECTION_DISTANCE {
+                let radar_vector = Isometry2::rotation(tank.radar_position+tank.position.rotation.angle()) * Vector2::<Real>::x();
+                let angle = Rotation2::rotation_between(&radar_vector, &relative_vector).angle();
+                if angle.abs() < tank.radar_width/2.0 {
+                    result.push((target_tank,distance));
+                }
+            }
+                
+        }
+    
+        (tank.radar_position,result)
+    }
         
     
 }

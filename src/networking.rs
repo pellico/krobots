@@ -1,6 +1,6 @@
 use crate::conf;
 use crate::conf::UDP_PORT;
-use crate::physics::*;
+use crate::physics::{PhysicsEngine,Vector2};
 use crate::tank_proto::*;
 use log::{debug, error, info, trace};
 use nalgebra::Isometry2;
@@ -86,7 +86,11 @@ impl RobotServer {
     fn get_status(p_engine: &PhysicsEngine, tank_index: usize) -> TankStatus {
         let mut tank_status = TankStatus::default();
         tank_status.tick = p_engine.tick();
-        tank_status.velocity = p_engine.tank_velocity(tank_index);
+        let vel = p_engine.tank_velocity(tank_index);
+        tank_status.velocity = Some(Vector {
+            x: vel.x,
+            y: vel.y
+        });
         tank_status.angle = p_engine.get_tank_position(tank_index).rotation.angle();
         tank_status.energy = p_engine.tank_energy(tank_index);
         tank_status.damage = p_engine.tank_damage(tank_index);
@@ -112,9 +116,33 @@ impl RobotServer {
         turning_speed_fraction: f32,
     ) -> CommandResult {
         let mut command_result = CommandResult::default();
-        p_engine.set_tank_angle_speed(turning_speed_fraction, tank_index);
+        p_engine.set_tank_angle_impulse(turning_speed_fraction, tank_index);
         command_result.tick = p_engine.tick();
         command_result.success = true;
+        command_result
+    }
+
+    fn get_radar_result(
+        p_engine: &mut PhysicsEngine,
+        tank_index: usize,
+        radar_increment: f32,
+        radar_width : f32
+    ) -> RadarResult {
+        let mut command_result = RadarResult::default();
+        p_engine.update_radar_attribute(tank_index,radar_increment,radar_width);
+        let (angle,detected_tanks) = p_engine.get_radar_result(tank_index);
+        command_result.tick = p_engine.tick();
+        
+        command_result.angle = angle;
+        let mut tanks_radar = Vec::new();
+        for (tank,distance) in detected_tanks {
+            let t_radar = TankRadar {
+                damage : tank.damage,
+                distance : distance,
+            };
+            tanks_radar.push(t_radar);
+        }
+        command_result.tanks = tanks_radar;
         command_result
     }
 
@@ -135,8 +163,13 @@ impl RobotServer {
                     .encode(&mut transmit_buff)
                     .unwrap()
             }
-            command::CommandId::SetTurningSpeed => {
+            command::CommandId::SetTurningImpulse => {
                 Self::set_turning_speed(p_engine, index, rec_command.argument1)
+                    .encode(&mut transmit_buff)
+                    .unwrap()
+            }
+            command::CommandId::GetRadarResult => {
+                Self::get_radar_result(p_engine, index, rec_command.argument1,rec_command.argument2)
                     .encode(&mut transmit_buff)
                     .unwrap()
             }

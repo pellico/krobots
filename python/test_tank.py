@@ -2,7 +2,7 @@ from ktanks.tank_pb2 import *
 import socket
 from time import sleep
 from multiprocessing import Process
-
+from math import radians
 class Comm:
     
     def __init__(self,name:str,server_ip : str,port:int) -> None:
@@ -35,6 +35,7 @@ class Comm:
         command=Command()
         command.command=Command.CommandId.GET_STATUS
         command.argument1 = 0.0
+        command.argument2 = 0.0
         result =TankStatus()
         self._command_receive(command,result)
         return result
@@ -43,15 +44,26 @@ class Comm:
         command=Command()
         command.command=Command.CommandId.SET_ENGINE_POWER
         command.argument1 = float(fraction)
+        command.argument2 = 0.0
         result =CommandResult()
         self._command_receive(command,result)
         return result
 
-    def set_turning_impulse(self,fraction):
+    def set_turning_impulse(self,fraction:float):
         command=Command()
-        command.command=Command.CommandId.SET_TURNING_SPEED
+        command.command=Command.CommandId.SET_TURNING_IMPULSE
         command.argument1 = float(fraction)
+        command.argument2 = 0.0
         result =CommandResult()
+        self._command_receive(command,result)
+        return result
+
+    def get_radar_result(self,angle_increment:float,width:float):
+        command=Command()
+        command.command=Command.CommandId.GET_RADAR_RESULT
+        command.argument1 = float(angle_increment)
+        command.argument2 = float(width)
+        result =RadarResult()
         self._command_receive(command,result)
         return result
         
@@ -67,21 +79,51 @@ class Comm:
             except Exception as e:
                 print(e)
 
+def set_angle(comm,angle:float,error:float):
+    status=comm.get_status()
+    if status.angle < angle +error and status.angle > angle - error:
+        return
+    comm.set_turning_impulse(0.01)
+    while True:
+        status=comm.get_status()
+        if status.angle < angle +error and status.angle > angle - error:
+            comm.set_turning_impulse(-0.01)
+            comm.set_turning_impulse(0.0)
+            return
+
 def run_my_robot(name):
     comm = Comm(name,"127.0.0.1",55230)
-    while True:
+    if name == "oreste":
         status = comm.get_status()
+        status=comm.set_engine_power(0.0)
+        #set_angle(comm,radians(180.0),0.01)
         print(status)
         #status=comm.set_engine_power(1.0)
         #print(status)
-        #status = comm.set_turning_impulse(1.0)
-        #print(status)
-        sleep(1)
+        for x in range(0,18) :
+            comm.get_radar_result(radians(10),radians(10))
+        comm.set_turning_impulse(0.1)    
+        while True:
+            status = comm.get_radar_result(radians(0),radians(10))
+            if status.tanks :
+                print (status)
+        comm.set_engine_power(0.0)
+        while True:
+            sleep(5)
+            print(comm.get_status())
+
+
+    else:
+        while True :
+            sleep(5)
+            status = comm.set_turning_impulse(-1.0)
+
 
 
 
 if __name__ == '__main__':
     t1 = Process(target=run_my_robot, args=('bob',))
     t1.start()
+    sleep(1)
     t2 = Process(target=run_my_robot, args=('oreste',))
     t2.start()
