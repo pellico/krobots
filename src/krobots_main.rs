@@ -50,6 +50,12 @@ impl GameUI {
         }
     }
 
+    fn draw_bullets <'a>(&self,p_bullets : &'a Vec<Bullet>,scaling_factor:f32) {
+        for p_bullet in p_bullets {
+            draw_polyline(&p_bullet.shape_polyline,scaling_factor);
+        }
+    }
+
     fn robot_data_ui(&mut self, p_tanks:&Vec<Tank>){
         if is_key_down(KeyCode::Q) {
             self.ui_visible ^= true;
@@ -72,6 +78,9 @@ impl GameUI {
                 ui.label(None, &format!("Turning_impulse {:.3}",p_tank.turning_impulse));
                 ui.label(None, &format!("Angular velocity {:.3}",p_tank.angular_velocity));
                 ui.label(None, &format!("Radar angle {:.3}",p_tank.radar_position));
+                ui.label(None, &format!("Turret angle {:.3}",p_tank.turret.angle));
+                ui.label(None, &format!("Energy {:.3}",p_tank.energy));
+                ui.label(None, &format!("Damage {:.3}",p_tank.energy));
             });
             ui.separator();
             
@@ -117,7 +126,6 @@ impl GTank {
     fn draw_collider(&self,p_tank : &Tank,scaling_factor:f32) {
         draw_polyline(&p_tank.shape_polyline,scaling_factor);
         draw_polyline(&p_tank.turret.shape_polyline,scaling_factor);
-    
     }
 
     fn draw_radar_range(&self,p_tank : &Tank,scaling_factor:f32) {
@@ -145,11 +153,11 @@ fn exit_application() -> ! {
 
 fn input_tanks (selected_tank:& mut usize,p_engine : &mut PhysicsEngine) {
     if is_key_down(KeyCode::Left) {
-        p_engine.set_tank_angle_impulse(-1.0, *selected_tank);
+        p_engine.set_tank_angle_impulse(-0.1, *selected_tank);
     }
 
     if is_key_down(KeyCode::Right) {
-        p_engine.set_tank_angle_impulse(1.0, *selected_tank);
+        p_engine.set_tank_angle_impulse(0.1, *selected_tank);
     }
 
     if is_key_down(KeyCode::Up) {
@@ -218,12 +226,11 @@ fn scaling_factor()->f32{
 
 
 
-pub async fn main() { 
+pub async fn main(num_tanks:u8,udp_port:u16) { 
     info!("Started");
-    let num_tank = 2;
     let mut p_engine = create_physics_engine();
     let mut server = RobotServer::new();
-    let tanks_names = server.wait_connections(num_tank,&mut p_engine);
+    let tanks_names = server.wait_connections(num_tanks,&mut p_engine,udp_port);
     let mut game_ui = GameUI {
         tanks : Vec::<GTank>::with_capacity(p_engine.tanks.len()),
         ui_visible : true,
@@ -238,8 +245,9 @@ pub async fn main() {
     let a = &p_engine;
   
     //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
-    let (tx_data, rx_data) = mpsc::sync_channel::<Vec<Tank>>(1);
+    let (tx_data, rx_data) = mpsc::sync_channel::<(Vec<Tank>,Vec<Bullet>)>(1);
     let mut p_tanks = p_engine.tanks.clone();
+    let mut p_bullets = p_engine.bullets.clone();
     let one_sixty = time::Duration::from_millis(30);
     //Create thread that perform physics simulation
     thread::spawn(move || {
@@ -250,7 +258,7 @@ pub async fn main() {
             input_tanks(&mut selected_tank,& mut p_engine);
             server.process_request(& mut p_engine);
             p_engine.step();
-            tx_data.send(p_engine.tanks.clone()).unwrap();
+            tx_data.send((p_engine.tanks.clone(),p_engine.bullets.clone())).unwrap();
         //    match rx_trigger.try_recv() {
         //        Ok(_) => {
         //         tx_data.send(p_engine.tanks.clone()).unwrap();
@@ -271,8 +279,9 @@ pub async fn main() {
     loop {
         //macroquad_profiler::profiler(Default::default());
         match rx_data.try_recv(){
-            Ok(value) => {
-                p_tanks=value;
+            Ok((tanks,bullets)) => {
+                p_tanks=tanks;
+                p_bullets = bullets;
                 received=true;
 
             },
@@ -287,6 +296,7 @@ pub async fn main() {
         
         let scaling_factor:f32 = scaling_factor();
         game_ui.draw_tanks(&p_tanks,scaling_factor);
+        game_ui.draw_bullets(&p_bullets,scaling_factor);
         game_ui.robot_data_ui(&p_tanks);
         next_frame().await;
     }

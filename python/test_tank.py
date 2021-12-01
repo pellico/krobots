@@ -57,6 +57,15 @@ class Comm:
         result =CommandResult()
         self._command_receive(command,result)
         return result
+    
+    def set_cannon_position(self,angle:float):
+        command=Command()
+        command.command=Command.CommandId.SET_CANNON_POSITION
+        command.argument1 = float(angle)
+        command.argument2 = 0.0
+        result =CommandResult()
+        self._command_receive(command,result)
+        return result
 
     def get_radar_result(self,angle_increment:float,width:float):
         command=Command()
@@ -64,6 +73,15 @@ class Comm:
         command.argument1 = float(angle_increment)
         command.argument2 = float(width)
         result =RadarResult()
+        self._command_receive(command,result)
+        return result
+    
+    def fire_cannon(self):
+        command=Command()
+        command.command=Command.CommandId.FIRE_CANNON
+        command.argument1 = 0.0
+        command.argument2 = 0.0
+        result =CommandResult()
         self._command_receive(command,result)
         return result
         
@@ -114,9 +132,14 @@ def run_my_robot(name):
 
 
     else:
+        angle = 0;
+        status=comm.set_engine_power(0.0)
         while True :
-            sleep(5)
-            status = comm.set_turning_impulse(-1.0)
+            sleep(1)
+            print(comm.set_cannon_position(radians(angle)))
+            print(comm.fire_cannon())
+            angle +=90
+            
 
 
 

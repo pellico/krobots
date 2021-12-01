@@ -14,9 +14,13 @@ macroquad = { version = "*"}
 macroquad-profiler = {version = "*"}
 glam = {version = "0.14.0"}
 nalgebra = {version = "*",features = [ "convert-glam014" ]  }
+# Logging  libraries
 env_logger = {version = "*"}
 log = {version = "*", features = ["max_level_debug"]}
+# protobuf library
 prost = "0.9"
+# command line parser
+clap = "3.0.0-beta.5"
 
 [profile.dev.package.rapier2d]
 opt-level = 3

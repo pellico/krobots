@@ -1,13 +1,11 @@
 use crate::conf;
-use crate::conf::UDP_PORT;
 use crate::physics::{PhysicsEngine,Vector2};
 use crate::tank_proto::*;
 use log::{debug, error, info, trace};
 use nalgebra::Isometry2;
 use prost::Message;
-use std::net::{SocketAddr, UdpSocket};
-use std::time::Duration;
-const REQUEST_STRING: &'static str = "Give me command";
+use std::net::{UdpSocket};
+
 
 const BUFFER_SIZE: usize = 2048;
 pub struct ConnectedRobot {
@@ -25,12 +23,13 @@ impl RobotServer {
     }
     pub fn wait_connections(
         &mut self,
-        expected_connections: u32,
+        expected_connections: u8,
         p_engine: &mut PhysicsEngine,
+        udp_port: u16
     ) -> Vec<String> {
-        let mut dedicated_connection_port = UDP_PORT;
-        info!("Waiting connections on port {}", UDP_PORT);
-        let socket = UdpSocket::bind(("127.0.0.1", UDP_PORT)).expect("Not able to open socket: {}");
+        let mut dedicated_connection_port = udp_port;
+        info!("Waiting connections on port {}", udp_port);
+        let socket = UdpSocket::bind(("127.0.0.1", udp_port)).expect("Not able to open socket: {}");
         let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
         let mut names = Vec::<String>::new();
         //Position of first tank. Other tank positions are computed by rotating it.
@@ -146,6 +145,30 @@ impl RobotServer {
         command_result
     }
 
+    fn set_cannon_position(
+        p_engine: &mut PhysicsEngine,
+        tank_index: usize,
+        angle: f32,
+    ) -> CommandResult {
+        let mut command_result = CommandResult::default();
+        p_engine.set_cannon_position(tank_index,angle);
+        command_result.tick = p_engine.tick();
+        command_result.success = true;
+        command_result
+    }
+
+    #[inline]
+    fn fire_cannon(
+        p_engine: &mut PhysicsEngine,
+        tank_index: usize,
+    ) -> CommandResult {
+        let mut command_result = CommandResult::default();
+        p_engine.fire_cannon(tank_index);
+        command_result.tick = p_engine.tick();
+        command_result.success = true;
+        command_result
+    }
+
     fn process_command(
         buffer: &[u8],
         index: usize,
@@ -173,7 +196,17 @@ impl RobotServer {
                     .encode(&mut transmit_buff)
                     .unwrap()
             }
-            _ => panic!("Unsupported command"),
+            command::CommandId::SetCannonPosition => {
+                Self::set_cannon_position(p_engine, index, rec_command.argument1)
+                    .encode(&mut transmit_buff)
+                    .unwrap()
+            }
+            command::CommandId::FireCannon => {
+                Self::fire_cannon(p_engine, index)
+                    .encode(&mut transmit_buff)
+                    .unwrap()
+            }
+            _ => panic!("Received unsupported command"),
         }
         Ok(transmit_buff)
     }

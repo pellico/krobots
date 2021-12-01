@@ -36,11 +36,21 @@ message Command {
     fixed32 index =1;
     enum CommandId {
         GET_STATUS =0; //arguments ignored -->  TankStatus
-        GET_RADAR_RESULT =1; //arguments how many -->  RadarResult, argument1 : radar increment +/- PI/5, argument 2,beam witdth [0,PI/5]
+        /*
+        Move and get radar result
+        argument1: radar increment +/- PI/5
+        argument2: beam witdth [0,PI/5]
+        return RadarResult
+        */
+        GET_RADAR_RESULT =1;
         SET_ENGINE_POWER =2; //Argument1: In fraction of max speed from -1.0 to +1.0. Values that exceed are wrapped
-        FIRE_CANNON =3; //arguments are ignored -->  CommandResult (always successfully)
+        /*
+        Fire cannon
+        return CommandResult (always successfully)
+        */
+        FIRE_CANNON =3;
         SET_TURNING_IMPULSE =4; //argument1 turning speed from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped --> CommandResult
-        SET_CANNON_TURNING_SPEED = 5; //argument1 turning speed from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped --> CommandResult
+        SET_CANNON_POSITION = 5; // argument1 --> Angle position in radians ]-PI,PI]
         
     }
     CommandId command =2;
