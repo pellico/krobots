@@ -17,6 +17,7 @@ pub const RADAR_ANGLE_INCREMENT_MAX : f32 = std::f32::consts::PI / 180.0 * 10.0;
 pub const RADAR_WIDTH_MAX :f32 = std::f32::consts::PI / 180.0 * 10.0;
 pub const RADAR_MAX_DETECTION_DISTANCE : f32 = 500.0;
 pub const BULLET_MAX_RANGE : f32 = 5000.0;
-pub const BULLET_SPEED : f32 = 1000.0;
+pub const BULLET_SPEED : f32 = 100.0;
+pub const BULLET_DAMAGE : f32 =10.0;
 
 

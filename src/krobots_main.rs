@@ -80,7 +80,7 @@ impl GameUI {
                 ui.label(None, &format!("Radar angle {:.3}",p_tank.radar_position));
                 ui.label(None, &format!("Turret angle {:.3}",p_tank.turret.angle));
                 ui.label(None, &format!("Energy {:.3}",p_tank.energy));
-                ui.label(None, &format!("Damage {:.3}",p_tank.energy));
+                ui.label(None, &format!("Damage {:.3}",p_tank.damage));
             });
             ui.separator();
             

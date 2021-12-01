@@ -84,6 +84,19 @@ impl Tank {
         let min_angle = world_angle - self.radar_width/2.0;
         (min_angle,max_angle)
     }
+
+    fn bullet_damage(&mut self) {
+        self.damage += BULLET_DAMAGE;
+        if self.is_dead() {
+            self.engine_power = 0.0;
+            self.turning_impulse = 0.0;
+        }
+    }
+
+    #[inline]
+    fn is_dead(&self) -> bool {
+        self.damage > DAMAGE_MAX
+    }
 }
 
 pub struct PhysicsEngine {
@@ -189,6 +202,9 @@ impl PhysicsEngine {
 
     pub fn step(&mut self) {
         for tank in &mut self.tanks {
+            if tank.is_dead() {
+                continue
+            }
             let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
             Self::apply_engine_energy(tank_rigid_body,tank.engine_power);
             tank_rigid_body.apply_torque_impulse(tank.turning_impulse, true);
@@ -245,6 +261,18 @@ impl PhysicsEngine {
                         
         }
         for bullet in &mut self.bullets {
+            for contact_pair in self.narrow_phase.contacts_with(bullet.collider_handle) {
+                let other_collider = if contact_pair.collider1 == bullet.collider_handle {
+                    contact_pair.collider2
+                } else {
+                    contact_pair.collider1
+                };
+                let target_tank_index = self.tanks.iter().position(|x| x.collider_handle == other_collider).unwrap();
+                self.tanks[target_tank_index].bullet_damage();
+                // Process the contact pair in a way similar to what we did in
+                // the previous example.
+                bullet.tick_counter =1;
+            }
             bullet.tick_counter -=1;
             //Update polyline for drawing
             bullet.shape_polyline=Self::get_collider_polyline_cuboid(&self.collider_set[bullet.collider_handle]);
