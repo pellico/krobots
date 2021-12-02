@@ -85,6 +85,10 @@ impl Tank {
         (min_angle,max_angle)
     }
 
+    /*
+    Compute and apply bullet damage.
+    If tanks is dead stop any motion.
+    */
     fn bullet_damage(&mut self) {
         self.damage += BULLET_DAMAGE;
         if self.is_dead() {
@@ -206,7 +210,7 @@ impl PhysicsEngine {
                 continue
             }
             let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
-            Self::apply_engine_energy(tank_rigid_body,tank.engine_power);
+            Self::apply_engine_power(tank_rigid_body,tank.engine_power);
             tank_rigid_body.apply_torque_impulse(tank.turning_impulse, true);
             let turret = &mut tank.turret;
             if turret.fire {
@@ -218,7 +222,7 @@ impl PhysicsEngine {
                 let bullet = Bullet {
                     collider_handle : collider_handle,
                     phy_body_handle : rigid_body_handle,
-                    tick_counter : std::cmp::max(1,(BULLET_MAX_RANGE / BULLET_SPEED * 60.0) as u32), //remember that step is 1/60 simualtion sec.
+                    tick_counter : std::cmp::max(1,(BULLET_MAX_RANGE / BULLET_SPEED * 60.0) as u32), //remember that step is 1/60 simulation sec.
                     shape_polyline : collider_polyline
                 };
                 self.bullets.push(bullet);
@@ -267,8 +271,12 @@ impl PhysicsEngine {
                 } else {
                     contact_pair.collider1
                 };
-                let target_tank_index = self.tanks.iter().position(|x| x.collider_handle == other_collider).unwrap();
-                self.tanks[target_tank_index].bullet_damage();
+                // :TODO: Consider if bullet hit turret
+                match self.tanks.iter().position(|x| x.collider_handle == other_collider) {
+                    Some(target_tank_index) =>  self.tanks[target_tank_index].bullet_damage(),
+                    None => ()
+                }
+               
                 // Process the contact pair in a way similar to what we did in
                 // the previous example.
                 bullet.tick_counter =1;
@@ -375,9 +383,16 @@ impl PhysicsEngine {
     }
 
     #[inline]
-    fn apply_engine_energy(tank_rigid_body:&mut RigidBody, energy: f32) {
-        if energy != 0.0 {
-            let force = energy/tank_rigid_body.linvel().norm();
+    fn apply_engine_power(tank_rigid_body:&mut RigidBody, power: f32) {
+        if power != 0.0 {
+            //force is liner anly when speed is greater than 1 . We don't have infinite force at 0 speed.
+            let tank_speed = tank_rigid_body.linvel().norm();
+           
+            let force = if tank_speed > 1.0 {
+                power/tank_speed 
+            } else {
+                power
+            };
             let force_forward_vector = tank_rigid_body.position() * vector![force,0.0];
             tank_rigid_body.apply_force(force_forward_vector, true);
         }

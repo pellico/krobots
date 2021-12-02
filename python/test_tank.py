@@ -132,7 +132,7 @@ def run_my_robot(name):
 
 
     else:
-        angle = 0;
+        angle = 180;
         status=comm.set_engine_power(0.0)
         while True :
             sleep(1)
