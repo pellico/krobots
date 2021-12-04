@@ -101,20 +101,10 @@ impl RobotServer {
         p_engine: &mut PhysicsEngine,
         tank_index: usize,
         power_percentage: f32,
+        turning_speed_fraction : f32
     ) -> CommandResult {
         let mut command_result = CommandResult::default();
         p_engine.set_tank_engine_power(power_percentage, tank_index);
-        command_result.tick = p_engine.tick();
-        command_result.success = true;
-        command_result
-    }
-
-    fn set_turning_speed(
-        p_engine: &mut PhysicsEngine,
-        tank_index: usize,
-        turning_speed_fraction: f32,
-    ) -> CommandResult {
-        let mut command_result = CommandResult::default();
         p_engine.set_tank_angle_impulse(turning_speed_fraction, tank_index);
         command_result.tick = p_engine.tick();
         command_result.success = true;
@@ -163,9 +153,8 @@ impl RobotServer {
         tank_index: usize,
     ) -> CommandResult {
         let mut command_result = CommandResult::default();
-        p_engine.fire_cannon(tank_index);
         command_result.tick = p_engine.tick();
-        command_result.success = true;
+        command_result.success = p_engine.fire_cannon(tank_index);
         command_result
     }
 
@@ -182,12 +171,7 @@ impl RobotServer {
                 .encode(&mut transmit_buff)
                 .unwrap(),
             command::CommandId::SetEnginePower => {
-                Self::set_engine_power(p_engine, index, rec_command.argument1)
-                    .encode(&mut transmit_buff)
-                    .unwrap()
-            }
-            command::CommandId::SetTurningImpulse => {
-                Self::set_turning_speed(p_engine, index, rec_command.argument1)
+                Self::set_engine_power(p_engine, index, rec_command.argument1,rec_command.argument2)
                     .encode(&mut transmit_buff)
                     .unwrap()
             }

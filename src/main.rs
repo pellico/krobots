@@ -26,8 +26,8 @@ struct Opts {
 fn window_conf() -> Conf {
     Conf {
         window_title: "ETank".to_owned(),
-        window_width: 800,
-        window_height: 600,
+        window_width: 1024,
+        window_height: 768,
         //fullscreen: true,
         ..Default::default()
     }

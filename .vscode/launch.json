@@ -10,7 +10,7 @@
         "type": "cppvsdbg",
         "request": "launch",
         "program": "${workspaceFolder}/target/debug/krobots.exe",
-        "args": ["2"],
+        "args": ["11"],
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}",
         "environment": [{ "name": "RUST_LOG", "value": "debug" }],
@@ -31,7 +31,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["2"],
+            "args": ["11"],
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_LOG": "debug",

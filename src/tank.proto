@@ -43,14 +43,18 @@ message Command {
         return RadarResult
         */
         GET_RADAR_RESULT =1;
-        SET_ENGINE_POWER =2; //Argument1: In fraction of max speed from -1.0 to +1.0. Values that exceed are wrapped
+        /* Set forward power and rotation impulse
+        argument1: In fraction of max speed from -1.0 to +1.0. Values that exceed are set to value MAX/MIN
+        argument2 turning speed from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped 
+        Result --> CommandResult
+        */
+        SET_ENGINE_POWER =2; 
         /*
         Fire cannon
         return CommandResult (always successfully)
         */
         FIRE_CANNON =3;
-        SET_TURNING_IMPULSE =4; //argument1 turning speed from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped --> CommandResult
-        SET_CANNON_POSITION = 5; // argument1 --> Angle position in radians ]-PI,PI]
+        SET_CANNON_POSITION = 4; // argument1 --> Angle position in radians ]-PI,PI]
         
     }
     CommandId command =2;

@@ -40,20 +40,11 @@ class Comm:
         self._command_receive(command,result)
         return result
 
-    def set_engine_power(self,fraction):
+    def set_engine_power(self,fraction_forward_power:float,fraction_turning_power:float):
         command=Command()
         command.command=Command.CommandId.SET_ENGINE_POWER
-        command.argument1 = float(fraction)
-        command.argument2 = 0.0
-        result =CommandResult()
-        self._command_receive(command,result)
-        return result
-
-    def set_turning_impulse(self,fraction:float):
-        command=Command()
-        command.command=Command.CommandId.SET_TURNING_IMPULSE
-        command.argument1 = float(fraction)
-        command.argument2 = 0.0
+        command.argument1 = float(fraction_forward_power)
+        command.argument2 = float(fraction_turning_power)
         result =CommandResult()
         self._command_receive(command,result)
         return result
@@ -97,35 +88,34 @@ class Comm:
             except Exception as e:
                 print(e)
 
-def set_angle(comm,angle:float,error:float):
-    status=comm.get_status()
-    if status.angle < angle +error and status.angle > angle - error:
-        return
-    comm.set_turning_impulse(0.01)
-    while True:
-        status=comm.get_status()
-        if status.angle < angle +error and status.angle > angle - error:
-            comm.set_turning_impulse(-0.01)
-            comm.set_turning_impulse(0.0)
-            return
+# def set_angle(comm,angle:float,error:float):
+#     status=comm.get_status()
+#     if status.angle < angle +error and status.angle > angle - error:
+#         return
+#     comm.set_turning_impulse(0.01)
+#     while True:
+#         status=comm.get_status()
+#         if status.angle < angle +error and status.angle > angle - error:
+#             comm.set_turning_impulse(-0.01)
+#             comm.set_turning_impulse(0.0)
+#             return
 
 def run_my_robot(name):
     comm = Comm(name,"127.0.0.1",55230)
     if name == "oreste":
         status = comm.get_status()
-        status=comm.set_engine_power(0.0)
+        status=comm.set_engine_power(0.0,0.1)
         #set_angle(comm,radians(180.0),0.01)
         print(status)
         #status=comm.set_engine_power(1.0)
         #print(status)
         for x in range(0,18) :
             comm.get_radar_result(radians(10),radians(10))
-        comm.set_turning_impulse(0.1)    
         while True:
             status = comm.get_radar_result(radians(0),radians(10))
             if status.tanks :
                 print (status)
-        comm.set_engine_power(0.0)
+        comm.set_engine_power(0.0,0.1)
         while True:
             sleep(5)
             print(comm.get_status())
@@ -133,11 +123,11 @@ def run_my_robot(name):
 
     else:
         angle = 180;
-        status=comm.set_engine_power(0.0)
+        status=comm.set_engine_power(0.0,0.0)
         while True :
-            sleep(1)
+            comm.get_radar_result(radians(10),radians(10))
             print(comm.set_cannon_position(radians(angle)))
-            print(comm.fire_cannon())
+            print(comm.fire_cannon().success)
             angle +=90
             
 
@@ -147,6 +137,6 @@ def run_my_robot(name):
 if __name__ == '__main__':
     t1 = Process(target=run_my_robot, args=('bob',))
     t1.start()
-    sleep(1)
-    t2 = Process(target=run_my_robot, args=('oreste',))
-    t2.start()
+    for tank in range(0,10):
+        t2 = Process(target=run_my_robot, args=('oreste',))
+        t2.start()

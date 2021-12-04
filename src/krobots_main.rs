@@ -11,14 +11,21 @@ use macroquad::ui::{
 use log::{debug, error, log_enabled, info};
 use std::thread;
 use std::sync::mpsc;
-use std::time;
 use nalgebra;
 use crate::conf::{*};
 
 
 struct GTank {
     texture_body : Texture2D,
-    name : String
+    name : String,
+    body_texture_size :Vec2, 
+    texture_turret : Texture2D,
+    turret_texture_size : Vec2,
+    texture_radar : Texture2D,
+    radar_texture_size : Vec2,
+    color : Color
+
+
 
 }
 
@@ -31,11 +38,20 @@ impl GameUI {
     async fn initialize(&mut self,p_engine:&PhysicsEngine,mut tanks_names: Vec<String>) {
         
         
-        for _ in 0..p_engine.tanks.len() {
+        for index in 0..p_engine.tanks.len() {
             let texture_body : Texture2D = load_texture("body.png").await.unwrap();
+            let texture_turret : Texture2D = load_texture("turret.png").await.unwrap();
+            let texture_radar : Texture2D = load_texture("radar.png").await.unwrap();
             self.tanks.push(GTank{
                 texture_body : texture_body,
+                texture_turret : texture_turret,
+                texture_radar : texture_radar,
                 name : tanks_names.remove(0),
+                body_texture_size : Vec2::new(texture_body.width()*5.0,texture_body.height()*5.0),
+                turret_texture_size : Vec2::new(texture_turret.width()*5.0,texture_turret.height()*5.0),
+                radar_texture_size : Vec2::new(texture_radar.width()*5.0,texture_radar.height()*5.0),
+                color : TANK_COLORS[index % TANK_COLORS.len()],
+
             });
         }; 
     }
@@ -79,7 +95,7 @@ impl GameUI {
                 ui.label(None, &format!("Angular velocity {:.3}",p_tank.angular_velocity));
                 ui.label(None, &format!("Radar angle {:.3}",p_tank.radar_position));
                 ui.label(None, &format!("Turret angle {:.3}",p_tank.turret.angle));
-                ui.label(None, &format!("Energy {:.3}",p_tank.energy));
+                ui.label(None, &format!("Energy {:.3}",p_tank.energy()));
                 ui.label(None, &format!("Damage {:.3}",p_tank.damage));
             });
             ui.separator();
@@ -111,13 +127,32 @@ fn draw_polyline(polyline:&Vec<Point2<Real>>,scaling_factor:f32) {
 impl GTank {
     fn draw(&self,p_tank : &Tank,scaling_factor:f32) {
         let p_tank_position = p_tank.position;
-        let g_x:f32 = p_tank_position.translation.x * scaling_factor- self.texture_body.width() / 2.;
-        let g_y:f32 = p_tank_position.translation.y * scaling_factor- self.texture_body.height() / 2.;
-        let angle : f32 = p_tank_position.rotation.angle() + std::f32::consts::FRAC_PI_2;
-        draw_texture_ex(self.texture_body, g_x, g_y, BLUE,DrawTextureParams{
-            dest_size:None,
+        
+        let g_x:f32 = p_tank_position.translation.x * scaling_factor- self.body_texture_size.x /2.;
+        let g_y:f32 = p_tank_position.translation.y * scaling_factor- self.body_texture_size.y /2.;
+        let tank_angle : f32 = p_tank_position.rotation.angle() + std::f32::consts::FRAC_PI_2;
+        let turret_angle : f32 = p_tank.turret.angle;
+        let radar_angle : f32 = p_tank.radar_position + p_tank_position.rotation.angle();
+        draw_texture_ex(self.texture_body, g_x, g_y, self.color,DrawTextureParams{
+            dest_size:Some(self.body_texture_size),
             source : None,
-            rotation:angle,
+            rotation:tank_angle,
+            ..Default::default()
+        });
+        let turret_x:f32 = p_tank_position.translation.x * scaling_factor- self.turret_texture_size.x /2.;
+        let turret_y:f32 = p_tank_position.translation.y * scaling_factor- self.turret_texture_size.y /2.;
+        draw_texture_ex(self.texture_turret, turret_x, turret_y, self.color,DrawTextureParams{
+            dest_size:Some(self.turret_texture_size),
+            source : None,
+            rotation:turret_angle + std::f32::consts::FRAC_PI_2 ,
+            ..Default::default()
+        });
+        let radar_x:f32 = p_tank_position.translation.x * scaling_factor- self.radar_texture_size.x /2.;
+        let radar_y:f32 = p_tank_position.translation.y * scaling_factor- self.radar_texture_size.y /2.;
+        draw_texture_ex(self.texture_radar, radar_x, radar_y, WHITE,DrawTextureParams{
+            dest_size:Some(self.radar_texture_size),
+            source : None,
+            rotation:radar_angle + std::f32::consts::FRAC_PI_2 ,
             ..Default::default()
         });
 
@@ -198,21 +233,21 @@ fn update_camera(zoom:&mut f32,camera : &mut Camera2D) {
         *zoom *= 1.1f32.powf(-1.0);
         info!("zoom {}",zoom);
     }
-    camera.zoom = vec2(*zoom, *zoom* screen_width() / screen_height());
+    camera.zoom = vec2(*zoom, *zoom * screen_width() / screen_height());
     
     if is_key_down(KeyCode::A) {
-        camera.target.x -= 5.0;
+        camera.target.x -= 0.05 / *zoom;
     }
 
     if is_key_down(KeyCode::D) {
-        camera.target.x += 5.0;
+        camera.target.x += 0.05 / *zoom;
     }
     if is_key_down(KeyCode::W) {
-        camera.target.y -= 5.0;
+        camera.target.y -= 0.05 / *zoom;
     }
 
     if is_key_down(KeyCode::S) {
-        camera.target.y += 5.0;
+        camera.target.y += 0.05 / *zoom;
     }
     
 
@@ -236,19 +271,18 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
         ui_visible : true,
     };
     game_ui.initialize(&p_engine, tanks_names).await;
-    let mut zoom = 0.00048;
+    let mut zoom = 0.00007848368;
     let mut camera = Camera2D {
         zoom: vec2(zoom, zoom* screen_width() / screen_height()),
         target: Vec2::new(0.0,0.0),
         ..Default::default()
     };
-    let a = &p_engine;
   
     //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
     let (tx_data, rx_data) = mpsc::sync_channel::<(Vec<Tank>,Vec<Bullet>)>(1);
     let mut p_tanks = p_engine.tanks.clone();
     let mut p_bullets = p_engine.bullets.clone();
-    let one_sixty = time::Duration::from_millis(30);
+
     //Create thread that perform physics simulation
     thread::spawn(move || {
        let mut selected_tank : usize =0;
@@ -275,14 +309,14 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
     from physics engine.
     Assumption that physics engine is faster than graphical engine.
     */
-    let mut received = true; 
+ 
     loop {
         //macroquad_profiler::profiler(Default::default());
         match rx_data.try_recv(){
             Ok((tanks,bullets)) => {
                 p_tanks=tanks;
                 p_bullets = bullets;
-                received=true;
+               
 
             },
             Err(_)=> ()
