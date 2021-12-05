@@ -10,7 +10,7 @@ const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b001, 0b101);
 const TURRET_GROUP: InteractionGroups = InteractionGroups::new(0b010, 0b110);
 const BULLET_GROUP: InteractionGroups = InteractionGroups::new(0b100, 0b011);
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Turret {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
@@ -20,7 +20,7 @@ pub struct Turret {
     pub new_angle: Option<f32>, // New position None if no command change position
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Bullet {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
@@ -28,7 +28,7 @@ pub struct Bullet {
     pub shape_polyline: Vec<Point2<Real>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Tank {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,

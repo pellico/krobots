@@ -44,12 +44,9 @@ impl RobotServer {
                     continue;
                 }
             };
-            println!("{}", tank_id.name);
             dedicated_connection_port += 1;
             let dedicated_socket = UdpSocket::bind(("127.0.0.1", dedicated_connection_port))
                 .expect("Not able to open socket");
-            println!("tanksname{}", tank_id.name);
-            debug!("Assigned port{:?}", dedicated_connection_port);
             dedicated_socket.connect(src).unwrap();
             dedicated_socket.set_nonblocking(true).unwrap();
             // Send answer asap
@@ -64,6 +61,7 @@ impl RobotServer {
             self.connected_robots.push(ConnectedRobot {
                 socket: dedicated_socket,
             });
+            info!("IP:{} is registering tank {} server port {}",src,tank_id.name,dedicated_connection_port);
             //Compute position of new tank
             let tank_pos_angle = (2.0 * std::f32::consts::PI / expected_connections as f32)
                 * (tank_index + 1) as f32;

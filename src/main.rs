@@ -19,7 +19,10 @@ struct Opts {
     num_tanks: u8,
     /// Port used to register new tanks
     #[clap(short, long, default_value = "55230")]
-    port: u16
+    port: u16,
+    //Log level to be used if enviromental variable RUST_LOG is not set.
+    #[clap(short, long, default_value = "info",possible_values=["error","warn","info","debug","trace"])]
+    log_level: String,
 
 }
 
@@ -36,7 +39,7 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     let opts: Opts = Opts::parse();
-    env_logger::init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(opts.log_level)).init();
     krobots_main::main(opts.num_tanks,opts.port).await;
    // graphics::main().await;   
 

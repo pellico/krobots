@@ -23,7 +23,7 @@ struct GTank {
     turret_texture_size : Vec2,
     texture_radar : Texture2D,
     radar_texture_size : Vec2,
-    color : Color
+    color : Color,
 
 
 
@@ -32,6 +32,8 @@ struct GTank {
 struct GameUI {
     tanks : Vec<GTank>,
     ui_visible : bool,
+    zoom : f32,
+    camera : Camera2D,
 }
 
 impl GameUI {
@@ -72,8 +74,8 @@ impl GameUI {
         }
     }
 
-    fn robot_data_ui(&mut self, p_tanks:&Vec<Tank>){
-        if is_key_down(KeyCode::Q) {
+    fn robot_data_ui(&mut self, p_tanks:&Vec<Tank>,selected_tank:usize){
+        if is_key_released(KeyCode::Q) {
             self.ui_visible ^= true;
         }
         if self.ui_visible == false {
@@ -85,7 +87,14 @@ impl GameUI {
         .ui(&mut *root_ui(), |ui| {
             for index in 0..self.tanks.len() {
             let p_tank = &p_tanks[index];
-            ui.tree_node(hash!(&self.tanks[index].name), &self.tanks[index].name, |ui| {
+            let pippo;
+            let label = if index==selected_tank {
+                pippo=self.tanks[index].name.to_uppercase();
+                &pippo
+            } else {
+                &self.tanks[index].name
+            };
+            ui.tree_node(hash!(&self.tanks[index].name), label, |ui| {
                 ui.label(None, &format!("Speed abs {:.3}",p_tank.linear_velocity()));
                 ui.label(None, &format!("Speed vector {:.5} {:.5}",p_tank.linvel.x,p_tank.linvel.y));
                 ui.label(None, &format!("Forward abs {:.3} ",p_tank.forward_velocity()));
@@ -107,6 +116,52 @@ impl GameUI {
         });
         
     }
+
+    fn update_camera(&mut self,p_tanks: &Vec<Tank>,selected_tank:usize,scaling_factor:f32) {
+        let zoom = &mut self.zoom;
+        let camera = &mut self.camera;
+        if is_key_down(KeyCode::KpAdd) {
+            *zoom *= 1.1f32.powf(1.0);
+            info!("zoom {}",zoom);
+        }
+        if is_key_down(KeyCode::KpSubtract) {
+            *zoom *= 1.1f32.powf(-1.0);
+            info!("zoom {}",zoom);
+        }
+        camera.zoom = vec2(*zoom, *zoom * screen_width() / screen_height());
+        
+        if is_key_down(KeyCode::Kp4) {
+            camera.target.x -= 0.05 / *zoom;
+        }
+    
+        if is_key_down(KeyCode::Kp6) {
+            camera.target.x += 0.05 / *zoom;
+        }
+        if is_key_down(KeyCode::Kp8) {
+            camera.target.y -= 0.05 / *zoom;
+        }
+    
+        if is_key_down(KeyCode::Kp2) {
+            camera.target.y += 0.05 / *zoom;
+        }
+        //Reset camera to home and default zoom
+        if is_key_down(KeyCode::Kp5) {
+            camera.target.x = 0.0;
+            camera.target.y = 0.0;
+            *zoom = DEFAULT_CAMERA_ZOOM;
+    
+        }
+        //Reset camera to selected tank
+        if is_key_down(KeyCode::Kp0) {
+            let tank_screen_position = p_tanks[selected_tank].position.translation.vector * scaling_factor;
+            camera.target = tank_screen_position.into();
+            
+        }
+        camera.zoom = vec2(*zoom, *zoom * screen_width() / screen_height());
+        set_camera(camera);
+    }
+   
+
 
 }
 
@@ -182,7 +237,7 @@ impl GTank {
 
 
 fn exit_application() -> ! {
-    println!("Application properly exit");
+    info!("Application properly exit");
     std::process::exit(0);
 }
 
@@ -210,48 +265,25 @@ fn input_tanks (selected_tank:& mut usize,p_engine : &mut PhysicsEngine) {
         p_engine.set_tank_angle_impulse(0.0, *selected_tank);
     }
 
-    if is_key_down(KeyCode::F1) {
-        *selected_tank=0;
+    if is_key_released(KeyCode::PageUp) {
+        if *selected_tank > 0 {
+            *selected_tank -=1; 
+        } 
     }
 
-    if is_key_down(KeyCode::F2) {
-        *selected_tank=1;
+    if is_key_released(KeyCode::PageDown) {
+        if *selected_tank < p_engine.tanks.len()-1 {
+            *selected_tank +=1;
+        };
     }
 
-    if is_key_down(KeyCode::Escape) {
+    if is_key_down(KeyCode::Q) && is_key_down(KeyCode::LeftControl) {
         exit_application();
     }
 
 }
 
-fn update_camera(zoom:&mut f32,camera : &mut Camera2D) {
-    if is_key_down(KeyCode::KpAdd) {
-        *zoom *= 1.1f32.powf(1.0);
-        info!("zoom {}",zoom);
-    }
-    if is_key_down(KeyCode::KpSubtract) {
-        *zoom *= 1.1f32.powf(-1.0);
-        info!("zoom {}",zoom);
-    }
-    camera.zoom = vec2(*zoom, *zoom * screen_width() / screen_height());
-    
-    if is_key_down(KeyCode::A) {
-        camera.target.x -= 0.05 / *zoom;
-    }
 
-    if is_key_down(KeyCode::D) {
-        camera.target.x += 0.05 / *zoom;
-    }
-    if is_key_down(KeyCode::W) {
-        camera.target.y -= 0.05 / *zoom;
-    }
-
-    if is_key_down(KeyCode::S) {
-        camera.target.y += 0.05 / *zoom;
-    }
-    
-
-}
 
 fn scaling_factor()->f32{
     10.0
@@ -269,20 +301,19 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
     let mut game_ui = GameUI {
         tanks : Vec::<GTank>::with_capacity(p_engine.tanks.len()),
         ui_visible : true,
+        camera : Camera2D {
+            zoom: vec2(DEFAULT_CAMERA_ZOOM, DEFAULT_CAMERA_ZOOM * screen_width() / screen_height()),
+            target: Vec2::new(0.0,0.0),
+            ..Default::default()
+        },
+        zoom : DEFAULT_CAMERA_ZOOM,
     };
     game_ui.initialize(&p_engine, tanks_names).await;
-    let mut zoom = 0.00007848368;
-    let mut camera = Camera2D {
-        zoom: vec2(zoom, zoom* screen_width() / screen_height()),
-        target: Vec2::new(0.0,0.0),
-        ..Default::default()
-    };
   
     //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
-    let (tx_data, rx_data) = mpsc::sync_channel::<(Vec<Tank>,Vec<Bullet>)>(1);
+    let (tx_data, rx_data) = mpsc::sync_channel::<(Vec<Tank>,Vec<Bullet>,usize)>(1);
     let mut p_tanks = p_engine.tanks.clone();
     let mut p_bullets = p_engine.bullets.clone();
-
     //Create thread that perform physics simulation
     thread::spawn(move || {
        let mut selected_tank : usize =0;
@@ -292,7 +323,7 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
             input_tanks(&mut selected_tank,& mut p_engine);
             server.process_request(& mut p_engine);
             p_engine.step();
-            tx_data.send((p_engine.tanks.clone(),p_engine.bullets.clone())).unwrap();
+            tx_data.send((p_engine.tanks.clone(),p_engine.bullets.clone(),selected_tank)).unwrap();
         //    match rx_trigger.try_recv() {
         //        Ok(_) => {
         //         tx_data.send(p_engine.tanks.clone()).unwrap();
@@ -312,12 +343,12 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
  
     loop {
         //macroquad_profiler::profiler(Default::default());
+        let mut selected_tank=0;
         match rx_data.try_recv(){
-            Ok((tanks,bullets)) => {
+            Ok((tanks,bullets,sel_tank)) => {
                 p_tanks=tanks;
-                p_bullets = bullets;
-               
-
+                p_bullets = bullets;         
+                selected_tank = sel_tank;
             },
             Err(_)=> ()
         };
@@ -325,13 +356,13 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
         //     tx_trigger.send(1).unwrap();
         //     received=false;
         // }
-        update_camera(&mut zoom,&mut camera);
-        set_camera(&camera);
-        
         let scaling_factor:f32 = scaling_factor();
+        game_ui.update_camera(&p_tanks,selected_tank,scaling_factor);
+        //Draw background
+        draw_circle_lines(0.0, 0.0,ZERO_POWER_LIMIT*scaling_factor ,3.0, RED);
         game_ui.draw_tanks(&p_tanks,scaling_factor);
         game_ui.draw_bullets(&p_bullets,scaling_factor);
-        game_ui.robot_data_ui(&p_tanks);
+        game_ui.robot_data_ui(&p_tanks,selected_tank);
         next_frame().await;
     }
     //handle.join().unwrap();
