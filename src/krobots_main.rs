@@ -34,6 +34,7 @@ struct GameUI {
     ui_visible : bool,
     zoom : f32,
     camera : Camera2D,
+    bullet_texture : Texture2D,
 }
 
 impl GameUI {
@@ -70,6 +71,17 @@ impl GameUI {
 
     fn draw_bullets <'a>(&self,p_bullets : &'a Vec<Bullet>,scaling_factor:f32) {
         for p_bullet in p_bullets {
+            let bullet_position = p_bullet.position;
+            let g_x:f32 = bullet_position.translation.x * scaling_factor- self.bullet_texture.width() /2.;
+            let g_y:f32 = bullet_position.translation.y * scaling_factor- self.bullet_texture.height() /2.;
+            let bullet_angle : f32 = bullet_position.rotation.angle() + std::f32::consts::FRAC_PI_2;
+    
+            draw_texture_ex(self.bullet_texture, g_x, g_y, WHITE,DrawTextureParams{
+                dest_size:None,
+                source : None,
+                rotation:bullet_angle,
+                ..Default::default()
+            });
             draw_polyline(&p_bullet.shape_polyline,scaling_factor);
         }
     }
@@ -87,10 +99,10 @@ impl GameUI {
         .ui(&mut *root_ui(), |ui| {
             for index in 0..self.tanks.len() {
             let p_tank = &p_tanks[index];
-            let pippo;
+            let uppercase_label;
             let label = if index==selected_tank {
-                pippo=self.tanks[index].name.to_uppercase();
-                &pippo
+                uppercase_label=self.tanks[index].name.to_uppercase();
+                &uppercase_label
             } else {
                 &self.tanks[index].name
             };
@@ -307,6 +319,8 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
             ..Default::default()
         },
         zoom : DEFAULT_CAMERA_ZOOM,
+        bullet_texture : load_texture("bullet.png").await.unwrap()
+
     };
     game_ui.initialize(&p_engine, tanks_names).await;
   

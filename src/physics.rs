@@ -26,6 +26,7 @@ pub struct Bullet {
     collider_handle: ColliderHandle,
     tick_counter: u32, //tick count down when zero the bullet will be destroyed
     pub shape_polyline: Vec<Point2<Real>>,
+    pub position : Isometry2<Real>,
 }
 
 #[derive(Clone,Debug)]
@@ -300,6 +301,7 @@ impl PhysicsEngine {
             if turret.fire {
                 let cannon_position = self.rigid_body_set[turret.phy_body_handle].position();
                 let (bullet_body, collider) = Self::create_bullet(cannon_position);
+                let bullet_position = *bullet_body.position();
                 let collider_polyline = Self::get_collider_polyline_cuboid(&collider);
                 let rigid_body_handle = self.rigid_body_set.insert(bullet_body);
                 let collider_handle = self.collider_set.insert_with_parent(
@@ -312,6 +314,7 @@ impl PhysicsEngine {
                     phy_body_handle: rigid_body_handle,
                     tick_counter: std::cmp::max(1, (BULLET_MAX_RANGE / BULLET_SPEED * 60.0) as u32), //remember that step is 1/60 simulation sec.
                     shape_polyline: collider_polyline,
+                    position : bullet_position,
                 };
                 self.bullets.push(bullet);
                 turret.fire = false;
@@ -373,6 +376,7 @@ impl PhysicsEngine {
             //Update polyline for drawing
             bullet.shape_polyline =
                 Self::get_collider_polyline_cuboid(&self.collider_set[bullet.collider_handle]);
+            bullet.position = *self.rigid_body_set[bullet.phy_body_handle].position();
             if bullet.tick_counter == 0 {
                 //If expired remove from physics engine
                 self.rigid_body_set.remove(
