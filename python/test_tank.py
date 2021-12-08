@@ -31,7 +31,7 @@ class Tank:
          
 
 def run_my_robot(name):
-    tank= Tank("Oreste")
+    tank= Tank(name)
     
     status = tank.comm.get_status()
     print(status)
@@ -46,6 +46,6 @@ def run_my_robot(name):
 
 
 if __name__ == '__main__':
-    for tank_id in range(0,1):
+    for tank_id in range(0,11):
         t2 = Process(target=run_my_robot, args=('oreste_%d' % (tank_id) ,))
         t2.start()

@@ -90,11 +90,13 @@ impl RobotServer {
             x: vel.x,
             y: vel.y
         });
-        tank_status.angle = p_engine.get_tank_position(tank_index).rotation.angle();
+        let tank_position = p_engine.get_tank_position(tank_index);
+        tank_status.angle = tank_position.rotation.angle();
         tank_status.angvel = angvel;
         tank_status.energy = p_engine.tank_energy(tank_index);
         tank_status.damage = p_engine.tank_damage(tank_index);
         tank_status.cannon_angle = p_engine.tank_cannon_angle(tank_index);
+        tank_status.distance_power_source = tank_position.translation.vector.norm();
         tank_status.success = true;
         tank_status
     }

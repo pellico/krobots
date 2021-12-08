@@ -11,11 +11,12 @@ message TankStatus {
     uint32 tick =1;
     Vector velocity =2; //Velocity in m/sec
     float angle = 3; // Angle in rad
-    float cannon_angle = 4; // Angle in rad
+    float cannon_angle = 4; // Angle in rad 
     float damage = 5; 
     float energy = 6; //Energy when 0 movement no longer possible
-    bool success = 7;
+    bool success = 7; 
     float angvel = 8; //Rotational speed rad/sec
+    float distance_power_source = 9; //Distance from power source
     }
 
 message TankRadar {
@@ -32,29 +33,32 @@ message RadarResult {
 message Command {
     fixed32 index =1;
     enum CommandId {
-        GET_STATUS =0; //arguments ignored -->  TankStatus
+        /*arguments ignored
+        return: TankStatus
+        */
+        GET_STATUS =0; 
         /*
         Move and get radar result
-        argument1: radar increment +/- PI/5
+        argument1: radar increment [-PI/5,PI/5]
         argument2: beam witdth [0,PI/5]
-        return RadarResult
+        return: RadarResult
         */
         GET_RADAR_RESULT =1;
         /* Set forward power and rotation impulse
         argument1: In fraction of max speed from -1.0 to +1.0. Values that exceed are set to value MAX/MIN
         argument2 turning speed from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped 
-        Result --> TankStatus
+        return: TankStatus (always successfully)
         */
         SET_ENGINE_POWER =2; 
         /*
         Fire cannon
-        return TankStatus (always successfully)
+        return: TankStatus (always successfully)
         */
         FIRE_CANNON =3;
         /*
         Set cannon position
-        argument1 --> Angle position in radians ]-PI,PI]
-        return TankStatus
+        argument1 --> Angle position in radians ]-PI,PI] relative to teh Tank angle.
+        return: TankStatus (always successfully)
         */
         SET_CANNON_POSITION = 4;
         

@@ -37,10 +37,10 @@ struct GameUI {
 }
 
 impl GameUI {
-    async fn initialize(&mut self,p_engine:&PhysicsEngine,mut tanks_names: Vec<String>) {
+    async fn initialize(&mut self,mut tanks_names: Vec<String>) {
         
         
-        for index in 0..p_engine.tanks.len() {
+        for index in 0..tanks_names.len() {
             let texture_body : Texture2D = load_texture("body.png").await.unwrap();
             let texture_turret : Texture2D = load_texture("turret.png").await.unwrap();
             let texture_radar : Texture2D = load_texture("radar.png").await.unwrap();
@@ -300,36 +300,28 @@ fn scaling_factor()->f32{
     10.0
 }
 
-
-
+/*
+Print text on screen centered 
+*/
+fn print_centered(text:&str,x:f32,y:f32,font_size:f32,color:Color) {
+    let text_dimension =  measure_text(text,None,font_size as u16,1.0);
+    draw_text(text, x - text_dimension.width /2.0, y - text_dimension.height /2.0,font_size , color);
+}
 
 
 pub async fn main(num_tanks:u8,udp_port:u16) { 
     info!("Started");
-    let mut p_engine = create_physics_engine();
-    let mut server = RobotServer::new();
-    let tanks_names = server.wait_connections(num_tanks,&mut p_engine,udp_port);
-    let mut game_ui = GameUI {
-        tanks : Vec::<GTank>::with_capacity(p_engine.tanks.len()),
-        ui_visible : true,
-        camera : Camera2D {
-            zoom: vec2(DEFAULT_CAMERA_ZOOM, DEFAULT_CAMERA_ZOOM * screen_width() / screen_height()),
-            target: Vec2::new(0.0,0.0),
-            ..Default::default()
-        },
-        zoom : DEFAULT_CAMERA_ZOOM,
-        bullet_texture : load_texture("bullet.png").await.unwrap()
-
-    };
-    game_ui.initialize(&p_engine, tanks_names).await;
-  
     //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
     let (tx_data, rx_data) = mpsc::sync_channel::<(Vec<Tank>,Vec<Bullet>,usize)>(1);
-    let mut p_tanks = p_engine.tanks.clone();
-    let mut p_bullets = p_engine.bullets.clone();
+    let (tx_tank_names,rx_tank_names) = mpsc::sync_channel::<Vec<String>>(1);
+
     //Create thread that perform physics simulation
     thread::spawn(move || {
        let mut selected_tank : usize =0;
+       let mut p_engine = create_physics_engine();
+       let mut server = RobotServer::new();
+       let tanks_names = server.wait_connections(num_tanks,&mut p_engine,udp_port);
+       tx_tank_names.send(tanks_names).unwrap();
        loop{
            {
             //let start = time::Instant::now();
@@ -347,7 +339,35 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
            }
        }
     });
- 
+    
+    let tank_names ;
+    let message = format!("Waiting for all {} tanks",num_tanks);
+    loop {
+        match rx_tank_names.try_recv() {
+            Ok(names) => {tank_names = names;break;},
+            Err(_) => ()
+        }
+        
+        print_centered(&message,screen_width() /2.0 , screen_height() /2.0,40.0,GREEN);
+        next_frame().await;
+
+    };
+    let mut game_ui = GameUI {
+        tanks : Vec::<GTank>::with_capacity(tank_names.len()),
+        ui_visible : true,
+        camera : Camera2D {
+            zoom: vec2(DEFAULT_CAMERA_ZOOM, DEFAULT_CAMERA_ZOOM * screen_width() / screen_height()),
+            target: Vec2::new(0.0,0.0),
+            ..Default::default()
+        },
+        zoom : DEFAULT_CAMERA_ZOOM,
+        bullet_texture : load_texture("bullet.png").await.unwrap()
+
+    };
+    
+    game_ui.initialize(tank_names).await;
+    let (mut p_tanks,mut p_bullets,mut selected_tank) =rx_data.recv().unwrap();
+
     /*
     Used to track when received an update in order to avoid too many message
     from physics engine.
@@ -356,7 +376,6 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
  
     loop {
         //macroquad_profiler::profiler(Default::default());
-        let mut selected_tank=0;
         match rx_data.try_recv(){
             Ok((tanks,bullets,sel_tank)) => {
                 p_tanks=tanks;
