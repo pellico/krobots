@@ -14,6 +14,8 @@ message TankStatus {
     float cannon_angle = 4; // Angle in rad
     float damage = 5; 
     float energy = 6; //Energy when 0 movement no longer possible
+    bool success = 7;
+    float angvel = 8; //Rotational speed rad/sec
     }
 
 message TankRadar {
@@ -25,12 +27,7 @@ message RadarResult {
     uint32 tick = 1;
     float angle = 2; //radar angle rad
     repeated TankRadar tanks =4; //First 10 tanks
-      }
-
-message CommandResult {
-    uint32 tick = 1;
-    bool success = 2; 
-}
+    }
 
 message Command {
     fixed32 index =1;
@@ -46,15 +43,20 @@ message Command {
         /* Set forward power and rotation impulse
         argument1: In fraction of max speed from -1.0 to +1.0. Values that exceed are set to value MAX/MIN
         argument2 turning speed from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped 
-        Result --> CommandResult
+        Result --> TankStatus
         */
         SET_ENGINE_POWER =2; 
         /*
         Fire cannon
-        return CommandResult (always successfully)
+        return TankStatus (always successfully)
         */
         FIRE_CANNON =3;
-        SET_CANNON_POSITION = 4; // argument1 --> Angle position in radians ]-PI,PI]
+        /*
+        Set cannon position
+        argument1 --> Angle position in radians ]-PI,PI]
+        return TankStatus
+        */
+        SET_CANNON_POSITION = 4;
         
     }
     CommandId command =2;
@@ -62,6 +64,11 @@ message Command {
     float argument2 =4; 
   
     }
+
+/*
+Used to register tank
+Server answer with TankStatus
+*/
 message RegisterTank {
     string name = 1;
 }      

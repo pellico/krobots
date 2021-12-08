@@ -5,10 +5,9 @@ use macroquad::telemetry::{begin_zone,end_zone};
 use macroquad_profiler;
 use macroquad::ui::{
     hash, root_ui,
-    widgets::{self, Group},
-    Drag, Ui,
+    widgets::{self},
 };
-use log::{debug, error, log_enabled, info};
+use log::{debug, error, info};
 use std::thread;
 use std::sync::mpsc;
 use nalgebra;

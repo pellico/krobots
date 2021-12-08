@@ -44,7 +44,7 @@ pub struct Tank {
     pub shape_polyline: Vec<Point2<Real>>,
     pub position: Isometry<Real>,
     pub linvel: Vector<Real>,
-    pub angular_velocity: Real,
+    pub angular_velocity: Real, //Present angular velocity
     pub radar_position: f32,
     pub radar_width: f32,
     pub detected_tank: Vec<Tank>,
@@ -447,10 +447,10 @@ impl PhysicsEngine {
         self.get_position(&self.tanks[tank_id])
     }
 
-    pub fn tank_velocity(&self, tank_id: usize) -> Vector<Real> {
+    pub fn tank_velocity(&self, tank_id: usize) -> (Vector<Real>,Real) {
         let tank = &self.tanks[tank_id];
         let rigid_body = &self.rigid_body_set[tank.phy_body_handle];
-        *rigid_body.linvel()
+        (*rigid_body.linvel(),rigid_body.angvel())
     }
 
     #[inline]
@@ -466,13 +466,6 @@ impl PhysicsEngine {
     pub fn tank_cannon_angle(&self, tank_id: usize) -> f32 {
         let rigid_body = &self.rigid_body_set[self.tanks[tank_id].turret.phy_body_handle];
         rigid_body.position().rotation.angle()
-    }
-
-    pub fn set_torque_speed(&mut self, speed: f32, tank_id: usize) {
-        let tank = &self.tanks[tank_id];
-        let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
-        let mass = tank_rigid_body.mass();
-        tank_rigid_body.apply_torque_impulse(speed * mass, true);
     }
 
     #[inline]

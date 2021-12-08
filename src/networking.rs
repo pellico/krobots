@@ -1,7 +1,7 @@
 use crate::conf;
 use crate::physics::{PhysicsEngine,Vector2};
 use crate::tank_proto::*;
-use log::{debug, error, info, trace};
+use log::{debug, error, info};
 use nalgebra::Isometry2;
 use prost::Message;
 use std::net::{UdpSocket};
@@ -44,23 +44,7 @@ impl RobotServer {
                     continue;
                 }
             };
-            dedicated_connection_port += 1;
-            let dedicated_socket = UdpSocket::bind(("127.0.0.1", dedicated_connection_port))
-                .expect("Not able to open socket");
-            dedicated_socket.connect(src).unwrap();
-            dedicated_socket.set_nonblocking(true).unwrap();
-            // Send answer asap
-            let mut answer = CommandResult::default();
-            answer.tick = p_engine.tick();
-            answer.success = true;
-            let mut transmit_buff = Vec::new();
-            answer
-                .encode(&mut transmit_buff)
-                .expect("Failed to encode CommandResult");
-            dedicated_socket.send(&transmit_buff).unwrap();
-            self.connected_robots.push(ConnectedRobot {
-                socket: dedicated_socket,
-            });
+
             info!("IP:{} is registering tank {} server port {}",src,tank_id.name,dedicated_connection_port);
             //Compute position of new tank
             let tank_pos_angle = (2.0 * std::f32::consts::PI / expected_connections as f32)
@@ -70,6 +54,24 @@ impl RobotServer {
             let tank_position = Isometry2::new(tank_vector_position, tank_pos_angle);
             p_engine.add_tank(tank_position);
             names.push(tank_id.name);
+
+            //Create connection and store connection data
+            dedicated_connection_port += 1;
+            let dedicated_socket = UdpSocket::bind(("127.0.0.1", dedicated_connection_port))
+                .expect("Not able to open socket");
+            dedicated_socket.connect(src).unwrap();
+            dedicated_socket.set_nonblocking(true).unwrap();
+            //Send answer
+            let answer = Self::get_status(p_engine,p_engine.tanks.len()-1);
+            let mut transmit_buff = Vec::new();
+            answer
+                .encode(&mut transmit_buff)
+                .expect("Failed to encode CommandResult");
+            dedicated_socket.send(&transmit_buff).unwrap();
+            self.connected_robots.push(ConnectedRobot {
+                socket: dedicated_socket,
+            });
+
         }
         //After registration of all tank send start packet
         for tank in &self.connected_robots {
@@ -83,15 +85,17 @@ impl RobotServer {
     fn get_status(p_engine: &PhysicsEngine, tank_index: usize) -> TankStatus {
         let mut tank_status = TankStatus::default();
         tank_status.tick = p_engine.tick();
-        let vel = p_engine.tank_velocity(tank_index);
+        let (vel,angvel) = p_engine.tank_velocity(tank_index);
         tank_status.velocity = Some(Vector {
             x: vel.x,
             y: vel.y
         });
         tank_status.angle = p_engine.get_tank_position(tank_index).rotation.angle();
+        tank_status.angvel = angvel;
         tank_status.energy = p_engine.tank_energy(tank_index);
         tank_status.damage = p_engine.tank_damage(tank_index);
         tank_status.cannon_angle = p_engine.tank_cannon_angle(tank_index);
+        tank_status.success = true;
         tank_status
     }
 
@@ -100,12 +104,10 @@ impl RobotServer {
         tank_index: usize,
         power_percentage: f32,
         turning_speed_fraction : f32
-    ) -> CommandResult {
-        let mut command_result = CommandResult::default();
+    ) -> TankStatus {
+        let command_result = Self::get_status(p_engine, tank_index);
         p_engine.set_tank_engine_power(power_percentage, tank_index);
         p_engine.set_tank_angle_impulse(turning_speed_fraction, tank_index);
-        command_result.tick = p_engine.tick();
-        command_result.success = true;
         command_result
     }
 
@@ -137,11 +139,9 @@ impl RobotServer {
         p_engine: &mut PhysicsEngine,
         tank_index: usize,
         angle: f32,
-    ) -> CommandResult {
-        let mut command_result = CommandResult::default();
+    ) -> TankStatus {
+        let command_result = Self::get_status(p_engine, tank_index);
         p_engine.set_cannon_position(tank_index,angle);
-        command_result.tick = p_engine.tick();
-        command_result.success = true;
         command_result
     }
 
@@ -149,9 +149,8 @@ impl RobotServer {
     fn fire_cannon(
         p_engine: &mut PhysicsEngine,
         tank_index: usize,
-    ) -> CommandResult {
-        let mut command_result = CommandResult::default();
-        command_result.tick = p_engine.tick();
+    ) -> TankStatus {
+        let mut command_result = Self::get_status(p_engine, tank_index);
         command_result.success = p_engine.fire_cannon(tank_index);
         command_result
     }
@@ -188,6 +187,7 @@ impl RobotServer {
                     .encode(&mut transmit_buff)
                     .unwrap()
             }
+            #[allow(unreachable_patterns)]
             _ => panic!("Received unsupported command"),
         }
         Ok(transmit_buff)

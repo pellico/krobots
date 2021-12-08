@@ -3,7 +3,7 @@ mod physics;
 mod conf;
 mod input;
 mod networking;
-use clap::{AppSettings, Parser};
+use clap::{Parser};
 // Include the `items` module, which is generated from items.proto.
 pub mod tank_proto {
     include!(concat!(env!("OUT_DIR"), "/protobuffer.tank.rs"));
