@@ -7,7 +7,7 @@ use macroquad::ui::{
     hash, root_ui,
     widgets::{self},
 };
-use log::{debug, error, info};
+use log::{info};
 use std::thread;
 use std::sync::mpsc;
 use nalgebra;
@@ -237,7 +237,7 @@ impl GTank {
         let v2 = (nalgebra::Isometry2::rotation(min_angle) * nalgebra::vector![scaled_distance,0.0])+v1;
         let v3 = (nalgebra::Isometry2::rotation(max_angle) * nalgebra::vector![scaled_distance,0.0])+v1;
     
-        draw_triangle_lines(v1.into(), v2.into(), v3.into(), 1.0,GREEN);
+        draw_triangle_lines(v1.into(), v2.into(), v3.into(), 2.0,GREEN);
     }
 
 }

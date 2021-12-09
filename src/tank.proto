@@ -10,8 +10,8 @@ message Vector {
 message TankStatus {
     uint32 tick =1;
     Vector velocity =2; //Velocity in m/sec
-    float angle = 3; // Angle in rad
-    float cannon_angle = 4; // Angle in rad 
+    float angle = 3; // The rotation angle in ]-pi; pi] .
+    float cannon_angle = 4; // The rotation angle in ]-pi; pi] 
     float damage = 5; 
     float energy = 6; //Energy when 0 movement no longer possible
     bool success = 7; 

@@ -61,6 +61,37 @@ fn wrap_value<T: PartialOrd + Copy>(value: T, lower: T, upper: T) -> T {
     }
 }
 
+/*
+Velocity of a point of rigidbody
+# Arguments
+
+* `x` - x coordinates relative to rigid body
+* `y` - y coordinates relative to rigid body
+* `body` - rigidbody
+*/
+fn get_velocity_at_point(x:f32,y:f32,rigid_body:&RigidBody) -> Vector<Real> {
+    let point_relative = Point::new(x,y);
+    let point_world = rigid_body.position() * point_relative;
+    rigid_body.velocity_at_point(&point_world)
+}
+
+/*
+Wrap angle in range ]-PI,PI]
+*/
+fn angle_wrapping(angle:f32) -> f32 {
+    let mut angle_res = angle;
+    loop {
+    if angle_res > PI {
+        angle_res=angle_res - 2.0 * PI
+    } else if angle <= -PI {
+        angle_res=angle_res + 2.0 * PI
+    } else {
+        break;
+    }
+    };
+    angle_res
+}
+
 impl Tank {
     #[inline]
     pub fn linear_velocity(&self) -> Real {
@@ -179,6 +210,28 @@ impl Tank {
     }
 }
 
+struct MyPhysicsHooks;
+
+impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
+    fn filter_contact_pair(&self, context: &PairFilterContext<RigidBodySet, ColliderSet>) -> Option<SolverFlags> {
+        // This is a silly example of contact pair filter that:
+        // - Enables contact and force computation if both colliders have same user-data.
+        // - Disables contact computation otherwise.
+        let user_data1 = context.colliders[context.collider1].user_data;
+        let user_data2 = context.colliders[context.collider2].user_data;
+
+        if user_data1 != user_data2 {
+            Some(SolverFlags::COMPUTE_IMPULSES)
+        } else {
+            None
+        }
+    }
+
+    fn filter_intersection_pair(&self, _: &PairFilterContext<RigidBodySet, ColliderSet>) -> bool {
+        true //This function is not used
+    }
+}
+
 pub struct PhysicsEngine {
     pub tanks: Vec<Tank>,
     pub bullets: Vec<Bullet>,
@@ -192,7 +245,7 @@ pub struct PhysicsEngine {
     narrow_phase: NarrowPhase,
     joint_set: JointSet,
     ccd_solver: CCDSolver,
-    physics_hooks: (),
+    physics_hooks: MyPhysicsHooks,
     event_handler: (),
     gravity_vector: Vector2<Real>,
 }
@@ -201,6 +254,8 @@ impl PhysicsEngine {
     pub fn init_physics(&mut self) {}
 
     pub fn add_tank(&mut self, tank_position: Isometry2<Real>) {
+        //This tank index is used to set userdata of all collider to skip detection.
+        let tank_index = self.tanks.len(); 
         let body = RigidBodyBuilder::new_dynamic()
             .position(tank_position)
             .linear_damping(LINEAR_DAMPING)
@@ -213,6 +268,7 @@ impl PhysicsEngine {
             .restitution(0.7)
             .density(TANK_COLLIDER_DENSITY)
             .collision_groups(TANK_GROUP)
+            .user_data(tank_index as u128)
             .build();
         let shape_polyline_tank = Self::get_collider_polyline_cuboid(&collider);
         let collider_handle = self.collider_set.insert_with_parent(
@@ -233,6 +289,7 @@ impl PhysicsEngine {
         let turret_collider = ColliderBuilder::cuboid(TURRET_WIDTH_M / 2.0, TURRET_DEPTH_M / 2.0)
             .density(TURRET_COLLIDER_DENSITY)
             .collision_groups(TURRET_GROUP)
+            .user_data(tank_index as u128)
             .build();
 
         let shape_polyline_turret = Self::get_collider_polyline_cuboid(&turret_collider);
@@ -282,7 +339,7 @@ impl PhysicsEngine {
 
     pub fn step(&mut self) {
         //Execute all command
-        for tank in &mut self.tanks {
+        for (index,tank) in self.tanks.iter_mut().enumerate() {
             tank.update_timers();
 
             if !tank.update_energy() {
@@ -300,7 +357,7 @@ impl PhysicsEngine {
             let turret = &mut tank.turret;
             if turret.fire {
                 let cannon_position = self.rigid_body_set[turret.phy_body_handle].position();
-                let (bullet_body, collider) = Self::create_bullet(cannon_position);
+                let (bullet_body, collider) = Self::create_bullet(cannon_position,index);
                 let bullet_position = *bullet_body.position();
                 let collider_polyline = Self::get_collider_polyline_cuboid(&collider);
                 let rigid_body_handle = self.rigid_body_set.insert(bullet_body);
@@ -398,7 +455,7 @@ impl PhysicsEngine {
         })
     }
 
-    pub fn create_bullet(cannon_position: &Isometry2<Real>) -> (RigidBody, Collider) {
+    pub fn create_bullet(cannon_position: &Isometry2<Real>,tank_index:usize) -> (RigidBody, Collider) {
         let angle = cannon_position.rotation.angle();
         debug!("Created bullet angle:{}", angle * 360.0 / PI);
         let velocity = cannon_position * vector![BULLET_SPEED, 0.0];
@@ -414,6 +471,8 @@ impl PhysicsEngine {
         let bullet_collider = ColliderBuilder::cuboid(0.05, 0.2)
             .density(0.1)
             .collision_groups(BULLET_GROUP)
+            .active_hooks(ActiveHooks::FILTER_CONTACT_PAIRS)
+            .user_data(tank_index as u128) //Will be used by physics hook to avoid collision with tank that fired bullet
             .build();
         (bullet_body, bullet_collider)
     }
@@ -526,13 +585,7 @@ impl PhysicsEngine {
         let tank = &mut self.tanks[tank_id];
         tank.radar_position += radar_incr;
         //Keep in expected range
-        tank.radar_position = if tank.radar_position > 2.0 * PI {
-            tank.radar_position - 2.0 * PI
-        } else if tank.radar_position < -2.0 * PI {
-            tank.radar_position + 2.0 * PI
-        } else {
-            tank.radar_position
-        };
+        tank.radar_position = angle_wrapping(tank.radar_position);
         tank.radar_width = radar_w;
     }
 
@@ -597,7 +650,7 @@ pub fn create_physics_engine() -> PhysicsEngine {
         narrow_phase: NarrowPhase::new(),
         joint_set: JointSet::new(),
         ccd_solver: CCDSolver::new(),
-        physics_hooks: (),
+        physics_hooks: MyPhysicsHooks {},
         event_handler: (),
         gravity_vector: vector![0.0, 0.0], //No gravity
     };

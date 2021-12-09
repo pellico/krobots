@@ -13,11 +13,9 @@ class Comm:
         self.txSocket.sendto(data,(self.server_ip,self.server_register_port))
         answer, addr = self.txSocket.recvfrom(2048)
         self.port = addr[1]
-        print(addr)
         self.txSocket.connect(addr)
         result = TankStatus()
         result.ParseFromString(answer)
-        print(result.tick)
         #wait for start packet
         self.txSocket.recvfrom(2048)
 
@@ -63,7 +61,7 @@ class Comm:
         self._command_receive(command,result)
         return result
     
-    def fire_cannon(self)->RadarResult:
+    def fire_cannon(self)->TankStatus:
         command=Command()
         command.command=Command.CommandId.FIRE_CANNON
         command.argument1 = 0.0
@@ -76,10 +74,7 @@ class Comm:
     def _command_receive(self,command,expected_answer):
         data = command.SerializeToString()
         while True:
-            try:
-                self.txSocket.send(data)
-                answer= self.txSocket.recv(2048)
-                expected_answer.ParseFromString(answer)
-                break
-            except Exception as e:
-                print(e)
+            self.txSocket.send(data)
+            answer= self.txSocket.recv(2048)
+            expected_answer.ParseFromString(answer)
+            break
