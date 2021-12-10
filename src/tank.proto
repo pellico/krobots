@@ -46,7 +46,7 @@ message Command {
         GET_RADAR_RESULT =1;
         /* Set forward power and rotation impulse
         argument1: In fraction of max speed from -1.0 to +1.0. Values that exceed are set to value MAX/MIN
-        argument2 turning speed from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped 
+        argument2 turning power from -1.0 (counter clockwise) to +1.0 clockwise Values outside this range are wrapped 
         return: TankStatus (always successfully)
         */
         SET_ENGINE_POWER =2; 

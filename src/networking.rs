@@ -104,12 +104,12 @@ impl RobotServer {
     fn set_engine_power(
         p_engine: &mut PhysicsEngine,
         tank_index: usize,
-        power_percentage: f32,
-        turning_speed_fraction : f32
+        power_fraction: f32,
+        turning_power_fraction : f32
     ) -> TankStatus {
         let command_result = Self::get_status(p_engine, tank_index);
-        p_engine.set_tank_engine_power(power_percentage, tank_index);
-        p_engine.set_tank_angle_impulse(turning_speed_fraction, tank_index);
+        p_engine.set_tank_engine_power(power_fraction, tank_index);
+        p_engine.set_tank_angle_power(turning_power_fraction, tank_index);
         command_result
     }
 

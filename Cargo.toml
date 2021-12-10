@@ -12,6 +12,7 @@ prost-build = "0.9"
 rapier2d = { version = "*", features = [ "simd-stable" ] }
 macroquad = { version = "*"}
 macroquad-profiler = {version = "*"}
+macroquad-particles = {version = "*"}
 glam = {version = "0.14.0"}
 nalgebra = {version = "*",features = [ "convert-glam014" ]  }
 # Logging  libraries

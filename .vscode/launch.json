@@ -4,16 +4,17 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        
 
     {
         "name": "(Windows) Launch",
         "type": "cppvsdbg",
         "request": "launch",
         "program": "${workspaceFolder}/target/debug/krobots.exe",
-        "args": ["11"],
+        "args": ["2"],
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}",
-        "environment": [{ "name": "RUST_LOG", "value": "debug" }],
+        "environment": [{ "name": "RUST_LOG", "value": "trace" }],
         "console": "externalTerminal"
     },
         {
@@ -31,10 +32,10 @@
                     "kind": "bin"
                 }
             },
-            "args": ["11"],
+            "args": ["2"],
             "cwd": "${workspaceFolder}",
             "env": {
-                "RUST_LOG": "debug",
+                "RUST_LOG": "trace",
                 "RUST_BACKTRACE": "1",
             }
         },
@@ -56,7 +57,7 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}",
-            "environment": [{ "name": "RUST_LOG", "value": "debug" }]
+            "environment": [{ "name": "RUST_LOG", "value": "trace" }]
         }
     ]
 }
