@@ -1,8 +1,17 @@
 from .tank_pb2 import *
 import socket
-class Comm:
-    
+class Tank:
+    """
+    Tank in server
+    """
     def __init__(self,name:str,server_ip : str,port:int) -> None:
+        """Create a tank at the server.
+        
+        :param name: Name of tank
+        :param server_ip: IP of simulation server
+        :param port: Port of simulation server
+        
+        """
         self.server_register_port = port
         self.server_ip = server_ip
         self.txSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
@@ -26,6 +35,9 @@ class Comm:
         return answer
 
     def get_status(self)->TankStatus:
+        """Get tank status
+        
+        """
         command=Command()
         command.command=Command.CommandId.GET_STATUS
         command.argument1 = 0.0
@@ -35,6 +47,13 @@ class Comm:
         return result
 
     def set_engine_power(self,fraction_forward_power:float,fraction_turning_power:float) -> TankStatus:
+        """
+        Set engine power
+        
+        :param fraction_forward_power: Power fraction applied to move forward or backward. [-1.0,1.0] Negative number move backward 
+        :param fraction_turning_power: Power fraction applied to turn the tank. [-1.0,1.0] Negative number move counter-clokwise
+        
+        """
         command=Command()
         command.command=Command.CommandId.SET_ENGINE_POWER
         command.argument1 = float(fraction_forward_power)
@@ -44,6 +63,12 @@ class Comm:
         return result
     
     def set_cannon_position(self,angle:float)->TankStatus:
+        """
+        Set cannon position
+        
+        :param angle: Angle relative to tank [radians]
+        
+        """
         command=Command()
         command.command=Command.CommandId.SET_CANNON_POSITION
         command.argument1 = float(angle)

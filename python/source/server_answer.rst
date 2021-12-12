@@ -1,0 +1,118 @@
+.. default-domain:: py
+
+.. class:: Vector
+
+	.. attribute:: x
+	
+	:type: float
+	
+	.. attribute:: y
+	
+	:type: float
+	
+
+.. class:: TankStatus
+
+	.. attribute:: tick
+		
+		Simulation ticks 60 ticks is 1 sec of simulator time
+	
+		:type: int (32bit int)
+		
+	.. attribute:: velocity
+	
+		Velocity in m/sec
+		
+		:type: :class:`.Vector`
+		
+	.. attribute:: angle
+	
+		Tank rotation angle ]-PI; PI]
+		
+		:type: float
+		
+	.. attribute:: cannon_angle
+	
+		Cannon angle reference to the world [radians]
+		
+		:type: float
+		
+	.. attribute:: damage
+		
+		Tank damage when reaching 100. Tank is dead
+		
+		:type: float
+		
+	.. attribute:: energy
+	
+		Tank energy. When there is not enough energy for requested action the action is not executed.
+		
+		:type: float
+		
+	.. attribute:: success
+	
+		Flag to signal when operation is not sucessfull
+		
+		:type: bool
+		
+	.. attribute:: angvel
+	
+		Tank angular velocity in rad/sec
+		
+		:type: float
+		
+	.. attribute:: distance_power_source
+	
+		Distance from power source of the tank. Tank is charged by power source with a speed 
+		that descrease linearly respect to power source distance. Beyond the zero limit tank energy is decreased
+		always proportionally.
+		
+		:type: float
+		
+		
+.. class:: TankRadar
+
+	.. attribute:: distance
+	
+		Distance of detected tank in m
+		
+		:type: float
+		
+	.. attribute:: damage
+	
+		Damage of detected tank. When 100 is dead
+		
+		:type: float
+				
+		
+		
+.. class:: RadarResult
+
+	.. attribute:: tick
+		
+		Simulation ticks 60 ticks is 1 sec of simulator time
+	
+		:type: int (32bit int)
+		
+	.. attribute:: angle
+	
+		Radar angle [radians] relative to angle of tank. 
+		
+		:type: float
+		
+	.. attribute:: tanks
+	
+		List of first 10 detected tanks
+		
+		:type: list of :class:`.TankRadar`
+		
+		
+		
+		
+		
+		
+		
+		
+		
+	
+		

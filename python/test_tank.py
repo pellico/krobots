@@ -73,7 +73,7 @@ def run_my_robot(name):
         radar_result = tank.comm.get_radar_result(0.1,0.1)
         if radar_result.tanks:
             tank.set_power_engine(0.01)
-            generator = tank.track_and_fire(0.05)
+            generator = tank.track_and_fire(0.01)
             while next(generator):
                 pass
         

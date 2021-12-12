@@ -22,6 +22,7 @@ log = {version = "*", features = ["max_level_debug"]}
 prost = "0.9"
 # command line parser
 clap = "3.0.0-beta.5"
+csv = "1.1"
 
 [profile.dev.package.rapier2d]
 opt-level = 3
