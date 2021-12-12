@@ -52,7 +52,7 @@ class Tank:
         
         :param fraction_forward_power: Power fraction applied to move forward or backward. [-1.0,1.0] Negative number move backward 
         :param fraction_turning_power: Power fraction applied to turn the tank. [-1.0,1.0] Negative number move counter-clokwise
-        
+    
         """
         command=Command()
         command.command=Command.CommandId.SET_ENGINE_POWER
@@ -78,6 +78,13 @@ class Tank:
         return result
 
     def get_radar_result(self,angle_increment:float,width:float)->RadarResult:
+        """
+        Move radar and get radar result
+        
+        :param angle_increment: How many radians shall be rotated the radar before sampling Max: PI/180*10
+        :param width: Width of the radar in radians Max PI/180*10
+        
+        """
         command=Command()
         command.command=Command.CommandId.GET_RADAR_RESULT
         command.argument1 = float(angle_increment)
@@ -87,6 +94,9 @@ class Tank:
         return result
     
     def fire_cannon(self)->TankStatus:
+        """
+        Fire cannon
+        """
         command=Command()
         command.command=Command.CommandId.FIRE_CANNON
         command.argument1 = 0.0

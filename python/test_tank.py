@@ -1,14 +1,26 @@
-from ktanks import *
+import ktanks
 
 from time import sleep
 from multiprocessing import Process
-from math import radians
+from math import radians,pi
 
+
+def angle_wrapping(angle:float) -> float :
+    angle_res = angle;
+    while True: 
+        if angle_res > pi :
+            angle_res=angle_res - 2.0 * pi
+        elif angle_res <= -pi:
+            angle_res=angle_res + 2.0 * pi
+        else:
+            break
+    
+    return angle_res
 
 class Tank:
     def __init__(self,name):
         self.name = name
-        self.comm = Comm(name,"127.0.0.1",55230)
+        self.comm = ktanks.Tank(name,"127.0.0.1",55230)
         self.forward_power= 0.0
         self.target_angle = 0.0
         self.angimp_set = 0.0
@@ -22,8 +34,8 @@ class Tank:
             return
         while True:
             self.status = self.comm.get_status()
-            delta_ang = angle - self.status.angle
-            self.angimp_set = 0.05*delta_ang - 0.05*self.status.angvel
+            delta_ang = angle_wrapping(angle - self.status.angle)
+            self.angimp_set = 0.05*abs(delta_ang) - 0.05*abs(self.status.angvel)
             self.comm.set_engine_power(self.forward_power,self.angimp_set)
             if abs(delta_ang) < error:
                 self.comm.set_engine_power(self.forward_power,0.0)
@@ -64,9 +76,9 @@ def run_my_robot(name):
     #     tank.comm.fire_cannon()
     
     status = tank.comm.get_status()
-    print(status)
-    angle=radians(180)+status.angle
-    print(angle+status.angle)
+  
+    angle=angle_wrapping(radians(180)+status.angle)
+    
     tank.move_to_angle(angle,0.01)
     tank.set_power_engine(0.05)
     while True :
@@ -90,6 +102,7 @@ def run_my_robot(name):
 
 
 if __name__ == '__main__':
-    for tank_id in range(0,2):
-        t2 = Process(target=run_my_robot, args=('oreste_%d' % (tank_id) ,))
+    for tank_id in range(0,11):
+        name = 'oreste_%d' % (tank_id)
+        t2 = Process(name=name,target=run_my_robot, args=(name,))
         t2.start()

@@ -23,6 +23,9 @@ struct Opts {
     //Log level to be used if enviromental variable RUST_LOG is not set.
     #[clap(short, long, default_value = "info",possible_values=["error","warn","info","debug","trace"])]
     log_level: String,
+    /// Max number of simulation step. If 0 no end until only one survived.
+    #[clap(short, long, default_value = "0")]
+    max_steps: u32,
 
 }
 
@@ -40,7 +43,7 @@ fn window_conf() -> Conf {
 async fn main() {
     let opts: Opts = Opts::parse();
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(opts.log_level)).init();
-    krobots_main::main(opts.num_tanks,opts.port).await;
+    krobots_main::main(opts.num_tanks,opts.port,opts.max_steps).await;
    // graphics::main().await;   
 
 }

@@ -35,6 +35,7 @@ pub struct Tank {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
     cannon_joint_handle: JointHandle,
+    pub name :String,
     pub turret: Turret,
     pub damage: f32,
     energy: f32,
@@ -206,7 +207,7 @@ impl Tank {
     }
 
     #[inline]
-    fn is_dead(&self) -> bool {
+    pub fn is_dead(&self) -> bool {
         self.damage > DAMAGE_MAX
     }
 }
@@ -236,6 +237,7 @@ impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
 }
 
 pub struct PhysicsEngine {
+    max_steps : u32,
     pub tanks: Vec<Tank>,
     pub bullets: Vec<Bullet>,
     tick: u32,
@@ -254,9 +256,8 @@ pub struct PhysicsEngine {
 }
 
 impl PhysicsEngine {
-    pub fn init_physics(&mut self) {}
 
-    pub fn add_tank(&mut self, tank_position: Isometry2<Real>) {
+    pub fn add_tank(&mut self, tank_position: Isometry2<Real>,name:String) {
         //This tank index is used to set userdata of all collider to skip detection.
         let tank_index = self.tanks.len(); 
         let body = RigidBodyBuilder::new_dynamic()
@@ -313,6 +314,7 @@ impl PhysicsEngine {
                 .insert(rigid_body_handle, rigid_body_turret_handle, joint);
 
         let tank = Tank {
+            name : name,
             phy_body_handle: rigid_body_handle,
             collider_handle: collider_handle,
             cannon_joint_handle: cannon_joint_handle,
@@ -643,10 +645,17 @@ impl PhysicsEngine {
             false
         }
     }
+
+    pub fn exit_simulation(&self) -> !{
+            info!("Exiting simulation");
+            report::save_tank_report("simulation.output.csv",&self.tanks).unwrap();
+            std::process::exit(0);
+    }
 }
 
-pub fn create_physics_engine() -> PhysicsEngine {
+pub fn create_physics_engine(max_steps:u32) -> PhysicsEngine {
     let mut engine = PhysicsEngine {
+        max_steps : max_steps,
         tanks: vec![],
         bullets: vec![],
         tick: 0,
@@ -663,8 +672,6 @@ pub fn create_physics_engine() -> PhysicsEngine {
         event_handler: (),
         gravity_vector: vector![0.0, 0.0], //No gravity
     };
-
-    engine.init_physics();
     return engine;
 }
 

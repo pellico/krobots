@@ -10,3 +10,5 @@ Cargo.lock
 **/*.rs.bk
 __pycache__/
 /python/build/
+/python/dist/
+/simulation.output.csv

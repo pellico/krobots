@@ -17,7 +17,6 @@ use crate::conf::{*};
 
 struct GTank {
     texture_body : Texture2D,
-    name : String,
     body_texture_size :Vec2, 
     texture_turret : Texture2D,
     turret_texture_size : Vec2,
@@ -44,10 +43,10 @@ struct GameUI {
 
 
 impl GameUI {
-    async fn initialize(&mut self,mut tanks_names: Vec<String>) {
+    async fn initialize(&mut self,p_tanks:&Vec<Tank>) {
         
         
-        for index in 0..tanks_names.len() {
+        for index in 0..p_tanks.len() {
             let texture_body : Texture2D = load_texture("body.png").await.unwrap();
             let texture_turret : Texture2D = load_texture("turret.png").await.unwrap();
             let texture_radar : Texture2D = load_texture("radar.png").await.unwrap();
@@ -55,7 +54,6 @@ impl GameUI {
                 texture_body : texture_body,
                 texture_turret : texture_turret,
                 texture_radar : texture_radar,
-                name : tanks_names.remove(0),
                 body_texture_size : Vec2::new(texture_body.width()*5.0,texture_body.height()*5.0),
                 turret_texture_size : Vec2::new(texture_turret.width()*5.0,texture_turret.height()*5.0),
                 radar_texture_size : Vec2::new(texture_radar.width()*5.0,texture_radar.height()*5.0),
@@ -124,12 +122,18 @@ impl GameUI {
             let p_tank = &p_tanks[index];
             let uppercase_label;
             let label = if index==selected_tank {
-                uppercase_label=self.tanks[index].name.to_uppercase();
+                uppercase_label=p_tank.name.to_uppercase();
                 &uppercase_label
             } else {
-                &self.tanks[index].name
+                &p_tank.name
             };
-            ui.tree_node(hash!(&self.tanks[index].name), label, |ui| {
+            let dead_label;
+            let final_label:&str = if p_tank.is_dead() {
+                dead_label = "DEAD_".to_owned() + label;
+                &dead_label
+            } else {label};
+
+            ui.tree_node(hash!(&p_tank.name), final_label, |ui| {
                 ui.label(None, &format!("Speed abs {:.3}",p_tank.linear_velocity()));
                 ui.label(None, &format!("Speed vector {:.5} {:.5}",p_tank.linvel.x,p_tank.linvel.y));
                 ui.label(None, &format!("Forward abs {:.3} ",p_tank.forward_velocity()));
@@ -225,7 +229,8 @@ impl GTank {
         let tank_angle : f32 = p_tank_position.rotation.angle() + std::f32::consts::FRAC_PI_2;
         let turret_angle : f32 = p_tank.turret.angle;
         let radar_angle : f32 = p_tank.radar_position + p_tank_position.rotation.angle();
-        draw_texture_ex(self.texture_body, g_x, g_y, self.color,DrawTextureParams{
+        let color = if p_tank.is_dead() {GRAY} else {self.color};
+        draw_texture_ex(self.texture_body, g_x, g_y, color,DrawTextureParams{
             dest_size:Some(self.body_texture_size),
             source : None,
             rotation:tank_angle,
@@ -233,7 +238,7 @@ impl GTank {
         });
         let turret_x:f32 = t_x - self.turret_texture_size.x /2.;
         let turret_y:f32 = t_y - self.turret_texture_size.y /2.;
-        draw_texture_ex(self.texture_turret, turret_x, turret_y, self.color,DrawTextureParams{
+        draw_texture_ex(self.texture_turret, turret_x, turret_y, color,DrawTextureParams{
             dest_size:Some(self.turret_texture_size),
             source : None,
             rotation:turret_angle + std::f32::consts::FRAC_PI_2 ,
@@ -279,9 +284,8 @@ impl GTank {
 
 
 
-fn exit_application() -> ! {
-    info!("Application properly exit");
-    std::process::exit(0);
+fn exit_application(p_engine:&PhysicsEngine) -> ! {
+    p_engine.exit_simulation();
 }
 
 fn input_tanks (selected_tank:& mut usize,p_engine : &mut PhysicsEngine) {
@@ -321,7 +325,7 @@ fn input_tanks (selected_tank:& mut usize,p_engine : &mut PhysicsEngine) {
     }
 
     if is_key_down(KeyCode::Q) && is_key_down(KeyCode::LeftControl) {
-        exit_application();
+        exit_application(p_engine);
     }
 
 }
@@ -341,19 +345,17 @@ fn print_centered(text:&str,x:f32,y:f32,font_size:f32,color:Color) {
 }
 
 
-pub async fn main(num_tanks:u8,udp_port:u16) { 
+pub async fn main(num_tanks:u8,udp_port:u16,max_steps:u32) { 
     info!("Started");
     //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
     let (tx_data, rx_data) = mpsc::sync_channel::<(Vec<Tank>,Vec<Bullet>,usize)>(1);
-    let (tx_tank_names,rx_tank_names) = mpsc::sync_channel::<Vec<String>>(1);
 
     //Create thread that perform physics simulation
     thread::spawn(move || {
        let mut selected_tank : usize =0;
-       let mut p_engine = create_physics_engine();
+       let mut p_engine = create_physics_engine(max_steps);
        let mut server = RobotServer::new();
        let tanks_names = server.wait_connections(num_tanks,&mut p_engine,udp_port);
-       tx_tank_names.send(tanks_names).unwrap();
        loop{
            {
             //let start = time::Instant::now();
@@ -372,11 +374,16 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
        }
     });
     
-    let tank_names ;
+    let mut p_tanks;
+    let mut p_bullets;
+    let mut selected_tank;
     let message = format!("Waiting for all {} tanks",num_tanks);
     loop {
-        match rx_tank_names.try_recv() {
-            Ok(names) => {tank_names = names;break;},
+        match rx_data.try_recv() {
+            Ok((tanks,bullets,sel_tank)) => {p_tanks = tanks;
+                                            p_bullets = bullets;
+                                            selected_tank = sel_tank;
+                                            break;},
             Err(_) => ()
         }
         
@@ -385,7 +392,7 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
 
     };
     let mut game_ui = GameUI {
-        tanks : Vec::<GTank>::with_capacity(tank_names.len()),
+        tanks : Vec::<GTank>::with_capacity(p_tanks.len()),
         ui_visible : true,
         camera : Camera2D {
             zoom: vec2(DEFAULT_CAMERA_ZOOM, DEFAULT_CAMERA_ZOOM * screen_width() / screen_height()),
@@ -398,8 +405,7 @@ pub async fn main(num_tanks:u8,udp_port:u16) {
 
     };
     
-    game_ui.initialize(tank_names).await;
-    let (mut p_tanks,mut p_bullets,mut selected_tank) =rx_data.recv().unwrap();
+    game_ui.initialize(&p_tanks).await;
 
     /*
     Used to track when received an update in order to avoid too many message

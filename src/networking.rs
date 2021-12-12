@@ -52,7 +52,7 @@ impl RobotServer {
             let tank_vector_position = Isometry2::rotation(tank_pos_angle) * position_vector;
             //Angle to compute starting position of tank
             let tank_position = Isometry2::new(tank_vector_position, tank_pos_angle);
-            p_engine.add_tank(tank_position);
+            p_engine.add_tank(tank_position,tank_id.name.clone());
             names.push(tank_id.name);
 
             //Create connection and store connection data

@@ -13,10 +13,10 @@ depends on simualtion speed.
    :maxdepth: 2
    :caption: Contents:
    
-.. automodule:: ktanks
+.. autoclass:: ktanks.Tank
    :members:
    :special-members: __init__
-   
+   :noindex: ktanks.tank_pb2
    
       
 .. include:: server_answer.rst

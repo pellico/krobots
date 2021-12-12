@@ -1,5 +1,10 @@
 .. default-domain:: py
 
+|
+|
+
+.. py:module:: ktanks.tank_pb2
+
 .. class:: Vector
 
 	.. attribute:: x
@@ -10,6 +15,8 @@
 	
 	:type: float
 	
+|	
+|
 
 .. class:: TankStatus
 
@@ -68,7 +75,9 @@
 		always proportionally.
 		
 		:type: float
-		
+
+|		
+|
 		
 .. class:: TankRadar
 
@@ -84,7 +93,8 @@
 		
 		:type: float
 				
-		
+|
+|		
 		
 .. class:: RadarResult
 
