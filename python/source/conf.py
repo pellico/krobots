@@ -55,3 +55,4 @@ always_document_param_types = True
 html_theme_options = {
     "rightsidebar": "false",
 }
+autoclass_content = 'init'

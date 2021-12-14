@@ -166,11 +166,11 @@ impl GameUI {
         let camera = &mut self.camera;
         if is_key_down(KeyCode::KpAdd) {
             *zoom *= 1.1f32.powf(1.0);
-            info!("zoom {}",zoom);
+            debug!("zoom {}",zoom);
         }
         if is_key_down(KeyCode::KpSubtract) {
             *zoom *= 1.1f32.powf(-1.0);
-            info!("zoom {}",zoom);
+            debug!("zoom {}",zoom);
         }
         camera.zoom = vec2(*zoom, *zoom * screen_width() / screen_height());
         

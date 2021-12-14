@@ -23,7 +23,8 @@ class Tank:
         answer, addr = self.txSocket.recvfrom(2048)
         self.port = addr[1]
         self.txSocket.connect(addr)
-        self.simulation_configuration : SimulationConfig  = SimulationConfig() #: Configuration of simulator
+        #: Configuration of simulator
+        self.simulation_configuration : SimulationConfig  = SimulationConfig() 
         self.simulation_configuration.ParseFromString(answer)
         #wait for start packet
         self.txSocket.recvfrom(2048)
@@ -82,8 +83,8 @@ class Tank:
         """
         Move radar and get radar result
         
-        :param angle_increment: How many radians shall be rotated the radar before sampling Max: PI/180*10
-        :param width: Width of the radar in radians Max PI/180*10
+        :param angle_increment: How many radians shall be rotated the radar before sampling Max: :py:attr:.simulation_configuration
+        :param width: Width of the radar in radians Max see :py:attr:.simulation_configuration
         
         """
         command=Command()

@@ -1,7 +1,5 @@
 .. default-domain:: py
 
-|
-|
 
 .. py:module:: ktanks.tank_pb2
 
@@ -115,9 +113,55 @@
 		List of first 10 detected tanks
 		
 		:type: list of :class:`.TankRadar`
+
+|
+|		
 		
+.. class:: SimulationConfig
+
+	.. attribute:: tank_energy_max
+	
+		Max energy allowed for the tank
 		
+		:type: float
 		
+	.. attribute:: damage_max
+	
+		When damage exceed this limit the tank is dead. No operation are allowed
+		
+		:type: float		
+		
+	.. attribute:: bullet_max_range
+	
+		Max range of bullet
+		
+		:type: float
+		
+	.. attribute:: zero_power_limit
+	
+		When distance of tank from power source exceed this limit, tank energy is decreased proportionaly with distance
+		
+		:type: float
+		
+	.. attribute:: radar_angle_increment_max
+	
+		Max allowed increment in radians
+		
+		:type: float
+		
+	.. attribute:: radar_width_max
+	
+		Max allowed radar width
+		
+		:type: float
+		
+	.. attribute:: radar_max_detection_range
+	
+		Max allowed radar detection range
+		
+		:type: float
+		
+	
 		
 		
 		

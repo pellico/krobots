@@ -12,14 +12,20 @@ depends on simualtion speed.
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+
    
 .. autoclass:: ktanks.Tank
    :members:
-   :special-members: __init__
-   :noindex: ktanks.tank_pb2
+   :no-undoc-members:
    
-      
-.. include:: server_answer.rst
+   
+.. automodule::ktanks.tank_pb2
+   :noindex: 
+   
+
+.. include:: server_answer.txt      
+
 
 
 Indices and tables
