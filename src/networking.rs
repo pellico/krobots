@@ -62,7 +62,7 @@ impl RobotServer {
             dedicated_socket.connect(src).unwrap();
             dedicated_socket.set_nonblocking(true).unwrap();
             //Send answer
-            let answer = Self::get_status(p_engine,p_engine.tanks.len()-1);
+            let answer = Self::get_register_tank_answer();
             let mut transmit_buff = Vec::new();
             answer
                 .encode(&mut transmit_buff)
@@ -75,11 +75,28 @@ impl RobotServer {
         }
         //After registration of all tank send start packet
         for tank in &self.connected_robots {
+            let answer = Self::get_status(p_engine,p_engine.tanks.len()-1);
+            let mut transmit_buff = Vec::new();
+            answer
+                .encode(&mut transmit_buff)
+                .expect("Failed to encode CommandResult");
             tank.socket
-                .send(b"start")
+                .send(&transmit_buff)
                 .expect("not able to send start packet");
         }
         names
+    }
+
+    fn get_register_tank_answer() -> SimulationConfig {
+        let mut answer = SimulationConfig::default();
+        answer.tank_energy_max = conf::TANK_ENERGY_MAX;
+        answer.damage_max = conf::DAMAGE_MAX;
+        answer.bullet_max_range = conf::BULLET_MAX_RANGE;
+        answer.zero_power_limit = conf::ZERO_POWER_LIMIT;
+        answer.radar_angle_increment_max = conf::RADAR_ANGLE_INCREMENT_MAX;
+        answer.radar_width_max = conf::RADAR_WIDTH_MAX;
+        answer.radar_max_detection_range = conf::RADAR_MAX_DETECTION_DISTANCE;
+        answer
     }
 
     fn get_status(p_engine: &PhysicsEngine, tank_index: usize) -> TankStatus {

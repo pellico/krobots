@@ -71,8 +71,20 @@ message Command {
 
 /*
 Used to register tank
-Server answer with TankStatus
+Server answer with RegisterTankAnswer
 */
 message RegisterTank {
     string name = 1;
-}      
+}  
+
+
+message SimulationConfig {
+    float tank_energy_max = 1;
+    float damage_max = 2;
+    float bullet_max_range = 3;
+    //Beyond this limit tank energy is decreased proportionaly with distance
+    float zero_power_limit = 4;
+    float radar_angle_increment_max = 5;
+    float radar_width_max = 6;
+    float radar_max_detection_range = 7;
+}

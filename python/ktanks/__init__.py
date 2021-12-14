@@ -23,11 +23,12 @@ class Tank:
         answer, addr = self.txSocket.recvfrom(2048)
         self.port = addr[1]
         self.txSocket.connect(addr)
-        result = TankStatus()
-        result.ParseFromString(answer)
+        self.simulation_configuration : SimulationConfig  = SimulationConfig() #: Configuration of simulator
+        self.simulation_configuration.ParseFromString(answer)
         #wait for start packet
         self.txSocket.recvfrom(2048)
 
+    
 
     def send_receive_command(self,data):
         self.txSocket.send(data)

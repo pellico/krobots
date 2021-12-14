@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ntank.proto\x12\x10protobuffer.tank\"\x1e\n\x06Vector\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\"\xcb\x01\n\nTankStatus\x12\x0c\n\x04tick\x18\x01 \x01(\r\x12*\n\x08velocity\x18\x02 \x01(\x0b\x32\x18.protobuffer.tank.Vector\x12\r\n\x05\x61ngle\x18\x03 \x01(\x02\x12\x14\n\x0c\x63\x61nnon_angle\x18\x04 \x01(\x02\x12\x0e\n\x06\x64\x61mage\x18\x05 \x01(\x02\x12\x0e\n\x06\x65nergy\x18\x06 \x01(\x02\x12\x0f\n\x07success\x18\x07 \x01(\x08\x12\x0e\n\x06\x61ngvel\x18\x08 \x01(\x02\x12\x1d\n\x15\x64istance_power_source\x18\t \x01(\x02\"-\n\tTankRadar\x12\x10\n\x08\x64istance\x18\x01 \x01(\x02\x12\x0e\n\x06\x64\x61mage\x18\x02 \x01(\x02\"V\n\x0bRadarResult\x12\x0c\n\x04tick\x18\x01 \x01(\r\x12\r\n\x05\x61ngle\x18\x02 \x01(\x02\x12*\n\x05tanks\x18\x04 \x03(\x0b\x32\x1b.protobuffer.tank.TankRadar\"\xe7\x01\n\x07\x43ommand\x12\r\n\x05index\x18\x01 \x01(\x07\x12\x34\n\x07\x63ommand\x18\x02 \x01(\x0e\x32#.protobuffer.tank.Command.CommandId\x12\x11\n\targument1\x18\x03 \x01(\x02\x12\x11\n\targument2\x18\x04 \x01(\x02\"q\n\tCommandId\x12\x0e\n\nGET_STATUS\x10\x00\x12\x14\n\x10GET_RADAR_RESULT\x10\x01\x12\x14\n\x10SET_ENGINE_POWER\x10\x02\x12\x0f\n\x0b\x46IRE_CANNON\x10\x03\x12\x17\n\x13SET_CANNON_POSITION\x10\x04\"\x1c\n\x0cRegisterTank\x12\x0c\n\x04name\x18\x01 \x01(\tb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ntank.proto\x12\x10protobuffer.tank\"\x1e\n\x06Vector\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\"\xcb\x01\n\nTankStatus\x12\x0c\n\x04tick\x18\x01 \x01(\r\x12*\n\x08velocity\x18\x02 \x01(\x0b\x32\x18.protobuffer.tank.Vector\x12\r\n\x05\x61ngle\x18\x03 \x01(\x02\x12\x14\n\x0c\x63\x61nnon_angle\x18\x04 \x01(\x02\x12\x0e\n\x06\x64\x61mage\x18\x05 \x01(\x02\x12\x0e\n\x06\x65nergy\x18\x06 \x01(\x02\x12\x0f\n\x07success\x18\x07 \x01(\x08\x12\x0e\n\x06\x61ngvel\x18\x08 \x01(\x02\x12\x1d\n\x15\x64istance_power_source\x18\t \x01(\x02\"-\n\tTankRadar\x12\x10\n\x08\x64istance\x18\x01 \x01(\x02\x12\x0e\n\x06\x64\x61mage\x18\x02 \x01(\x02\"V\n\x0bRadarResult\x12\x0c\n\x04tick\x18\x01 \x01(\r\x12\r\n\x05\x61ngle\x18\x02 \x01(\x02\x12*\n\x05tanks\x18\x04 \x03(\x0b\x32\x1b.protobuffer.tank.TankRadar\"\xe7\x01\n\x07\x43ommand\x12\r\n\x05index\x18\x01 \x01(\x07\x12\x34\n\x07\x63ommand\x18\x02 \x01(\x0e\x32#.protobuffer.tank.Command.CommandId\x12\x11\n\targument1\x18\x03 \x01(\x02\x12\x11\n\targument2\x18\x04 \x01(\x02\"q\n\tCommandId\x12\x0e\n\nGET_STATUS\x10\x00\x12\x14\n\x10GET_RADAR_RESULT\x10\x01\x12\x14\n\x10SET_ENGINE_POWER\x10\x02\x12\x0f\n\x0b\x46IRE_CANNON\x10\x03\x12\x17\n\x13SET_CANNON_POSITION\x10\x04\"\x1c\n\x0cRegisterTank\x12\x0c\n\x04name\x18\x01 \x01(\t\"\xd2\x01\n\x10SimulationConfig\x12\x17\n\x0ftank_energy_max\x18\x01 \x01(\x02\x12\x12\n\ndamage_max\x18\x02 \x01(\x02\x12\x18\n\x10\x62ullet_max_range\x18\x03 \x01(\x02\x12\x18\n\x10zero_power_limit\x18\x04 \x01(\x02\x12!\n\x19radar_angle_increment_max\x18\x05 \x01(\x02\x12\x17\n\x0fradar_width_max\x18\x06 \x01(\x02\x12!\n\x19radar_max_detection_range\x18\x07 \x01(\x02\x62\x06proto3')
 
 
 
@@ -24,6 +24,7 @@ _TANKRADAR = DESCRIPTOR.message_types_by_name['TankRadar']
 _RADARRESULT = DESCRIPTOR.message_types_by_name['RadarResult']
 _COMMAND = DESCRIPTOR.message_types_by_name['Command']
 _REGISTERTANK = DESCRIPTOR.message_types_by_name['RegisterTank']
+_SIMULATIONCONFIG = DESCRIPTOR.message_types_by_name['SimulationConfig']
 _COMMAND_COMMANDID = _COMMAND.enum_types_by_name['CommandId']
 Vector = _reflection.GeneratedProtocolMessageType('Vector', (_message.Message,), {
   'DESCRIPTOR' : _VECTOR,
@@ -67,6 +68,13 @@ RegisterTank = _reflection.GeneratedProtocolMessageType('RegisterTank', (_messag
   })
 _sym_db.RegisterMessage(RegisterTank)
 
+SimulationConfig = _reflection.GeneratedProtocolMessageType('SimulationConfig', (_message.Message,), {
+  'DESCRIPTOR' : _SIMULATIONCONFIG,
+  '__module__' : 'tank_pb2'
+  # @@protoc_insertion_point(class_scope:protobuffer.tank.SimulationConfig)
+  })
+_sym_db.RegisterMessage(SimulationConfig)
+
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
@@ -84,4 +92,6 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _COMMAND_COMMANDID._serialized_end=637
   _REGISTERTANK._serialized_start=639
   _REGISTERTANK._serialized_end=667
+  _SIMULATIONCONFIG._serialized_start=670
+  _SIMULATIONCONFIG._serialized_end=880
 # @@protoc_insertion_point(module_scope)

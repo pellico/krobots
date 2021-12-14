@@ -11,7 +11,7 @@ const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b001, 0b101);
 const TURRET_GROUP: InteractionGroups = InteractionGroups::new(0b010, 0b110);
 const BULLET_GROUP: InteractionGroups = InteractionGroups::new(0b100, 0b011);
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct Turret {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
@@ -21,21 +21,21 @@ pub struct Turret {
     pub new_angle: Option<f32>, // New position None if no command change position
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct Bullet {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
     tick_counter: u32, //tick count down when zero the bullet will be destroyed
     pub shape_polyline: Vec<Point2<Real>>,
-    pub position : Isometry2<Real>,
+    pub position: Isometry2<Real>,
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct Tank {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
     cannon_joint_handle: JointHandle,
-    pub name :String,
+    pub name: String,
     pub turret: Turret,
     pub damage: f32,
     energy: f32,
@@ -71,12 +71,11 @@ Velocity of a point of rigidbody
 * `y` - y coordinates relative to rigid body
 * `body` - rigidbody
 */
-fn get_velocity_at_point(x:f32,y:f32,rigid_body:&RigidBody) -> Vector<Real> {
-    let point_relative = Point::new(x,y);
+fn get_velocity_at_point(x: f32, y: f32, rigid_body: &RigidBody) -> Vector<Real> {
+    let point_relative = Point::new(x, y);
     let point_world = rigid_body.position() * point_relative;
     rigid_body.velocity_at_point(&point_world)
 }
-
 
 /// Wrap angle in range ]-PI,PI]
 ///
@@ -84,17 +83,17 @@ fn get_velocity_at_point(x:f32,y:f32,rigid_body:&RigidBody) -> Vector<Real> {
 /// let result = angle_wrapping(PI);
 /// assert_eq!(result, -PI);
 /// ```
-fn angle_wrapping(angle:f32) -> f32 {
+fn angle_wrapping(angle: f32) -> f32 {
     let mut angle_res = angle;
     loop {
-    if angle_res > PI {
-        angle_res=angle_res - 2.0 * PI
-    } else if angle_res <= -PI {
-        angle_res=angle_res + 2.0 * PI
-    } else {
-        break;
+        if angle_res > PI {
+            angle_res = angle_res - 2.0 * PI
+        } else if angle_res <= -PI {
+            angle_res = angle_res + 2.0 * PI
+        } else {
+            break;
+        }
     }
-    };
     angle_res
 }
 
@@ -157,11 +156,11 @@ impl Tank {
     pub fn update_energy(&mut self) -> bool {
         // Decrease if a bullet is fired
         let bullet_energy = if self.turret.fire { BULLET_ENERGY } else { 0.0 };
-        
         // Energy transmission decrease linearly and go to zero at distance ZERO_POWER_LIMIT
         let distance_from_center = self.position.translation.vector.norm();
         // Beyond ZERO_POWER_LIMIT energy will be drained from the tank.
-        let charged_energy = POWER_ENERGY_SOURCE_STEP * (1.0 - distance_from_center / ZERO_POWER_LIMIT);
+        let charged_energy =
+            POWER_ENERGY_SOURCE_STEP * (1.0 - distance_from_center / ZERO_POWER_LIMIT);
         let delta_energy =
             -self.engine_power.abs() - self.turning_power.abs() - bullet_energy + charged_energy;
         let new_energy = self.energy + delta_energy;
@@ -215,7 +214,10 @@ impl Tank {
 struct MyPhysicsHooks;
 
 impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
-    fn filter_contact_pair(&self, context: &PairFilterContext<RigidBodySet, ColliderSet>) -> Option<SolverFlags> {
+    fn filter_contact_pair(
+        &self,
+        context: &PairFilterContext<RigidBodySet, ColliderSet>,
+    ) -> Option<SolverFlags> {
         // This is a silly example of contact pair filter that:
         // - Enables contact and force computation if both colliders have same user-data.
         // - Disables contact computation otherwise.
@@ -237,7 +239,8 @@ impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
 }
 
 pub struct PhysicsEngine {
-    max_steps : u32,
+    max_ticks: u32,
+    tanks_alive: u16,
     pub tanks: Vec<Tank>,
     pub bullets: Vec<Bullet>,
     tick: u32,
@@ -256,10 +259,9 @@ pub struct PhysicsEngine {
 }
 
 impl PhysicsEngine {
-
-    pub fn add_tank(&mut self, tank_position: Isometry2<Real>,name:String) {
+    pub fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) {
         //This tank index is used to set userdata of all collider to skip detection.
-        let tank_index = self.tanks.len(); 
+        let tank_index = self.tanks.len();
         let body = RigidBodyBuilder::new_dynamic()
             .position(tank_position)
             .linear_damping(LINEAR_DAMPING)
@@ -314,7 +316,7 @@ impl PhysicsEngine {
                 .insert(rigid_body_handle, rigid_body_turret_handle, joint);
 
         let tank = Tank {
-            name : name,
+            name: name,
             phy_body_handle: rigid_body_handle,
             collider_handle: collider_handle,
             cannon_joint_handle: cannon_joint_handle,
@@ -346,7 +348,7 @@ impl PhysicsEngine {
 
     pub fn step(&mut self) {
         //Execute all command
-        for (index,tank) in self.tanks.iter_mut().enumerate() {
+        for (index, tank) in self.tanks.iter_mut().enumerate() {
             tank.update_timers();
 
             if !tank.update_energy() {
@@ -359,11 +361,13 @@ impl PhysicsEngine {
 
             let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
             Self::apply_engine_power(tank_rigid_body, tank.engine_power);
-            tank_rigid_body.apply_torque_impulse(tank.turning_power/ (tank.angular_velocity+1.0), true);
+            tank_rigid_body
+                .apply_torque_impulse(tank.turning_power / (tank.angular_velocity + 1.0), true);
             tank.set_cannon_position(&mut self.joint_set);
             let turret = &mut tank.turret;
             if turret.fire {
-                let (bullet_body, collider) = Self::create_bullet(&self.rigid_body_set[turret.phy_body_handle],index);
+                let (bullet_body, collider) =
+                    Self::create_bullet(&self.rigid_body_set[turret.phy_body_handle], index);
                 let bullet_position = *bullet_body.position();
                 let collider_polyline = Self::get_collider_polyline_cuboid(&collider);
                 let rigid_body_handle = self.rigid_body_set.insert(bullet_body);
@@ -377,7 +381,7 @@ impl PhysicsEngine {
                     phy_body_handle: rigid_body_handle,
                     tick_counter: std::cmp::max(1, (BULLET_MAX_RANGE / BULLET_SPEED * 60.0) as u32), //remember that step is 1/60 simulation sec.
                     shape_polyline: collider_polyline,
-                    position : bullet_position,
+                    position: bullet_position,
                 };
                 self.bullets.push(bullet);
                 turret.fire = false;
@@ -417,11 +421,11 @@ impl PhysicsEngine {
         }
         for bullet in &mut self.bullets {
             for contact_pair in self.narrow_phase.contacts_with(bullet.collider_handle) {
-                /*Skip if no contact. This should be false for bullet in cotnact 
+                /*Skip if no contact. This should be false for bullet in cotnact
                 with tank that has fired the same bullet. See physics hook.
                 */
-                if ! contact_pair.has_any_active_contact {
-                    continue
+                if !contact_pair.has_any_active_contact {
+                    continue;
                 }
                 let other_collider = if contact_pair.collider1 == bullet.collider_handle {
                     contact_pair.collider2
@@ -434,7 +438,10 @@ impl PhysicsEngine {
                     .iter()
                     .position(|x| x.collider_handle == other_collider)
                 {
-                    Some(target_tank_index) => {info!("Tank {} has been hitted",target_tank_index);self.tanks[target_tank_index].bullet_damage()},
+                    Some(target_tank_index) => {
+                        debug!("Tank {} has been hitted", target_tank_index);
+                        self.tanks[target_tank_index].bullet_damage()
+                    }
                     None => (),
                 }
                 // Process the contact pair in a way similar to what we did in
@@ -464,16 +471,42 @@ impl PhysicsEngine {
             } else {
                 true
             }
-        })
+        });
+
+        //Counts how many tanks are alive
+        self.tanks_alive = 0;
+        for tank in &self.tanks {
+            if tank.is_dead() {
+                continue;
+            } else {
+                self.tanks_alive += 1;
+            }
+        }
+
+        //If all tanks are dead except one exit from simulation
+        if self.tanks_alive <= 1 {
+            if self.tanks_alive == 0 {
+                info!("All tanks destroyes ... exiting");
+            } else {
+                info!("All tanks except one are destroyed ... exiting");
+            }
+            self.exit_simulation();
+        }
+
+        // If reached max number of simulation exit from simulation
+        if self.max_ticks != 0 && self.tick >= self.max_ticks {
+            info!("Reached max number of ticks .. exiting");
+            self.exit_simulation();
+        }
     }
 
-    pub fn create_bullet(cannon_body: &RigidBody,tank_index:usize) -> (RigidBody, Collider) {
+    pub fn create_bullet(cannon_body: &RigidBody, tank_index: usize) -> (RigidBody, Collider) {
         let cannon_position = cannon_body.position();
-        let velocity_cannon_edge = get_velocity_at_point(TURRET_WIDTH_M / 2.0,0.0,cannon_body);
+        let velocity_cannon_edge = get_velocity_at_point(TURRET_WIDTH_M / 2.0, 0.0, cannon_body);
         let angle = cannon_position.rotation.angle();
         debug!("Created bullet angle:{}", angle * 360.0 / PI);
         //Compute bullet speed and sum cannon edge speed (world speed)
-        let velocity = (cannon_position * vector![BULLET_SPEED, 0.0])+velocity_cannon_edge;
+        let velocity = (cannon_position * vector![BULLET_SPEED, 0.0]) + velocity_cannon_edge;
         //bullet shall be created in front of cannon and outside of the tank
         let bullet_position = cannon_position * Point2::new(1.8, 0.0);
         let bullet_body = RigidBodyBuilder::new_dynamic()
@@ -521,10 +554,10 @@ impl PhysicsEngine {
         self.get_position(&self.tanks[tank_id])
     }
 
-    pub fn tank_velocity(&self, tank_id: usize) -> (Vector<Real>,Real) {
+    pub fn tank_velocity(&self, tank_id: usize) -> (Vector<Real>, Real) {
         let tank = &self.tanks[tank_id];
         let rigid_body = &self.rigid_body_set[tank.phy_body_handle];
-        (*rigid_body.linvel(),rigid_body.angvel())
+        (*rigid_body.linvel(), rigid_body.angvel())
     }
 
     #[inline]
@@ -547,7 +580,7 @@ impl PhysicsEngine {
         if power != 0.0 {
             //force is liner anly when speed is greater than 1 . We don't have infinite force at 0 speed.
             let tank_speed = tank_rigid_body.linvel().norm();
-            let force = power / ( tank_speed + 1.0);
+            let force = power / (tank_speed + 1.0);
             let force_forward_vector = tank_rigid_body.position() * vector![force, 0.0];
             tank_rigid_body.apply_force(force_forward_vector, true);
         }
@@ -646,16 +679,17 @@ impl PhysicsEngine {
         }
     }
 
-    pub fn exit_simulation(&self) -> !{
-            info!("Exiting simulation");
-            report::save_tank_report("simulation.output.csv",&self.tanks).unwrap();
-            std::process::exit(0);
+    pub fn exit_simulation(&self) -> ! {
+        info!("Exiting simulation");
+        report::save_tank_report("simulation.output.csv", &self.tanks).unwrap();
+        std::process::exit(0);
     }
 }
 
-pub fn create_physics_engine(max_steps:u32) -> PhysicsEngine {
-    let mut engine = PhysicsEngine {
-        max_steps : max_steps,
+pub fn create_physics_engine(max_steps: u32) -> PhysicsEngine {
+    let engine = PhysicsEngine {
+        max_ticks: max_steps,
+        tanks_alive: 0,
         tanks: vec![],
         bullets: vec![],
         tick: 0,
@@ -675,7 +709,6 @@ pub fn create_physics_engine(max_steps:u32) -> PhysicsEngine {
     return engine;
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -686,11 +719,11 @@ mod tests {
         assert_eq!(result, PI);
         result = angle_wrapping(-PI);
         assert_eq!(result, PI);
-        result = angle_wrapping(-2.0*PI);
+        result = angle_wrapping(-2.0 * PI);
         assert_eq!(result, 0.0);
-        result = angle_wrapping(-4.0*PI);
+        result = angle_wrapping(-4.0 * PI);
         assert_eq!(result, 0.0);
-        result = angle_wrapping(4.0*PI);
+        result = angle_wrapping(4.0 * PI);
         assert_eq!(result, 0.0);
     }
 }

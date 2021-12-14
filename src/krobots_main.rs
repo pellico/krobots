@@ -36,7 +36,8 @@ struct GameUI {
     zoom : f32,
     camera : Camera2D,
     bullet_texture : Texture2D,
-    hit_texture : Texture2D
+    hit_texture : Texture2D,
+    show_stats : bool,
 }
 
 
@@ -113,6 +114,10 @@ impl GameUI {
         }
         if self.ui_visible == false {
             return;
+        }
+        //This to show/hide stats
+        if is_key_released(KeyCode::F1) {
+            self.show_stats ^=true;
         }
         widgets::Window::new(hash!(), vec2(0., 0.), vec2(250., 300.))
         .label("Robots")
@@ -401,7 +406,8 @@ pub async fn main(num_tanks:u8,udp_port:u16,max_steps:u32) {
         },
         zoom : DEFAULT_CAMERA_ZOOM,
         bullet_texture : load_texture("bullet.png").await.unwrap(),
-        hit_texture : load_texture("smoke_fire.png").await.unwrap()
+        hit_texture : load_texture("smoke_fire.png").await.unwrap(),
+        show_stats : false,
 
     };
     
@@ -414,7 +420,9 @@ pub async fn main(num_tanks:u8,udp_port:u16,max_steps:u32) {
     */
  
     loop {
-        //macroquad_profiler::profiler(Default::default());
+        if game_ui.show_stats {
+            macroquad_profiler::profiler(Default::default());
+        };
         match rx_data.try_recv(){
             Ok((tanks,bullets,sel_tank)) => {
                 p_tanks=tanks;
