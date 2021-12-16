@@ -1,8 +1,7 @@
 use crate::conf;
-use crate::physics::{PhysicsEngine,Vector2};
+use crate::physics::{PhysicsEngine,Vector2,Real,Isometry2,Rotation2};
 use crate::tank_proto::*;
 use log::{debug, error, info};
-use nalgebra::Isometry2;
 use prost::Message;
 use std::net::{UdpSocket};
 
@@ -96,6 +95,7 @@ impl RobotServer {
         answer.radar_angle_increment_max = conf::RADAR_ANGLE_INCREMENT_MAX;
         answer.radar_width_max = conf::RADAR_WIDTH_MAX;
         answer.radar_max_detection_range = conf::RADAR_MAX_DETECTION_DISTANCE;
+        answer.bullet_speed = conf::BULLET_SPEED;
         answer
     }
 
@@ -113,7 +113,9 @@ impl RobotServer {
         tank_status.energy = p_engine.tank_energy(tank_index);
         tank_status.damage = p_engine.tank_damage(tank_index);
         tank_status.cannon_angle = p_engine.tank_cannon_angle(tank_index);
-        tank_status.distance_power_source = tank_position.translation.vector.norm();
+        let tank_position = tank_position.translation.vector;
+        tank_status.distance_power_source = tank_position.norm();
+        tank_status.angle_power_source = Rotation2::rotation_between(&Vector2::<Real>::x(), &(-tank_position)).angle();
         tank_status.success = true;
         tank_status
     }

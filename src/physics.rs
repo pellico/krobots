@@ -1,6 +1,6 @@
 use crate::conf::*;
 use log::{debug, error, info, trace};
-use nalgebra::{vector, Isometry2, Rotation2};
+pub use nalgebra::{vector, Isometry2, Rotation2};
 pub use nalgebra::{Point2, Vector2};
 pub use rapier2d::prelude::Real;
 use rapier2d::prelude::*;
@@ -39,10 +39,10 @@ pub struct Tank {
     pub turret: Turret,
     pub damage: f32,
     energy: f32,
-    pub engine_power: f32, // [-1.0,1.0]
+    pub engine_power: f32, 
     pub max_engine_power: f32,
     pub max_turning_power: f32,
-    pub turning_power: f32, // [-1.0,1.0]
+    pub turning_power: f32, 
     pub shape_polyline: Vec<Point2<Real>>,
     pub position: Isometry<Real>,
     pub linvel: Vector<Real>,
@@ -162,7 +162,7 @@ impl Tank {
         let charged_energy =
             POWER_ENERGY_SOURCE_STEP * (1.0 - distance_from_center / ZERO_POWER_LIMIT);
         let delta_energy =
-            -self.engine_power.abs() - self.turning_power.abs() - bullet_energy + charged_energy;
+            -self.engine_power.abs()/60.0 - self.turning_power.abs()/60.0 - bullet_energy + charged_energy;
         let new_energy = self.energy + delta_energy;
         if new_energy < 0.0 {
             self.delta_energy(charged_energy);
@@ -331,7 +331,7 @@ impl PhysicsEngine {
                 new_angle: None,
             },
             engine_power: 0.0,
-            max_engine_power: TANK_ENGINE_POWER_MAX_STEP,
+            max_engine_power: TANK_ENGINE_POWER_MAX,
             turning_power: 0.0,
             max_turning_power: TURNING_IMPULSE_MAX,
             shape_polyline: shape_polyline_tank,
@@ -421,7 +421,7 @@ impl PhysicsEngine {
         }
         for bullet in &mut self.bullets {
             for contact_pair in self.narrow_phase.contacts_with(bullet.collider_handle) {
-                /*Skip if no contact. This should be false for bullet in cotnact
+                /*Skip if no contact. This should be false for bullet in contact
                 with tank that has fired the same bullet. See physics hook.
                 */
                 if !contact_pair.has_any_active_contact {
@@ -439,7 +439,7 @@ impl PhysicsEngine {
                     .position(|x| x.collider_handle == other_collider)
                 {
                     Some(target_tank_index) => {
-                        debug!("Tank {} has been hitted", target_tank_index);
+                        debug!("Tank {} has been hit", target_tank_index);
                         self.tanks[target_tank_index].bullet_damage()
                     }
                     None => (),
@@ -486,7 +486,7 @@ impl PhysicsEngine {
         //If all tanks are dead except one exit from simulation
         if self.tanks_alive <= 1 {
             if self.tanks_alive == 0 {
-                info!("All tanks destroyes ... exiting");
+                info!("All tanks destroyed ... exiting");
             } else {
                 info!("All tanks except one are destroyed ... exiting");
             }
@@ -532,7 +532,7 @@ impl PhysicsEngine {
 
     #[inline]
     pub fn tank_engine_power_percentage(&self, tank_id: usize) -> f32 {
-        self.tanks[tank_id].engine_power / TANK_ENGINE_POWER_MAX_STEP
+        self.tanks[tank_id].engine_power / TANK_ENGINE_POWER_MAX
     }
     pub fn set_tank_engine_power(&mut self, energy: f32, tank_id: usize) {
         let tank = &mut self.tanks[tank_id];

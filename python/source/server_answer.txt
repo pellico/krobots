@@ -74,6 +74,12 @@
 		
 		:type: float
 
+	.. attribute:: angle_power_source
+	
+		Angle to power source.
+		
+		:type: float
+		
 |		
 |
 		
@@ -139,7 +145,7 @@
 		
 	.. attribute:: zero_power_limit
 	
-		When distance of tank from power source exceed this limit, tank energy is decreased proportionaly with distance
+		When distance of tank from power source exceed this limit, tank energy is decreased proportionally with distance
 		
 		:type: float
 		
@@ -158,6 +164,12 @@
 	.. attribute:: radar_max_detection_range
 	
 		Max allowed radar detection range
+		
+		:type: float
+
+	.. attribute:: bullet_speed
+	
+		Bullet speed m/sec (1 tick = 1/60 sec)
 		
 		:type: float
 		

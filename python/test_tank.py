@@ -76,10 +76,8 @@ def run_my_robot(name):
     #     tank.comm.fire_cannon()
     
     status = tank.comm.get_status()
-  
-    angle=angle_wrapping(radians(180)+status.angle)
-    
-    tank.move_to_angle(angle,0.01)
+        
+    tank.move_to_angle(status.angle_power_source,0.01)
     tank.set_power_engine(0.05)
     while True :
         radar_result = tank.comm.get_radar_result(0.1,0.1)
