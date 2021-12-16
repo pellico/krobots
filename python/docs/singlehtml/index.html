@@ -1,0 +1,480 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>ktanks documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="#">ktanks  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">ktanks  documentation</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="welcome-to-krobots-s-documentation">
+<h1>Welcome to krobots’s documentation!<a class="headerlink" href="#welcome-to-krobots-s-documentation" title="Permalink to this headline">¶</a></h1>
+<p>The physical unit are pseudo physical unit used in the simulator. e.g. sec are not real world sec. The real duration of a sec
+depends on simualtion speed.</p>
+<div class="toctree-wrapper compound">
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="ktanks.Tank">
+<em class="property"><span class="pre">class</span><span class="w">  </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.</span></span><span class="sig-name descname"><span class="pre">Tank</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">server_ip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ktanks.Tank" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a tank at the server.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Name of tank</p></li>
+<li><p><strong>server_ip</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – IP of simulation server</p></li>
+<li><p><strong>port</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Port of simulation server</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="ktanks.Tank.fire_cannon">
+<span class="sig-name descname"><span class="pre">fire_cannon</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ktanks.Tank.fire_cannon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fire cannon</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#ktanks.tank_pb2.TankStatus" title="ktanks.tank_pb2.TankStatus"><code class="xref py py-class docutils literal notranslate"><span class="pre">TankStatus</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ktanks.Tank.get_radar_result">
+<span class="sig-name descname"><span class="pre">get_radar_result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle_increment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ktanks.Tank.get_radar_result" title="Permalink to this definition">¶</a></dt>
+<dd><p>Move radar and get radar result</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angle_increment</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – How many radians shall be rotated the radar before sampling Max: :py:attr:.simulation_configuration</p></li>
+<li><p><strong>width</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Width of the radar in radians Max see :py:attr:.simulation_configuration</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#ktanks.tank_pb2.RadarResult" title="ktanks.tank_pb2.RadarResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">RadarResult</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ktanks.Tank.get_status">
+<span class="sig-name descname"><span class="pre">get_status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ktanks.Tank.get_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get tank status</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#ktanks.tank_pb2.TankStatus" title="ktanks.tank_pb2.TankStatus"><code class="xref py py-class docutils literal notranslate"><span class="pre">TankStatus</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ktanks.Tank.set_cannon_position">
+<span class="sig-name descname"><span class="pre">set_cannon_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ktanks.Tank.set_cannon_position" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set cannon position</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>angle</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Angle relative to tank [radians]</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#ktanks.tank_pb2.TankStatus" title="ktanks.tank_pb2.TankStatus"><code class="xref py py-class docutils literal notranslate"><span class="pre">TankStatus</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ktanks.Tank.set_engine_power">
+<span class="sig-name descname"><span class="pre">set_engine_power</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fraction_forward_power</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fraction_turning_power</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ktanks.Tank.set_engine_power" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set engine power</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fraction_forward_power</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Power fraction applied to move forward or backward. [-1.0,1.0] Negative number move backward</p></li>
+<li><p><strong>fraction_turning_power</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Power fraction applied to turn the tank. [-1.0,1.0] Negative number move counter-clokwise</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#ktanks.tank_pb2.TankStatus" title="ktanks.tank_pb2.TankStatus"><code class="xref py py-class docutils literal notranslate"><span class="pre">TankStatus</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.Tank.simulation_configuration">
+<span class="sig-name descname"><span class="pre">simulation_configuration</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w">  </span><a class="reference internal" href="#ktanks.tank_pb2.SimulationConfig" title="ktanks.tank_pb2.SimulationConfig"><span class="pre">tank_pb2.SimulationConfig</span></a></em><a class="headerlink" href="#ktanks.Tank.simulation_configuration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configuration of simulator</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="module-ktanks.tank_pb2"></span><dl class="py class">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.Vector">
+<em class="property"><span class="pre">class</span><span class="w">  </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.tank_pb2.</span></span><span class="sig-name descname"><span class="pre">Vector</span></span><a class="headerlink" href="#ktanks.tank_pb2.Vector" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.Vector.x">
+<span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#ktanks.tank_pb2.Vector.x" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.Vector.y">
+<span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#ktanks.tank_pb2.Vector.y" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<div class="line-block">
+<div class="line"><br /></div>
+<div class="line"><br /></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus">
+<em class="property"><span class="pre">class</span><span class="w">  </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.tank_pb2.</span></span><span class="sig-name descname"><span class="pre">TankStatus</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.tick">
+<span class="sig-name descname"><span class="pre">tick</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.tick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulation ticks 60 ticks is 1 sec of simulator time</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int (32bit int)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.velocity">
+<span class="sig-name descname"><span class="pre">velocity</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.velocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Velocity in m/sec</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#ktanks.tank_pb2.Vector" title="ktanks.tank_pb2.Vector"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vector</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.angle">
+<span class="sig-name descname"><span class="pre">angle</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.angle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tank rotation angle ]-PI; PI]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.cannon_angle">
+<span class="sig-name descname"><span class="pre">cannon_angle</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.cannon_angle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cannon angle reference to the world [radians]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.damage">
+<span class="sig-name descname"><span class="pre">damage</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.damage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tank damage when reaching 100. Tank is dead</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.energy">
+<span class="sig-name descname"><span class="pre">energy</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tank energy. When there is not enough energy for requested action the action is not executed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.success">
+<span class="sig-name descname"><span class="pre">success</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.success" title="Permalink to this definition">¶</a></dt>
+<dd><p>Flag to signal when operation is not sucessfull</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.angvel">
+<span class="sig-name descname"><span class="pre">angvel</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.angvel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Tank angular velocity in rad/sec</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.distance_power_source">
+<span class="sig-name descname"><span class="pre">distance_power_source</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.distance_power_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Distance from power source of the tank. Tank is charged by power source with a speed
+that descrease linearly respect to power source distance. Beyond the zero limit tank energy is decreased
+always proportionally.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.angle_power_source">
+<span class="sig-name descname"><span class="pre">angle_power_source</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.angle_power_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Angle to power source.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<div class="line-block">
+<div class="line"><br /></div>
+<div class="line"><br /></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankRadar">
+<em class="property"><span class="pre">class</span><span class="w">  </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.tank_pb2.</span></span><span class="sig-name descname"><span class="pre">TankRadar</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankRadar" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankRadar.distance">
+<span class="sig-name descname"><span class="pre">distance</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankRadar.distance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Distance of detected tank in m</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankRadar.damage">
+<span class="sig-name descname"><span class="pre">damage</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankRadar.damage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Damage of detected tank. When 100 is dead</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<div class="line-block">
+<div class="line"><br /></div>
+<div class="line"><br /></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.RadarResult">
+<em class="property"><span class="pre">class</span><span class="w">  </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.tank_pb2.</span></span><span class="sig-name descname"><span class="pre">RadarResult</span></span><a class="headerlink" href="#ktanks.tank_pb2.RadarResult" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.RadarResult.tick">
+<span class="sig-name descname"><span class="pre">tick</span></span><a class="headerlink" href="#ktanks.tank_pb2.RadarResult.tick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simulation ticks 60 ticks is 1 sec of simulator time</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int (32bit int)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.RadarResult.angle">
+<span class="sig-name descname"><span class="pre">angle</span></span><a class="headerlink" href="#ktanks.tank_pb2.RadarResult.angle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Radar angle [radians] relative to angle of tank.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.RadarResult.tanks">
+<span class="sig-name descname"><span class="pre">tanks</span></span><a class="headerlink" href="#ktanks.tank_pb2.RadarResult.tanks" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of first 10 detected tanks</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>list of <a class="reference internal" href="#ktanks.tank_pb2.TankRadar" title="ktanks.tank_pb2.TankRadar"><code class="xref py py-class docutils literal notranslate"><span class="pre">TankRadar</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<div class="line-block">
+<div class="line"><br /></div>
+<div class="line"><br /></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig">
+<em class="property"><span class="pre">class</span><span class="w">  </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.tank_pb2.</span></span><span class="sig-name descname"><span class="pre">SimulationConfig</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.tank_energy_max">
+<span class="sig-name descname"><span class="pre">tank_energy_max</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.tank_energy_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Max energy allowed for the tank</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.damage_max">
+<span class="sig-name descname"><span class="pre">damage_max</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.damage_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>When damage exceed this limit the tank is dead. No operation are allowed</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.bullet_max_range">
+<span class="sig-name descname"><span class="pre">bullet_max_range</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.bullet_max_range" title="Permalink to this definition">¶</a></dt>
+<dd><p>Max range of bullet</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.zero_power_limit">
+<span class="sig-name descname"><span class="pre">zero_power_limit</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.zero_power_limit" title="Permalink to this definition">¶</a></dt>
+<dd><p>When distance of tank from power source exceed this limit, tank energy is decreased proportionally with distance</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.radar_angle_increment_max">
+<span class="sig-name descname"><span class="pre">radar_angle_increment_max</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.radar_angle_increment_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Max allowed increment in radians</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.radar_width_max">
+<span class="sig-name descname"><span class="pre">radar_width_max</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.radar_width_max" title="Permalink to this definition">¶</a></dt>
+<dd><p>Max allowed radar width</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.radar_max_detection_range">
+<span class="sig-name descname"><span class="pre">radar_max_detection_range</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.radar_max_detection_range" title="Permalink to this definition">¶</a></dt>
+<dd><p>Max allowed radar detection range</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.bullet_speed">
+<span class="sig-name descname"><span class="pre">bullet_speed</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.bullet_speed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bullet speed m/sec (1 tick = 1/60 sec)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="#">ktanks  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">ktanks  documentation</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, Oreste Bernardi.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.3.1.
+    </div>
+  </body>
+</html>

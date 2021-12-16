@@ -13,3 +13,4 @@ __pycache__/
 /python/dist/
 /simulation.output.csv
 /release/
+/python/docs/doctrees/
