@@ -116,7 +116,7 @@
 		
 	.. attribute:: tanks
 	
-		List of first 10 detected tanks
+		List of first 10 detected tanks ordered by distance.
 		
 		:type: list of :class:`.TankRadar`
 

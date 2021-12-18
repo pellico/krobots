@@ -22,7 +22,7 @@ message TankStatus {
 
 message TankRadar {
     float distance =1;
-    float damage = 2;    
+    float damage = 2;  
 }
 
 message RadarResult {

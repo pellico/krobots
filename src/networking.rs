@@ -152,6 +152,8 @@ impl RobotServer {
             };
             tanks_radar.push(t_radar);
         }
+        tanks_radar.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
+        tanks_radar.truncate(10);
         command_result.tanks = tanks_radar;
         command_result
     }
