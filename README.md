@@ -53,7 +53,9 @@ This represent radar detection area.
 ### Tank body and turret
 The picture body is bigger than the actual body used by physical simulation. For this reason user can be surprised to see
 a cannot bullet go through the body with damaging the body. Physical tank and turret body are visibile by zooming greatly and they are dispayed as red empty rectangles.
-![alt text](doc1.png "Title")
+
+![tank](./doc1.PNG)
+
 
 ### Red Circle
 Red circle represent the limit of tank power source. Beyond this limit the energy of the tank decrease linerly with the distance. If the tank is within the circle the tank energy is increased inversely with the distance from the center.
