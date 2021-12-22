@@ -1,7 +1,7 @@
-import ktanks
+import ktanks,argparse
 
 from time import sleep
-from multiprocessing import Process
+
 from math import radians,pi,sqrt,cos
 
 
@@ -49,7 +49,6 @@ def main_loop(name,ip,port):
         status = tank.get_status()
         delta_ang = angle_wrapping(target_angle- status.angle)
         angimp_set = (0.05*delta_ang - 0.02*status.angvel)*abs(status.angvel)
-        print(f"{name},{angimp_set},{delta_ang},{status.angvel}")
         tank.set_engine_power(forward_power/(1+10*abs(delta_ang)),angimp_set)
         
         # When passing the boundary we set by  turn_back_distance 
@@ -73,8 +72,22 @@ def main_loop(name,ip,port):
 
 
 if __name__ == '__main__':
-    for tank_id in range(0,2):
-        name = 'oreste_%d' % (tank_id)
-        t2 = Process(name=name,target=main_loop, args=(name,"127.0.0.1",55230))
-        t2.start()
-    #main_loop("circle_tank","127.0.0.1",55230)
+    parser = argparse.ArgumentParser(description="Dumb tank")
+    parser.add_argument("name", type=str, help="Name of tank max 20 chars")
+    parser.add_argument(
+        "--ip",
+        required=False,
+        type=str,
+        help="server ip address",
+        default = "127.0.0.1"
+    )
+    
+    parser.add_argument(
+        "--port",
+        required=False,
+        type=int,
+        help="server port number",
+        default = 55230
+    )
+    args = parser.parse_args()
+    main_loop(args.name,args.ip,args.port)

@@ -77,7 +77,7 @@ def run_my_robot(name):
     
     status = tank.comm.get_status()
         
-    tank.move_to_angle(status.angle_power_source,0.01)
+    tank.move_to_angle(status.power_source.p,0.01)
     tank.set_power_engine(0.05)
     while True :
         radar_result = tank.comm.get_radar_result(0.1,0.1)
