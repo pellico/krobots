@@ -3,13 +3,15 @@
 
 .. py:module:: ktanks.tank_pb2
 
-.. class:: Vector
+.. class:: PolarVector
 
-	.. attribute:: x
+	.. attribute:: r
 	
 	:type: float
 	
-	.. attribute:: y
+	.. attribute:: p
+
+		angle in radians
 	
 	:type: float
 	
@@ -26,9 +28,13 @@
 		
 	.. attribute:: velocity
 	
-		Velocity in m/sec
+		Velocity vector of tank center of mass in world reference.
 		
-		:type: :class:`.Vector`
+		*PolarVector.r* is in m/sec
+
+		*PolarVector.p* is in radians
+		
+		:type: :class:`.PolarVector`
 		
 	.. attribute:: angle
 	
@@ -66,19 +72,17 @@
 		
 		:type: float
 		
-	.. attribute:: distance_power_source
+	.. attribute:: power_source
 	
-		Distance from power source of the tank. Tank is charged by power source with a speed 
+		Polar coordinates of power source respect to tank. Tank is charged by power source with a speed 
 		that descrease linearly respect to power source distance. Beyond the zero limit tank energy is decreased
 		always proportionally.
-		
-		:type: float
 
-	.. attribute:: angle_power_source
-	
-		Angle to power source.
-		
-		:type: float
+		*PolarVector.r* is in *m*
+
+		*PolarVector.p* is in radians
+
+		:type: :class:`.PolarVector`
 		
 |		
 |
@@ -170,6 +174,18 @@
 	.. attribute:: bullet_speed
 	
 		Bullet speed m/sec (1 tick = 1/60 sec)
+		
+		:type: float
+
+	.. attribute:: max_forward_power
+	
+		Maximum power of tank engine
+		
+		:type: float
+
+	.. attribute:: max_turning_power
+	
+		Maximum power to turn the tank
 		
 		:type: float
 		

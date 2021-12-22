@@ -1,16 +1,34 @@
+/*
+krobots
+Copyright (C) 2021  Oreste Bernardi
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 use macroquad::color::{*};
 
 pub const TANK_WIDTH_M:f32 = 5.0;
 pub const TANK_DEPTH_M:f32 = 3.0;
 pub const TURRET_WIDTH_M:f32 = 2.5;
 pub const TURRET_DEPTH_M:f32 = 0.1;
-pub const TURRET_STEP_TO_RELOAD : u32 = 60; //How many simulation steps before reloading
+pub const CANNON_HEAT_FOR_FIRE : u32 = 60; //Temp increase for each cannon fire. Each simulation step decrease by 1 the temp.
+pub const CANNON_TEMP_LIMIT : u32 = 120; //Beyoud this temp limit cannon cannot fire
 pub const TURRET_STIFFNESS : f32 = 0.1;
 pub const TURRET_DAMPING : f32 = 0.8;
 pub const TURRET_COLLIDER_DENSITY :f32 = 5.0;
 pub const TANK_COLLIDER_DENSITY :f32 = 1.0;
 pub const TANK_ENERGY_MAX: f32 = 1.0E8; //Maximum energy of battery
-pub const TURNING_IMPULSE_MAX : f32 = 50.0; //Maximum impulse for turning
+pub const TURNING_POWER_MAX : f32 = 25.0; //Maximum impulse for turning
 pub const DAMAGE_MAX:f32=100.0; //Maximum damage before destruction.
 pub const LINEAR_DAMPING :f32 = 0.3; 
 pub const ANGULAR_DAMPING : f32 = 0.9;
@@ -20,7 +38,7 @@ pub const RADAR_ANGLE_INCREMENT_MAX : f32 = std::f32::consts::PI / 180.0 * 10.0;
 pub const RADAR_WIDTH_MAX :f32 = std::f32::consts::PI / 180.0 * 10.0;
 pub const RADAR_MAX_DETECTION_DISTANCE : f32 = 400.0;
 pub const BULLET_MAX_RANGE : f32 = 300.0;
-pub const BULLET_SPEED : f32 = 150.0; //  m/sec
+pub const BULLET_SPEED : f32 = 500.0; //  m/sec
 pub const BULLET_DAMAGE : f32 =10.0;
 pub const BULLET_ENERGY : f32 = 1000.0; //This energy is substracted from tank energy
 //Power energy source for each step needed to charge a tank at 0,0 postion in 5 seconds simulation time

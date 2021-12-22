@@ -129,11 +129,11 @@ depends on simualtion speed.</p>
 </dd></dl>
 
 <span class="target" id="module-ktanks.tank_pb2"></span><dl class="py class">
-<dt class="sig sig-object py" id="ktanks.tank_pb2.Vector">
-<em class="property"><span class="pre">class</span><span class="w">  </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.tank_pb2.</span></span><span class="sig-name descname"><span class="pre">Vector</span></span><a class="headerlink" href="#ktanks.tank_pb2.Vector" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="ktanks.tank_pb2.PolarVector">
+<em class="property"><span class="pre">class</span><span class="w">  </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.tank_pb2.</span></span><span class="sig-name descname"><span class="pre">PolarVector</span></span><a class="headerlink" href="#ktanks.tank_pb2.PolarVector" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="py attribute">
-<dt class="sig sig-object py" id="ktanks.tank_pb2.Vector.x">
-<span class="sig-name descname"><span class="pre">x</span></span><a class="headerlink" href="#ktanks.tank_pb2.Vector.x" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="ktanks.tank_pb2.PolarVector.r">
+<span class="sig-name descname"><span class="pre">r</span></span><a class="headerlink" href="#ktanks.tank_pb2.PolarVector.r" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="field-list simple">
@@ -142,9 +142,10 @@ depends on simualtion speed.</p>
 </dd>
 </dl>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="ktanks.tank_pb2.Vector.y">
-<span class="sig-name descname"><span class="pre">y</span></span><a class="headerlink" href="#ktanks.tank_pb2.Vector.y" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="ktanks.tank_pb2.PolarVector.p">
+<span class="sig-name descname"><span class="pre">p</span></span><a class="headerlink" href="#ktanks.tank_pb2.PolarVector.p" title="Permalink to this definition">¶</a></dt>
+<dd><p>angle in radians</p>
+</dd></dl>
 
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
@@ -174,10 +175,12 @@ depends on simualtion speed.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.velocity">
 <span class="sig-name descname"><span class="pre">velocity</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.velocity" title="Permalink to this definition">¶</a></dt>
-<dd><p>Velocity in m/sec</p>
+<dd><p>Velocity vector of tank center of mass in world reference.</p>
+<p><em>PolarVector.r</em> is in m/sec</p>
+<p><em>PolarVector.p</em> is in radians</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
-<dd class="field-odd"><p><a class="reference internal" href="#ktanks.tank_pb2.Vector" title="ktanks.tank_pb2.Vector"><code class="xref py py-class docutils literal notranslate"><span class="pre">Vector</span></code></a></p>
+<dd class="field-odd"><p><a class="reference internal" href="#ktanks.tank_pb2.PolarVector" title="ktanks.tank_pb2.PolarVector"><code class="xref py py-class docutils literal notranslate"><span class="pre">PolarVector</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -249,25 +252,16 @@ depends on simualtion speed.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.distance_power_source">
-<span class="sig-name descname"><span class="pre">distance_power_source</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.distance_power_source" title="Permalink to this definition">¶</a></dt>
-<dd><p>Distance from power source of the tank. Tank is charged by power source with a speed
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.power_source">
+<span class="sig-name descname"><span class="pre">power_source</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.power_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Polar coordinates of power source respect to tank. Tank is charged by power source with a speed
 that descrease linearly respect to power source distance. Beyond the zero limit tank energy is decreased
 always proportionally.</p>
+<p><em>PolarVector.r</em> is in <em>m</em></p>
+<p><em>PolarVector.p</em> is in radians</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
-<dd class="field-odd"><p>float</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.angle_power_source">
-<span class="sig-name descname"><span class="pre">angle_power_source</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.angle_power_source" title="Permalink to this definition">¶</a></dt>
-<dd><p>Angle to power source.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type</dt>
-<dd class="field-odd"><p>float</p>
+<dd class="field-odd"><p><a class="reference internal" href="#ktanks.tank_pb2.PolarVector" title="ktanks.tank_pb2.PolarVector"><code class="xref py py-class docutils literal notranslate"><span class="pre">PolarVector</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -435,6 +429,28 @@ always proportionally.</p>
 <dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.bullet_speed">
 <span class="sig-name descname"><span class="pre">bullet_speed</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.bullet_speed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bullet speed m/sec (1 tick = 1/60 sec)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.max_forward_power">
+<span class="sig-name descname"><span class="pre">max_forward_power</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.max_forward_power" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum power of tank engine</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.SimulationConfig.max_turning_power">
+<span class="sig-name descname"><span class="pre">max_turning_power</span></span><a class="headerlink" href="#ktanks.tank_pb2.SimulationConfig.max_turning_power" title="Permalink to this definition">¶</a></dt>
+<dd><p>Maximum power to turn the tank</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>float</p>

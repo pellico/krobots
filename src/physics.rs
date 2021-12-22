@@ -1,3 +1,20 @@
+/*
+krobots
+Copyright (C) 2021  Oreste Bernardi
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 use crate::conf::*;
 use log::{debug, error, info, trace};
 pub use nalgebra::{vector, Isometry2, Rotation2};
@@ -50,7 +67,7 @@ pub struct Tank {
     pub radar_position: f32,
     pub radar_width: f32,
     pub detected_tank: Vec<Tank>,
-    pub reload_timer: u32,
+    pub cannon_heat: u32,
 }
 
 fn wrap_value<T: PartialOrd + Copy>(value: T, lower: T, upper: T) -> T {
@@ -174,13 +191,13 @@ impl Tank {
     }
 
     pub fn update_timers(&mut self) {
-        if self.reload_timer > 0 {
-            self.reload_timer -= 1;
+        if self.cannon_heat > 0 {
+            self.cannon_heat -= 1;
         }
     }
 
     pub fn ready_to_fire(&self) -> bool {
-        self.reload_timer == 0
+        self.cannon_heat <= CANNON_TEMP_LIMIT
     }
 
     /*
@@ -333,7 +350,7 @@ impl PhysicsEngine {
             engine_power: 0.0,
             max_engine_power: TANK_ENGINE_POWER_MAX,
             turning_power: 0.0,
-            max_turning_power: TURNING_IMPULSE_MAX,
+            max_turning_power: TURNING_POWER_MAX,
             shape_polyline: shape_polyline_tank,
             position: Isometry2::identity(),
             linvel: Vector2::identity(),
@@ -341,7 +358,7 @@ impl PhysicsEngine {
             radar_position: 0.0,
             radar_width: RADAR_WIDTH_MAX,
             detected_tank: Vec::new(),
-            reload_timer: TURRET_STEP_TO_RELOAD,
+            cannon_heat: 0,
         };
         self.tanks.push(tank);
     }
@@ -362,7 +379,7 @@ impl PhysicsEngine {
             let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
             Self::apply_engine_power(tank_rigid_body, tank.engine_power);
             tank_rigid_body
-                .apply_torque_impulse(tank.turning_power / (tank.angular_velocity + 1.0), true);
+                .apply_torque_impulse(tank.turning_power / (tank.angular_velocity.abs() + 1.0), true);
             tank.set_cannon_position(&mut self.joint_set);
             let turret = &mut tank.turret;
             if turret.fire {
@@ -385,7 +402,7 @@ impl PhysicsEngine {
                 };
                 self.bullets.push(bullet);
                 turret.fire = false;
-                tank.reload_timer = TURRET_STEP_TO_RELOAD;
+                tank.cannon_heat += CANNON_HEAT_FOR_FIRE;
             }
         }
         self.physics_pipeline.step(
@@ -504,7 +521,7 @@ impl PhysicsEngine {
         let cannon_position = cannon_body.position();
         let velocity_cannon_edge = get_velocity_at_point(TURRET_WIDTH_M / 2.0, 0.0, cannon_body);
         let angle = cannon_position.rotation.angle();
-        debug!("Created bullet angle:{}", angle * 360.0 / PI);
+        debug!("Created bullet angle:{}", angle * 180.0 / PI);
         //Compute bullet speed and sum cannon edge speed (world speed)
         let velocity = (cannon_position * vector![BULLET_SPEED, 0.0]) + velocity_cannon_edge;
         //bullet shall be created in front of cannon and outside of the tank
@@ -580,13 +597,17 @@ impl PhysicsEngine {
         if power != 0.0 {
             //force is liner anly when speed is greater than 1 . We don't have infinite force at 0 speed.
             let tank_speed = tank_rigid_body.linvel().norm();
-            let force = power / (tank_speed + 1.0);
+            let force = power / (tank_speed.abs() + 1.0);
             let force_forward_vector = tank_rigid_body.position() * vector![force, 0.0];
             tank_rigid_body.apply_force(force_forward_vector, true);
         }
     }
 
-    pub fn set_tank_angle_power(&mut self, power_fraction: f32, tank_id: usize) {
+    pub fn tank_turning_power(&self, tank_id: usize) -> f32 {
+        self.tanks[tank_id].turning_power / TURNING_POWER_MAX
+    }
+
+    pub fn set_tank_turning_power(&mut self, power_fraction: f32, tank_id: usize) {
         let tank = &mut self.tanks[tank_id];
         let power_fraction_wrapped = if power_fraction > 1.0 {
             1.0

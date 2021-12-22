@@ -1,23 +1,39 @@
+/*
+krobots
+Copyright (C) 2021  Oreste Bernardi
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 syntax = "proto3";
 
 package protobuffer.tank;
 
-message Vector {
-    float x = 1;
-    float y = 2;
+message PolarVector {
+    float r = 1;
+    float p = 2;
 }
 
 message TankStatus {
     uint32 tick =1;
-    Vector velocity =2; //Velocity in m/sec
+    PolarVector velocity =2; //Velocity in (m/sec,rad) world reference
     float angle = 3; // The rotation angle in ]-pi; pi] .
     float cannon_angle = 4; // The rotation angle in ]-pi; pi] 
     float damage = 5; 
     float energy = 6; //Energy when 0 movement no longer possible
     bool success = 7; 
     float angvel = 8; //Rotational speed rad/sec
-    float distance_power_source = 9; //Distance from power source
-    float angle_power_source = 10; // Angle to power source world coordinates
+    PolarVector power_source = 9; // Position of power source in tank relative coordinates
     }
 
 message TankRadar {
@@ -89,4 +105,6 @@ message SimulationConfig {
     float radar_width_max = 6;
     float radar_max_detection_range = 7;
     float bullet_speed = 8;
+    float max_forward_power = 9;
+    float max_turning_power = 10;
 }

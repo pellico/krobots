@@ -1,3 +1,20 @@
+/*
+krobots
+Copyright (C) 2021  Oreste Bernardi
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 use crate::conf;
 use crate::physics::{PhysicsEngine,Vector2,Real,Isometry2,Rotation2};
 use crate::tank_proto::*;
@@ -96,6 +113,8 @@ impl RobotServer {
         answer.radar_width_max = conf::RADAR_WIDTH_MAX;
         answer.radar_max_detection_range = conf::RADAR_MAX_DETECTION_DISTANCE;
         answer.bullet_speed = conf::BULLET_SPEED;
+        answer.max_forward_power = conf::TANK_ENGINE_POWER_MAX;
+        answer.max_turning_power = conf::TURNING_POWER_MAX;
         answer
     }
 
@@ -103,9 +122,9 @@ impl RobotServer {
         let mut tank_status = TankStatus::default();
         tank_status.tick = p_engine.tick();
         let (vel,angvel) = p_engine.tank_velocity(tank_index);
-        tank_status.velocity = Some(Vector {
-            x: vel.x,
-            y: vel.y
+        tank_status.velocity = Some(PolarVector {
+            r: vel.norm(),
+            p: vel.y.atan2(vel.x),
         });
         let tank_position = p_engine.get_tank_position(tank_index);
         tank_status.angle = tank_position.rotation.angle();
@@ -114,8 +133,10 @@ impl RobotServer {
         tank_status.damage = p_engine.tank_damage(tank_index);
         tank_status.cannon_angle = p_engine.tank_cannon_angle(tank_index);
         let tank_position = tank_position.translation.vector;
-        tank_status.distance_power_source = tank_position.norm();
-        tank_status.angle_power_source = Rotation2::rotation_between(&Vector2::<Real>::x(), &(-tank_position)).angle();
+        tank_status.power_source = Some(PolarVector {
+            r : tank_position.norm(),
+            p : Rotation2::rotation_between(&Vector2::<Real>::x(), &(-tank_position)).angle(),
+        });
         tank_status.success = true;
         tank_status
     }
@@ -128,7 +149,7 @@ impl RobotServer {
     ) -> TankStatus {
         let command_result = Self::get_status(p_engine, tank_index);
         p_engine.set_tank_engine_power(power_fraction, tank_index);
-        p_engine.set_tank_angle_power(turning_power_fraction, tank_index);
+        p_engine.set_tank_turning_power(turning_power_fraction, tank_index);
         command_result
     }
 
