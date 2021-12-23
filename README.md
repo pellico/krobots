@@ -86,7 +86,7 @@ Angle are always in radians in the range of ]-PI,PI].
 
 ## Python library
 Presently only a python library is provided to communicate with server.
-[Python package Documentation](./python/docs/singlehtml/index.html)
+[Python package Documentation](https://pellico.github.io/krobots/)
 
 Developer can find simple tank example in the example folder
 
