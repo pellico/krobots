@@ -29,7 +29,8 @@ use macroquad_particles::{AtlasConfig, BlendMode, Emitter, EmitterConfig};
 use macroquad_profiler;
 use nalgebra;
 use std::sync::mpsc;
-use std::thread;
+use std::{thread,path};
+
 
 struct GTank {
     texture_body: Texture2D,
@@ -53,12 +54,21 @@ struct GameUI {
     show_stats: bool,
 }
 
+async fn texture_load(path :&str) -> Texture2D {
+    let mut executable_path = std::env::current_exe().expect("Unable to get executable path");
+    executable_path.pop();
+    executable_path.push(path::PathBuf::from(path));
+    let string_path = executable_path.to_str().expect("Unable to convert texture path to string");
+    load_texture(string_path).await.expect(&format!("Unable to load texture: {}",path))
+
+}
+
 impl GameUI {
     async fn initialize(&mut self, p_tanks: &Vec<Tank>) {
         for index in 0..p_tanks.len() {
-            let texture_body: Texture2D = load_texture("body.png").await.unwrap();
-            let texture_turret: Texture2D = load_texture("turret.png").await.unwrap();
-            let texture_radar: Texture2D = load_texture("radar.png").await.unwrap();
+            let texture_body: Texture2D = texture_load("body.png").await;
+            let texture_turret: Texture2D = texture_load("turret.png").await;
+            let texture_radar: Texture2D = texture_load("radar.png").await;
             self.tanks.push(GTank {
                 texture_body: texture_body,
                 texture_turret: texture_turret,
@@ -143,7 +153,7 @@ impl GameUI {
         if is_key_released(KeyCode::F1) {
             self.show_stats ^= true;
         }
-        widgets::Window::new(hash!(), vec2(0., 0.), vec2(250., 300.))
+        widgets::Window::new(hash!(), vec2(0., 0.), vec2(250., 400.))
             .label("Robots")
             .titlebar(true)
             .ui(&mut *root_ui(), |ui| {
@@ -175,10 +185,6 @@ impl GameUI {
                                 p_tank.linvel.x,
                                 p_tank.linvel.y
                             ),
-                        );
-                        ui.label(
-                            None,
-                            &format!("Speed tank direction {:.3} ", p_tank.forward_velocity()),
                         );
                         ui.label(None, &format!("Engine power {:.3}", p_tank.engine_power));
                         ui.label(
@@ -483,8 +489,8 @@ pub async fn main(num_tanks: u8, udp_port: u16, max_steps: u32) {
             ..Default::default()
         },
         zoom: DEFAULT_CAMERA_ZOOM,
-        bullet_texture: load_texture("bullet.png").await.unwrap(),
-        hit_texture: load_texture("smoke_fire.png").await.unwrap(),
+        bullet_texture: texture_load("bullet.png").await,
+        hit_texture: texture_load("smoke_fire.png").await,
         show_stats: false,
     };
     game_ui.initialize(&p_tanks).await;

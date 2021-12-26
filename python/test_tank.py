@@ -95,10 +95,6 @@ def run_my_robot(name):
     sleep(1)
 
             
-
-
-
-
 if __name__ == '__main__':
     for tank_id in range(0,2):
         name = 'oreste_%d' % (tank_id)

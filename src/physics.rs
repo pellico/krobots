@@ -324,7 +324,7 @@ impl PhysicsEngine {
             rigid_body_turret_handle,
             &mut self.rigid_body_set,
         );
-        // Create joint to move turret toghether with tank.
+        // Create joint to move turret together with tank.
         let mut joint = BallJoint::new(point![0.0, 0.0], point![-TURRET_WIDTH_M / 2.0, 0.0]);
         joint.configure_motor_model(SpringModel::VelocityBased);
         joint.configure_motor_position(Rotation::new(0.0), TURRET_STIFFNESS, TURRET_DAMPING);
@@ -603,6 +603,9 @@ impl PhysicsEngine {
         }
     }
 
+    /*
+    Get turning power.
+    */
     pub fn tank_turning_power(&self, tank_id: usize) -> f32 {
         self.tanks[tank_id].turning_power / TURNING_POWER_MAX
     }
