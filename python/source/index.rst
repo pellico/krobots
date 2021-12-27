@@ -6,7 +6,7 @@
 Welcome to krobots's documentation!
 ===================================
 The physical unit are pseudo physical unit used in the simulator. e.g. sec are not real world sec. The real duration of a sec
-depends on simualtion speed.
+depends on simulation speed.
 
 
 .. toctree::
