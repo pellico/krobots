@@ -37,10 +37,11 @@ pub const START_DISTANCE : f32 = 300.0;//700.0; //Distance from power source use
 pub const RADAR_ANGLE_INCREMENT_MAX : f32 = std::f32::consts::PI / 180.0 * 10.0;
 pub const RADAR_WIDTH_MAX :f32 = std::f32::consts::PI / 180.0 * 10.0;
 pub const RADAR_MAX_DETECTION_DISTANCE : f32 = 400.0;
+pub const RADAR_OPERATION_ENERGY : f32 = 1000.0; // Energy consumed to operate radar.
 pub const BULLET_MAX_RANGE : f32 = 300.0;
 pub const BULLET_SPEED : f32 = 500.0; //  m/sec
 pub const BULLET_DAMAGE : f32 =10.0;
-pub const BULLET_ENERGY : f32 = 1000.0; //This energy is substracted from tank energy
+pub const BULLET_ENERGY : f32 = 10000.0; //This energy is substracted from tank energy
 //Power energy source for each step needed to charge a tank at 0,0 postion in 5 seconds simulation time
 pub const POWER_ENERGY_SOURCE_STEP : f32 = TANK_ENERGY_MAX / 5.0 / 60.0; 
 // When tank distance from center is >= ZERO_POWER_LIMIT no charging is possible.

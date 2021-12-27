@@ -94,9 +94,24 @@ Due to the fact user set power, acceleration decrease with speed for a fixed pow
 
 ## Cannon
 
-Developer can set angle of cannon referred to the tank. Cannon doesn't move instantaneously. The speed of edge of cannon is added to the bullet when firing. Therefore cannon and tank speed affects the direction and speed of bullet.
-Speed and max range of bullets can be read using server interface. 
+Developer can set angle of cannon referred to the tank. Cannon doesn't move instantaneously. Position of cannon can be read by getting `TankStatus` data structure. The speed of edge of cannon is added to the bullet when firing; therefore cannon and tank speed affects the direction and speed of bullet.
+Speed and max range of bullets can be read using `SimulationConfig` data structure. 
 
+## Energy
+
+Tank consumes energy when:
+
+* Radar operation
+* Moving tank body
+* Firing cannon
+
+Tank is recharged at every simulation step by a quantity that is inversely proportional with the distance from 
+the power source. Power source is at the center of game field and its distance and direction can be read by getting `TankStatus` data structure. When tank is beyond the `zero_power_limit` energy of tank is decreased proportionally with the distance from power source. `zero_power_limit` distance is stored in `SimulationConfig` structure.
+**Note** Radar has priority in power consumption compared to the other operation.
+
+## Damage
+
+Tank is damaged when hit by a bullet. When damage is greater than  `damage_max`, tank is no longer able to move, fire or using radar.  `damage_max` is stored in `SimulationConfig` structure.
 
 # Tank interface library
 Presently only a python library is provided to communicate with server.

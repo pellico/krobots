@@ -160,10 +160,8 @@ impl RobotServer {
         radar_width : f32
     ) -> RadarResult {
         let mut command_result = RadarResult::default();
-        p_engine.update_radar_attribute(tank_index,radar_increment,radar_width);
-        let (angle,detected_tanks) = p_engine.get_radar_result(tank_index);
         command_result.tick = p_engine.tick();
-        
+        let (angle,detected_tanks) = p_engine.get_radar_result(tank_index,radar_increment,radar_width);
         command_result.angle = angle;
         let mut tanks_radar = Vec::new();
         for (tank,distance) in detected_tanks {

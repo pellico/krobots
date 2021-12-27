@@ -153,7 +153,7 @@ impl GameUI {
         if is_key_released(KeyCode::F1) {
             self.show_stats ^= true;
         }
-        widgets::Window::new(hash!(), vec2(0., 0.), vec2(250., 400.))
+        widgets::Window::new(hash!(), vec2(0., 0.), vec2(250., 300.))
             .label("Robots")
             .titlebar(true)
             .ui(&mut *root_ui(), |ui| {
@@ -179,9 +179,15 @@ impl GameUI {
                         ui.label(
                             None,
                             &format!(
-                                "Speed vector (r:{:.5},p:{:.5}) (x:{:.5} y:{:.5})",
+                                "Speed vector (r:{:.5},p:{:.5})",
                                 p_tank.linvel.norm(),
                                 p_tank.linvel.y.atan2(p_tank.linvel.x),
+                            ),
+                        );
+                        ui.label(
+                            None,
+                            &format!(
+                                "Speed vector (x:{:.5} y:{:.5})",
                                 p_tank.linvel.x,
                                 p_tank.linvel.y
                             ),

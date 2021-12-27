@@ -226,6 +226,31 @@ impl Tank {
     pub fn is_dead(&self) -> bool {
         self.damage > DAMAGE_MAX
     }
+
+    /// Update radar position and decrease energy if there is enough energy available
+    /// Return false if there is not enough energy.
+    fn update_radar_attribute (
+        &mut self,
+        radar_increment: f32,
+        radar_width: f32,
+    ) -> bool {
+        // If tank is dead do nothing and return
+        if self.is_dead() || self.energy < RADAR_OPERATION_ENERGY {
+                return false;
+        }
+        self.energy -= RADAR_OPERATION_ENERGY;
+        let radar_incr = wrap_value(
+            radar_increment,
+            -RADAR_ANGLE_INCREMENT_MAX,
+            RADAR_ANGLE_INCREMENT_MAX,
+        );
+        let radar_w = wrap_value(radar_width, 0.0, RADAR_WIDTH_MAX);
+        self.radar_position += radar_incr;
+        //Keep in expected range
+        self.radar_position = angle_wrapping(self.radar_position);
+        self.radar_width = radar_w;
+        true
+    }
 }
 
 struct MyPhysicsHooks;
@@ -602,10 +627,8 @@ impl PhysicsEngine {
             tank_rigid_body.apply_force(force_forward_vector, true);
         }
     }
-
-    /*
-    Get turning power.
-    */
+    
+    /// Get turning power.
     pub fn tank_turning_power(&self, tank_id: usize) -> f32 {
         self.tanks[tank_id].turning_power / TURNING_POWER_MAX
     }
@@ -638,41 +661,30 @@ impl PhysicsEngine {
         return vertexs;
     }
 
-    pub fn update_radar_attribute(
-        &mut self,
-        tank_id: usize,
-        radar_increment: f32,
-        radar_width: f32,
-    ) {
-        let radar_incr = wrap_value(
-            radar_increment,
-            -RADAR_ANGLE_INCREMENT_MAX,
-            RADAR_ANGLE_INCREMENT_MAX,
-        );
-        let radar_w = wrap_value(radar_width, 0.0, RADAR_WIDTH_MAX);
-        let tank = &mut self.tanks[tank_id];
-        tank.radar_position += radar_incr;
-        //Keep in expected range
-        tank.radar_position = angle_wrapping(tank.radar_position);
-        tank.radar_width = radar_w;
-    }
-
     /// Move radar and return detected tanks
-    pub fn get_radar_result(&self, tank_id: usize) -> (f32, Vec<(&Tank, f32)>) {
+    pub fn get_radar_result(&mut self, tank_id: usize,radar_increment:f32,radar_width:f32) -> (f32, Vec<(&Tank, f32)>) {
+        
+        let tank = &mut self.tanks[tank_id];
+        // Update radar position
+        let enough_energy = tank.update_radar_attribute(radar_increment, radar_width);
+        // If not enough energy for operation return present position and empty list of detected tank
+        if ! enough_energy {
+            return (tank.radar_position,Vec::new());
+        }
+        // Detect tank in radar detection area.
         let mut result = Vec::new();
-        let tank = &self.tanks[tank_id];
-        // I shall use present value not the one of step ago stored in the Tank struct
-        let tank_position = self.rigid_body_set[tank.phy_body_handle].position();
+        let tank =  &self.tanks[tank_id];
+    
         //Search detected tank
-        for target_tank in &self.tanks {
+        for  index in 0..self.tanks.len() {
             //Tank don't detect itself
-            if std::ptr::eq(target_tank, tank) {
+            if index == tank_id {
                 continue;
             }
-            let target_tank_position = self.rigid_body_set[target_tank.phy_body_handle].position();
+            let target_tank = &self.tanks[index];
             // This is the vector from this tank to target tank
             let relative_vector =
-                target_tank_position.translation.vector - tank_position.translation.vector;
+                target_tank.position.translation.vector - tank.position.translation.vector;
             let distance = relative_vector.norm();
 
             if distance < RADAR_MAX_DETECTION_DISTANCE {
