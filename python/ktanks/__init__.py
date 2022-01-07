@@ -30,7 +30,6 @@ class Tank:
         self.server_register_port = port
         self.server_ip = server_ip
         self.txSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-        #self.txSocket.settimeout(0)
         register_tank_command = RegisterTank()
         register_tank_command.name = name
         data = register_tank_command.SerializeToString()
@@ -43,13 +42,9 @@ class Tank:
         self.simulation_configuration.ParseFromString(answer)
         #wait for start packet
         self.txSocket.recvfrom(2048)
-
-    
-
-    def send_receive_command(self,data):
-        self.txSocket.send(data)
-        answer= self.txSocket.recv(2048)
-        return answer
+        # Set timeout in order to allow python script kill by 
+        # keyboard interrupt
+        self.txSocket.settimeout(2)
 
     def get_status(self)->TankStatus:
         """Get tank status
@@ -125,8 +120,7 @@ class Tank:
     
     def _command_receive(self,command,expected_answer):
         data = command.SerializeToString()
-        while True:
-            self.txSocket.send(data)
-            answer= self.txSocket.recv(2048)
-            expected_answer.ParseFromString(answer)
-            break
+        self.txSocket.send(data)
+        answer= self.txSocket.recv(2048)
+        expected_answer.ParseFromString(answer)
+        
