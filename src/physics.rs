@@ -716,8 +716,9 @@ impl PhysicsEngine {
     }
 
     pub fn exit_simulation(&self) -> ! {
-        info!("Exiting simulation");
-        report::save_tank_report("simulation.output.csv", &self.tanks).unwrap();
+        let path = "simulation.output.csv";
+        info!("Exiting simulation and saving result to {}",&path );
+        report::save_tank_report(path, &self.tanks).unwrap();
         std::process::exit(0);
     }
 }

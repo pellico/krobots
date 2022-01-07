@@ -364,7 +364,8 @@ fn exit_application(p_engine: &PhysicsEngine) -> ! {
     p_engine.exit_simulation();
 }
 
-fn input_tanks(selected_tank: &mut usize, p_engine: &mut PhysicsEngine) {
+/// Get keyboard input for physics simulation thread.
+fn keyboard_input_phy_sim(selected_tank: &mut usize, p_engine: &mut PhysicsEngine, step_frame: &mut u16) {
     if is_key_down(KeyCode::Left) {
         let power_setpoint = p_engine.tank_turning_power(*selected_tank) - 0.1;
         p_engine.set_tank_turning_power(power_setpoint, *selected_tank);
@@ -402,9 +403,20 @@ fn input_tanks(selected_tank: &mut usize, p_engine: &mut PhysicsEngine) {
         };
     }
 
+    if is_key_released(KeyCode::O) {
+        *step_frame += 1;
+    }
+
+    if is_key_released(KeyCode::L) {
+        if *step_frame > 1 {
+            *step_frame -= 1;
+        }
+    }
+
     if is_key_down(KeyCode::Q) && is_key_down(KeyCode::LeftControl) {
         exit_application(p_engine);
-    }
+    } 
+    
 }
 
 fn scaling_factor() -> f32 {
@@ -425,52 +437,8 @@ fn print_centered(text: &str, x: f32, y: f32, font_size: f32, color: Color) {
     );
 }
 
-fn window_conf() -> Conf {
-    Conf {
-        window_title: "ETank".to_owned(),
-        window_width: 1024,
-        window_height: 768,
-        //fullscreen: true,
-        ..Default::default()
-    }
-}
-
-struct SimulationConfig {
-    num_tanks: u8,
-    udp_port: u16, 
-    max_steps: u32
-}
-/*
-This crazy global is required to pass arguments to macroquad main. 
-macroquad doesn't support macro annotation on function with arguments.
-*/
-static mut SIMULATION_CONFIG : SimulationConfig=SimulationConfig{
-    num_tanks:0,
-    udp_port:0,
-    max_steps:0
-};
 pub fn start_gui(num_tanks: u8, udp_port: u16, max_steps: u32) {
-    unsafe {
-        SIMULATION_CONFIG = SimulationConfig{
-            num_tanks:num_tanks,
-            udp_port:udp_port,
-            max_steps:max_steps
-        };
-    }
-    main();
-}
-
-#[macroquad::main(window_conf)]
-async fn main() {
     info!("Started");
-    let num_tanks;
-    let udp_port;
-    let max_steps;
-    unsafe {
-        num_tanks = SIMULATION_CONFIG.num_tanks;
-        udp_port = SIMULATION_CONFIG.udp_port;
-        max_steps = SIMULATION_CONFIG.max_steps;
-    }
     //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
     let (tx_data, rx_data) = mpsc::sync_channel::<(Vec<Tank>, Vec<Bullet>, usize)>(1);
 
@@ -480,12 +448,16 @@ async fn main() {
         let mut p_engine = create_physics_engine(max_steps);
         let mut server = RobotServer::new();
         server.wait_connections(num_tanks, &mut p_engine, udp_port);
+        let mut step_frame : u16=1; // Num of simulation step before sending data to ui engine.
         loop {
             {
                 //let start = time::Instant::now();
-                input_tanks(&mut selected_tank, &mut p_engine);
+                keyboard_input_phy_sim(&mut selected_tank, &mut p_engine, &mut step_frame);
                 server.process_request(&mut p_engine);
                 p_engine.step();
+                if (p_engine.tick() % step_frame as u32) != 0 {
+                    continue;
+                }
                 tx_data
                     .send((
                         p_engine.tanks.clone(),
@@ -503,6 +475,22 @@ async fn main() {
             }
         }
     });
+    // Bypass the macro. Not supported by macroquad
+    // see macroquad macro main source code.
+    let conf =  Conf {
+        window_title: "ETank".to_owned(),
+        window_width: 1024,
+        window_height: 768,
+        //fullscreen: true,
+        ..Default::default()
+    };
+    macroquad::Window::from_config(conf, ui_main(rx_data,num_tanks));
+    
+}
+
+
+async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>, usize)>,num_tanks:u8) {
+    
     let mut p_tanks;
     let mut p_bullets;
     let mut selected_tank;

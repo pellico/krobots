@@ -37,6 +37,8 @@ To each client it is assigned the successive port starting from the one defined 
 ## UI Controls of server
 * **Ctrl-q**: exit
 * **q**: hide/show tank data 
+* **o**: increase simulation speed
+* **l**: decrease simulation speed
 * **F1**: rendering stats
 
 ### Control Camera
