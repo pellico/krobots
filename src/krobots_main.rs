@@ -425,8 +425,52 @@ fn print_centered(text: &str, x: f32, y: f32, font_size: f32, color: Color) {
     );
 }
 
-pub async fn main(num_tanks: u8, udp_port: u16, max_steps: u32) {
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "ETank".to_owned(),
+        window_width: 1024,
+        window_height: 768,
+        //fullscreen: true,
+        ..Default::default()
+    }
+}
+
+struct SimulationConfig {
+    num_tanks: u8,
+    udp_port: u16, 
+    max_steps: u32
+}
+/*
+This crazy global is required to pass arguments to macroquad main. 
+macroquad doesn't support macro annotation on function with arguments.
+*/
+static mut SIMULATION_CONFIG : SimulationConfig=SimulationConfig{
+    num_tanks:0,
+    udp_port:0,
+    max_steps:0
+};
+pub fn start_gui(num_tanks: u8, udp_port: u16, max_steps: u32) {
+    unsafe {
+        SIMULATION_CONFIG = SimulationConfig{
+            num_tanks:num_tanks,
+            udp_port:udp_port,
+            max_steps:max_steps
+        };
+    }
+    main();
+}
+
+#[macroquad::main(window_conf)]
+async fn main() {
     info!("Started");
+    let num_tanks;
+    let udp_port;
+    let max_steps;
+    unsafe {
+        num_tanks = SIMULATION_CONFIG.num_tanks;
+        udp_port = SIMULATION_CONFIG.udp_port;
+        max_steps = SIMULATION_CONFIG.max_steps;
+    }
     //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
     let (tx_data, rx_data) = mpsc::sync_channel::<(Vec<Tank>, Vec<Bullet>, usize)>(1);
 
@@ -435,7 +479,7 @@ pub async fn main(num_tanks: u8, udp_port: u16, max_steps: u32) {
         let mut selected_tank: usize = 0;
         let mut p_engine = create_physics_engine(max_steps);
         let mut server = RobotServer::new();
-        let tanks_names = server.wait_connections(num_tanks, &mut p_engine, udp_port);
+        server.wait_connections(num_tanks, &mut p_engine, udp_port);
         loop {
             {
                 //let start = time::Instant::now();

@@ -45,21 +45,10 @@ struct Opts {
 
 }
 
-fn window_conf() -> Conf {
-    Conf {
-        window_title: "ETank".to_owned(),
-        window_width: 1024,
-        window_height: 768,
-        //fullscreen: true,
-        ..Default::default()
-    }
-}
 
-#[macroquad::main(window_conf)]
-async fn main() {
+fn main() {
     let opts: Opts = Opts::parse();
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(opts.log_level)).init();
-    krobots_main::main(opts.num_tanks,opts.port,opts.max_steps).await;
-   // graphics::main().await;   
+    krobots_main::start_gui(opts.num_tanks,opts.port,opts.max_steps);
 
 }
