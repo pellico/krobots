@@ -556,6 +556,8 @@ impl PhysicsEngine {
             .linvel(velocity)
             .rotation(angle)
             .ccd_enabled(true)
+            .linear_damping(0.0)
+            .angular_damping(0.0)
             .build();
 
         let bullet_collider = ColliderBuilder::cuboid(0.05, 0.2)
@@ -576,14 +578,14 @@ impl PhysicsEngine {
     pub fn tank_engine_power_percentage(&self, tank_id: usize) -> f32 {
         self.tanks[tank_id].engine_power / TANK_ENGINE_POWER_MAX
     }
-    pub fn set_tank_engine_power(&mut self, energy: f32, tank_id: usize) {
+    pub fn set_tank_engine_power(&mut self, power_fraction: f32, tank_id: usize) {
         let tank = &mut self.tanks[tank_id];
-        let energy = if energy > 1.0 {
+        let energy = if power_fraction > 1.0 {
             1.0
-        } else if energy < -1.0 {
+        } else if power_fraction < -1.0 {
             -1.0
         } else {
-            energy
+            power_fraction
         };
         tank.engine_power = energy * tank.max_engine_power;
     }

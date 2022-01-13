@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 use macroquad::color::{*};
 
-pub const TANK_WIDTH_M:f32 = 5.0;
+pub const TANK_WIDTH_M:f32 = 7.0;
 pub const TANK_DEPTH_M:f32 = 3.0;
 pub const TURRET_WIDTH_M:f32 = 2.5;
 pub const TURRET_DEPTH_M:f32 = 0.1;
@@ -30,16 +30,16 @@ pub const TANK_COLLIDER_DENSITY :f32 = 1.0;
 pub const TANK_ENERGY_MAX: f32 = 1.0E8; //Maximum energy of battery
 pub const TURNING_POWER_MAX : f32 = 25.0; //Maximum impulse for turning
 pub const DAMAGE_MAX:f32=100.0; //Maximum damage before destruction.
-pub const LINEAR_DAMPING :f32 = 0.3; 
+pub const LINEAR_DAMPING :f32 = 0.8; 
 pub const ANGULAR_DAMPING : f32 = 0.9;
-pub const TANK_ENGINE_POWER_MAX : f32 = 100000.0; //Max energy / step 
+pub const TANK_ENGINE_POWER_MAX : f32 = 100000.0; //Max power
 pub const START_DISTANCE : f32 = 300.0;//700.0; //Distance from power source used deploy tank at game start
 pub const RADAR_ANGLE_INCREMENT_MAX : f32 = std::f32::consts::PI / 180.0 * 20.0;
 pub const RADAR_WIDTH_MAX :f32 = std::f32::consts::PI / 180.0 * 10.0;
 pub const RADAR_MAX_DETECTION_DISTANCE : f32 = 400.0;
 pub const RADAR_OPERATION_ENERGY : f32 = 1000.0; // Energy consumed to operate radar.
 pub const BULLET_MAX_RANGE : f32 = 300.0;
-pub const BULLET_SPEED : f32 = 500.0; //  m/sec
+pub const BULLET_SPEED : f32 = 800.0; //  m/sec
 pub const BULLET_DAMAGE : f32 =10.0;
 pub const BULLET_ENERGY : f32 = 10000.0; //This energy is subtracted from tank energy
 //Power energy source for each step needed to charge a tank at 0,0 position in 5 seconds simulation time

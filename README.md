@@ -55,6 +55,7 @@ This represent radar detection area.
 ### Tank body and turret
 The picture body is bigger than the actual body used by physical simulation. For this reason user can be surprised to see
 a cannot bullet go through the body with damaging the body. Physical tank and turret body are visible by zooming greatly and they are displayed as red empty rectangles.
+Tank physical body has 7.0 m length and 3.0 m width.
 
 ![tank](./doc1.PNG)
 
