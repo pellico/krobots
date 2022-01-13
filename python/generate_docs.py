@@ -11,6 +11,6 @@ for s in stylesheets:
     t.insert(0,c)
     t['type'] = 'text/css'
     s.replaceWith(t)
-open("../../docs/index.html", "w").write(str(soup))
+open("../../../docs/index.html", "w").write(str(soup))
 
 
