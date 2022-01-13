@@ -366,27 +366,27 @@ fn exit_application(p_engine: &PhysicsEngine) -> ! {
 
 /// Get keyboard input for physics simulation thread.
 fn keyboard_input_phy_sim(selected_tank: &mut usize, p_engine: &mut PhysicsEngine, step_frame: &mut u16) {
-    if is_key_down(KeyCode::Left) {
+    if is_key_released(KeyCode::Left) {
         let power_setpoint = p_engine.tank_turning_power(*selected_tank) - 0.1;
         p_engine.set_tank_turning_power(power_setpoint, *selected_tank);
     }
 
-    if is_key_down(KeyCode::Right) {
+    if is_key_released(KeyCode::Right) {
         let power_setpoint = p_engine.tank_turning_power(*selected_tank) + 0.1;
         p_engine.set_tank_turning_power(power_setpoint, *selected_tank);
     }
 
-    if is_key_down(KeyCode::Up) {
+    if is_key_released(KeyCode::Up) {
         let energy_setpoint = p_engine.tank_engine_power_percentage(*selected_tank) + 0.1;
         p_engine.set_tank_engine_power(energy_setpoint, *selected_tank)
     }
 
-    if is_key_down(KeyCode::Down) {
+    if is_key_released(KeyCode::Down) {
         let energy_setpoint = p_engine.tank_engine_power_percentage(*selected_tank) - 0.1;
         p_engine.set_tank_engine_power(energy_setpoint, *selected_tank)
     }
 
-    if is_key_down(KeyCode::Key0) {
+    if is_key_released(KeyCode::Key0) {
         p_engine.set_tank_engine_power(0.0, *selected_tank);
         p_engine.set_tank_turning_power(0.0, *selected_tank);
     }
