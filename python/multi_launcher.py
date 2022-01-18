@@ -66,5 +66,4 @@ if __name__ == '__main__':
             shell = True,
             stdout=PIPE
             )
-        print("Pippo")
         

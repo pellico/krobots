@@ -125,7 +125,8 @@ Presently only a python library is provided to communicate with server.
 
 Developer can find simple tank example in the example folder
 
-
+# Credits
+Tank .png pictures are from [Robocode project](https://robocode.sourceforge.io/)
 
 
 

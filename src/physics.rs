@@ -120,7 +120,9 @@ impl Tank {
         self.linvel.norm()
     }
 
+   
     #[inline]
+    /// Get the velocity along the tank direction
     pub fn forward_velocity(&self) -> Real {
         let unit_vector = Vector2::<f32>::identity();
         let direction_vector = self.position * unit_vector;
@@ -402,7 +404,8 @@ impl PhysicsEngine {
             }
 
             let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
-            Self::apply_engine_power(tank_rigid_body, tank.engine_power);
+            // Power = F . v. Here we consider the speed along the direction of tank
+            Self::apply_engine_power(tank_rigid_body, tank);
             tank_rigid_body
                 .apply_torque_impulse(tank.turning_power / (tank.angular_velocity.abs() + 1.0), true);
             tank.set_cannon_position(&mut self.joint_set);
@@ -620,14 +623,13 @@ impl PhysicsEngine {
     }
 
     #[inline]
-    fn apply_engine_power(tank_rigid_body: &mut RigidBody, power: f32) {
-        if power != 0.0 {
-            //force is liner anly when speed is greater than 1 . We don't have infinite force at 0 speed.
-            let tank_speed = tank_rigid_body.linvel().norm();
-            let force = power / (tank_speed.abs() + 1.0);
-            let force_forward_vector = tank_rigid_body.position() * vector![force, 0.0];
-            tank_rigid_body.apply_force(force_forward_vector, true);
-        }
+    fn apply_engine_power(tank_rigid_body: &mut RigidBody, tank:&Tank) {
+  
+        //We don't have infinite force at 0 speed.
+        let force = tank.engine_power / (tank.forward_velocity().abs() + 0.5);
+        let force_forward_vector = tank_rigid_body.position() * vector![force, 0.0];
+        tank_rigid_body.apply_force(force_forward_vector, true);
+        
     }
     
     /// Get turning power.
@@ -645,12 +647,6 @@ impl PhysicsEngine {
             power_fraction
         };
         tank.turning_power = tank.max_turning_power * power_fraction_wrapped;
-    }
-
-    fn get_forward_speed(position: &Isometry2<Real>, speed: &Vector2<f32>) -> Vector2<f32> {
-        let unit_vector = Vector2::<f32>::identity();
-        let direction_vector = position * unit_vector;
-        speed - direction_vector.dot(speed) * direction_vector
     }
 
     fn get_collider_polyline_cuboid(collider: &Collider) -> Vec<Point2<Real>> {
