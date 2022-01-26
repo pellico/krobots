@@ -20,7 +20,6 @@ use crate::networking::RobotServer;
 use crate::physics::*;
 use log::{debug, info};
 use macroquad::prelude::*;
-use macroquad::telemetry::{begin_zone, end_zone};
 use macroquad::ui::{
     hash, root_ui,
     widgets::{self},

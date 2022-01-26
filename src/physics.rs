@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 use crate::conf::*;
-use log::{debug, error, info, trace};
+use log::{debug, error, info};
 pub use nalgebra::{vector, Isometry2, Rotation2};
 pub use nalgebra::{Point2, Vector2};
 pub use rapier2d::prelude::Real;
@@ -207,8 +207,8 @@ impl Tank {
     */
     pub fn min_max_radar_angle(&self) -> (f32, f32) {
         let world_angle = self.radar_position + self.position.rotation.angle();
-        let max_angle = world_angle + self.radar_width / 2.0;
-        let min_angle = world_angle - self.radar_width / 2.0;
+        let max_angle = angle_wrapping(world_angle + self.radar_width / 2.0);
+        let min_angle = angle_wrapping(world_angle - self.radar_width / 2.0);
         (min_angle, max_angle)
     }
 
@@ -714,7 +714,7 @@ impl PhysicsEngine {
     }
 
     pub fn exit_simulation(&self) -> ! {
-        let path = "simulation.output.csv";
+        let path = "simulation_output.csv";
         info!("Exiting simulation and saving result to {}",&path );
         report::save_tank_report(path, &self.tanks).unwrap();
         std::process::exit(0);

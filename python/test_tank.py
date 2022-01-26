@@ -1,3 +1,4 @@
+# Dumb test used only for testing
 import ktanks
 
 from time import sleep

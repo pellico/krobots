@@ -21,29 +21,33 @@ def angle_wrapping(angle:float) -> float :
 
 
 def main_loop(name,ip,port):
-    tank=ktanks.Tank(name,ip,port)
+    tank=ktanks.Tank(name,ip,port) # Create the proxy object to communicate with server
     turn_back_distance=150.0 # At this distance from power source turn back to power source
     status = tank.get_status()
-    forward_power = 0.9   # Initial tank body power
+    forward_power = 0.9   # Initial tank body forward movement power
     tank.set_engine_power(forward_power,0.0)
+     # Angle of power source from tank position in world coordinates. (not referred to tank direction)
     target_angle = status.power_source.p
+    # Distance of power source from tank position
     last_power_distance = tank.get_status().power_source.r
     print(tank.simulation_configuration)     
     while True :
         # Radar manager and fire control
         radar_result = tank.get_radar_result(-0.17,0.17)
-        tank.set_cannon_position(radar_result.angle)  #Keep aligned radar and cannon
+        #Keep aligned radar and cannon
+        tank.set_cannon_position(radar_result.angle)  
         # If some tank detect fire to them.
         if radar_result.tanks:
             tank.set_cannon_position(tank.get_radar_result(-0.17,0.01).angle)
-            # Set smaller radar width to increase accuracy.
+            # Set smaller radar width to increase accuracy when tank find enemy
+            # so it increase accuracy of angle for more accurate firing
             for _ in range(0,34):
                 radar_result = tank.get_radar_result(0.01,0.01)
                 tank.set_cannon_position(radar_result.angle)
                 if radar_result.tanks and radar_result.tanks[0].distance < tank.simulation_configuration.bullet_max_range:
                     tank.fire_cannon()
         
-        # Adjust tank angle to keep heading    
+        # Adjust tank angle to keep correct direction    
         status = tank.get_status()
         delta_ang = angle_wrapping(target_angle- status.angle)
         angimp_set = (0.5*delta_ang - 0.01*status.angvel)*abs(status.angvel)

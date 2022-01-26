@@ -25,13 +25,13 @@ message PolarVector {
 }
 
 message TankStatus {
-    uint32 tick =1;
+    uint32 tick =1; // Simualtion tick counter
     PolarVector velocity =2; //Velocity in (m/sec,rad) world reference
     float angle = 3; // The rotation angle in ]-pi; pi] .
     float cannon_angle = 4; // The rotation angle in ]-pi; pi] 
     float damage = 5; 
     float energy = 6; //Energy when 0 movement no longer possible
-    bool success = 7; 
+    bool success = 7; //Presently always true
     float angvel = 8; //Rotational speed rad/sec
     PolarVector power_source = 9; // Position of power source in tank relative coordinates
     }
@@ -42,7 +42,7 @@ message TankRadar {
 }
 
 message RadarResult {
-    uint32 tick = 1;
+    uint32 tick = 1; //Simulation tick counter
     float angle = 2; //radar angle rad
     repeated TankRadar tanks =4; //First 10 tanks
     }
@@ -74,7 +74,7 @@ message Command {
         FIRE_CANNON =3;
         /*
         Set cannon position
-        argument1 --> Angle position in radians ]-PI,PI] relative to teh Tank angle.
+        argument1: Angle position in radians ]-PI,PI] relative to teh Tank angle.
         return: TankStatus (always successfully)
         */
         SET_CANNON_POSITION = 4;

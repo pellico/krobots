@@ -1,15 +1,15 @@
 # krobots
 Krobots is a game for software developers. 
-Multiple tanks controlled by software fight until only one survive or after a configurable number of round (ticks). In the last case the one less damages win.
-Tanks can move back and forward. It is possible to turn tank, turret/cannon and radar.
-At the center of simulated world there is power source that charge the tanks but if the tank is too far the tanks loose energy proportionally with the distance from the power source.
+Multiple tanks controlled are by software and fight until only one survive or after a configurable number of round (ticks). In the last case the one with less damages wins the game.
+Tanks can move back and forward. Controlling software can turn tank, turret/cannon and radar.
+At the center of simulated world there is power source that charges  tanks but if a tank is too far this tank looses energy proportionally with the distance from the power source.
 
 ## Features
 * Tank software can be written in any language thanks to client-server architecture.
 * Graphical UI for easier debugging.
-* Server-client communication based on UDP packet
+* Server-client communication based on **UDP** packet
 
-## Command line options
+## Command line options to launch simulation server
 ```bash
 USAGE:
     krobots.exe [OPTIONS] <NUM_TANKS>
@@ -30,22 +30,28 @@ OPTIONS:
 
 After the launch server wait the connection of client until reaching the defined number of registered client.
 To each client it is assigned the successive port starting from the one defined by `-p` option.
+
 ***
-***Important*** Make sure that registration port and the successive until `registration port + NUM_TANKS` are available.In case server is executed behind a firewall or NAT open make sure to open the used port.
+***Important*** Make sure that registration port and the successive until `registration port + NUM_TANKS` are available. In case server is executed behind a firewall or NAT open make sure to open the used port.
 ***
 
+The simulation is terminated when only one tank survive or reached the number of steps specified by `--max-steps`. Simulation can be terminated any time using `Ctrl-q`. When simulation is terminated file named `simulation_output.csv` is saved in the current working directory with data of tanks.
+
 ## UI Controls of server
+UI is mainly intended to support debugging of tank controlling software.
+
+### UI controlling keys
+
 * **Ctrl-q**: exit
 * **q**: hide/show tank data 
 * **o**: increase simulation speed
 * **l**: decrease simulation speed
 * **F1**: rendering stats
-
-### Control Camera
 * **keypad 2,4,6,8**: move camera
+* **PageUp / PageDown**: Select tank: Selected tank has uppercase name in tank list.
 * **keypad 5**: reset to coordinates (0,0) or position of energy source
 * **keypad 0**: to move camera to selected tank 
-* **PageUp / PageDown**: Select tank: Selected tank has uppercase name in tank list.
+
 
 ## Server graphics element description.
 
@@ -57,7 +63,7 @@ The picture body is bigger than the actual body used by physical simulation. For
 a cannot bullet go through the body with damaging the body. Physical tank and turret body are visible by zooming greatly and they are displayed as red empty rectangles.
 Tank physical body has 7.0 m length and 3.0 m width.
 
-![tank](./doc1.PNG)
+![tank](./docs/doc1.PNG)
 
 
 ### Red Circle
@@ -116,14 +122,13 @@ the power source. Power source is at the center of game field and its distance a
 
 Tank is damaged when hit by a bullet. When damage is greater than  `damage_max`, tank is no longer able to move, fire or using radar.  `damage_max` is stored in `SimulationConfig` structure.
 
-# Tank interface library
+# Tank interface libraries
 Presently only a python library is provided to communicate with server.
 
 ## Python library
 
-[Python package Documentation](https://pellico.github.io/krobots/)
+[Python library and examples are available documentation](python/README.md) 
 
-Developer can find simple tank example in the example folder
 
 # Credits
 Tank .png pictures are from [Robocode project](https://robocode.sourceforge.io/)
