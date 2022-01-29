@@ -37,7 +37,10 @@ class TankStatus(google.protobuf.message.Message):
     SUCCESS_FIELD_NUMBER: builtins.int
     ANGVEL_FIELD_NUMBER: builtins.int
     POWER_SOURCE_FIELD_NUMBER: builtins.int
+    CANNON_TEMP_FIELD_NUMBER: builtins.int
     tick: builtins.int = ...
+    """Simualtion tick counter"""
+
     @property
     def velocity(self) -> global___PolarVector:
         """Velocity in (m/sec,rad) world reference"""
@@ -53,6 +56,8 @@ class TankStatus(google.protobuf.message.Message):
     """Energy when 0 movement no longer possible"""
 
     success: builtins.bool = ...
+    """Presently always true"""
+
     angvel: builtins.float = ...
     """Rotational speed rad/sec"""
 
@@ -60,6 +65,9 @@ class TankStatus(google.protobuf.message.Message):
     def power_source(self) -> global___PolarVector:
         """Position of power source in tank relative coordinates"""
         pass
+    cannon_temp: builtins.float = ...
+    """Cannon temperature"""
+
     def __init__(self,
         *,
         tick : builtins.int = ...,
@@ -71,9 +79,10 @@ class TankStatus(google.protobuf.message.Message):
         success : builtins.bool = ...,
         angvel : builtins.float = ...,
         power_source : typing.Optional[global___PolarVector] = ...,
+        cannon_temp : builtins.float = ...,
         ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal["power_source",b"power_source","velocity",b"velocity"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal["angle",b"angle","angvel",b"angvel","cannon_angle",b"cannon_angle","damage",b"damage","energy",b"energy","power_source",b"power_source","success",b"success","tick",b"tick","velocity",b"velocity"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal["angle",b"angle","angvel",b"angvel","cannon_angle",b"cannon_angle","cannon_temp",b"cannon_temp","damage",b"damage","energy",b"energy","power_source",b"power_source","success",b"success","tick",b"tick","velocity",b"velocity"]) -> None: ...
 global___TankStatus = TankStatus
 
 class TankRadar(google.protobuf.message.Message):
@@ -96,6 +105,8 @@ class RadarResult(google.protobuf.message.Message):
     ANGLE_FIELD_NUMBER: builtins.int
     TANKS_FIELD_NUMBER: builtins.int
     tick: builtins.int = ...
+    """Simulation tick counter"""
+
     angle: builtins.float = ...
     """radar angle rad"""
 
@@ -148,7 +159,7 @@ class Command(google.protobuf.message.Message):
         SET_CANNON_POSITION: Command.CommandId.ValueType = ...  # 4
         """
         Set cannon position
-        argument1 --> Angle position in radians ]-PI,PI] relative to teh Tank angle.
+        argument1: Angle position in radians ]-PI,PI] relative to teh Tank angle.
         return: TankStatus (always successfully)
         """
 
@@ -184,7 +195,7 @@ class Command(google.protobuf.message.Message):
     SET_CANNON_POSITION: Command.CommandId.ValueType = ...  # 4
     """
     Set cannon position
-    argument1 --> Angle position in radians ]-PI,PI] relative to teh Tank angle.
+    argument1: Angle position in radians ]-PI,PI] relative to teh Tank angle.
     return: TankStatus (always successfully)
     """
 

@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-mod krobots_main;
+mod ui;
 mod physics;
 mod conf;
 mod networking;
@@ -49,6 +49,6 @@ struct Opts {
 fn main() {
     let opts: Opts = Opts::parse();
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(opts.log_level)).init();
-    krobots_main::start_gui(opts.num_tanks,opts.port,opts.max_steps);
+    ui::start_gui(opts.num_tanks,opts.port,opts.max_steps);
 
 }

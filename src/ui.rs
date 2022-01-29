@@ -489,7 +489,6 @@ pub fn start_gui(num_tanks: u8, udp_port: u16, max_steps: u32) {
 
 
 async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>, usize)>,num_tanks:u8) {
-    
     let mut p_tanks;
     let mut p_bullets;
     let mut selected_tank;

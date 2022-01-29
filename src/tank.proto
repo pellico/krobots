@@ -34,6 +34,7 @@ message TankStatus {
     bool success = 7; //Presently always true
     float angvel = 8; //Rotational speed rad/sec
     PolarVector power_source = 9; // Position of power source in tank relative coordinates
+    float cannon_temp = 10; // Cannon temperature
     }
 
 message TankRadar {

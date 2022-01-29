@@ -1,5 +1,8 @@
-# krobots
-Krobots is a game for software developers. 
+# ktanks
+
+[![Rust](https://github.com/pellico/krobots/actions/workflows/rust.yml/badge.svg)](https://github.com/pellico/krobots/actions/workflows/rust.yml)
+
+Ktanks is a game for software developers. 
 Multiple tanks controlled are by software and fight until only one survive or after a configurable number of round (ticks). In the last case the one with less damages wins the game.
 Tanks can move back and forward. Controlling software can turn tank, turret/cannon and radar.
 At the center of simulated world there is power source that charges  tanks but if a tank is too far this tank looses energy proportionally with the distance from the power source.
@@ -12,7 +15,7 @@ At the center of simulated world there is power source that charges  tanks but i
 ## Command line options to launch simulation server
 ```bash
 USAGE:
-    krobots.exe [OPTIONS] <NUM_TANKS>
+    ktanks_server.exe [OPTIONS] <NUM_TANKS>
 
 ARGS:
     <NUM_TANKS>    How many tanks in this game
@@ -105,6 +108,9 @@ Due to the fact user set power, acceleration decrease with speed for a fixed pow
 
 Developer can set angle of cannon referred to the tank. Cannon doesn't move instantaneously. Position of cannon can be read by getting `TankStatus` data structure. The speed of edge of cannon is added to the bullet when firing; therefore cannon and tank speed affects the direction and speed of bullet.
 Speed and max range of bullets can be read using `SimulationConfig` data structure. 
+
+### Cannon Temperature.
+Cannon has temperature properties (cannon temperature is stored in `TankStatus`). If cannon temperature is >320 degrees it can not fire. For each cannon file the temperature is increased by 100 degrees and it is decremented at each simulation step by 2 degrees. Minimum cannon temperature is 20 degrees.
 
 ## Energy
 

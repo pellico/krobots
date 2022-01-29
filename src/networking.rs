@@ -138,6 +138,7 @@ impl RobotServer {
             p : Rotation2::rotation_between(&Vector2::<Real>::x(), &(-tank_position)).angle(),
         });
         tank_status.success = true;
+        tank_status.cannon_temp = p_engine.cannon_temperature(tank_index);
         tank_status
     }
 

@@ -54,8 +54,8 @@ def main_loop(name,ip,port):
         # If too big error angle reduce forward speed 
         tank.set_engine_power(forward_power/(1+10*abs(delta_ang)),angimp_set)
         
-        # When passing the boundary we set by  turn_back_distance 
-        # turn back to power source
+        # When passing the distance limit turn_back_distance.
+        # slow down the tank before changing direction. 
         if status.power_source.r > turn_back_distance and last_power_distance <= turn_back_distance:
             # Slow down for easier turning
             while True:

@@ -35,7 +35,8 @@ pub struct Turret {
     pub angle: f32, //Updated during step
     pub shape_polyline: Vec<Point2<Real>>,
     pub fire: bool,
-    pub new_angle: Option<f32>, // New position None if no command change position
+    pub new_angle: Option<f32>, // New position None if no command change 
+    cannon_temperature: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -67,7 +68,6 @@ pub struct Tank {
     pub radar_position: f32,
     pub radar_width: f32,
     pub detected_tank: Vec<Tank>,
-    pub cannon_heat: u32,
 }
 
 fn wrap_value<T: PartialOrd + Copy>(value: T, lower: T, upper: T) -> T {
@@ -112,6 +112,16 @@ fn angle_wrapping(angle: f32) -> f32 {
         }
     }
     angle_res
+}
+
+impl Turret {
+    /// Update the temperature cannon.
+    /// executed at every simulation step
+    #[inline]
+    pub fn update_cannon_temp(&mut self) {
+        let new_temp = self.cannon_temperature - CANNON_TEMP_DECREASE_STEP;
+        self.cannon_temperature = CANNON_MIN_TEMP.max(new_temp);
+    }
 }
 
 impl Tank {
@@ -192,14 +202,8 @@ impl Tank {
         }
     }
 
-    pub fn update_timers(&mut self) {
-        if self.cannon_heat > 0 {
-            self.cannon_heat -= 1;
-        }
-    }
-
     pub fn ready_to_fire(&self) -> bool {
-        self.cannon_heat <= CANNON_TEMP_LIMIT
+        self.turret.cannon_temperature <= CANNON_MAX_TEMP
     }
 
     /*
@@ -373,6 +377,7 @@ impl PhysicsEngine {
                 shape_polyline: shape_polyline_turret,
                 fire: false,
                 new_angle: None,
+                cannon_temperature: CANNON_MIN_TEMP,
             },
             engine_power: 0.0,
             max_engine_power: TANK_ENGINE_POWER_MAX,
@@ -385,7 +390,7 @@ impl PhysicsEngine {
             radar_position: 0.0,
             radar_width: RADAR_WIDTH_MAX,
             detected_tank: Vec::new(),
-            cannon_heat: 0,
+           
         };
         self.tanks.push(tank);
     }
@@ -393,7 +398,7 @@ impl PhysicsEngine {
     pub fn step(&mut self) {
         //Execute all command
         for (index, tank) in self.tanks.iter_mut().enumerate() {
-            tank.update_timers();
+            tank.turret.update_cannon_temp();
 
             if !tank.update_energy() {
                 continue;
@@ -430,7 +435,7 @@ impl PhysicsEngine {
                 };
                 self.bullets.push(bullet);
                 turret.fire = false;
-                tank.cannon_heat += CANNON_HEAT_FOR_FIRE;
+                turret.cannon_temperature += CANNON_FIRE_TEMP_INCREASE;
             }
         }
         self.physics_pipeline.step(
@@ -633,6 +638,7 @@ impl PhysicsEngine {
     }
     
     /// Get turning power.
+    #[inline]
     pub fn tank_turning_power(&self, tank_id: usize) -> f32 {
         self.tanks[tank_id].turning_power / TURNING_POWER_MAX
     }
@@ -711,6 +717,10 @@ impl PhysicsEngine {
         } else {
             false
         }
+    }
+
+    pub fn cannon_temperature(&self,tank_id: usize) -> f32 {
+        self.tanks[tank_id].turret.cannon_temperature
     }
 
     pub fn exit_simulation(&self) -> ! {
