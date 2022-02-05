@@ -4,6 +4,7 @@ version = "0.1.2"
 description = "Interface to ktanks server"
 authors = ["pellico <pellico@users.noreply.github.com>"]
 license = "GPL 3.0"
+include = ["ktanks/py.typed"]
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
