@@ -23,6 +23,11 @@ prost = "0.9"
 # command line parser
 clap = { version = "3.0.10", features = ["derive"] }
 csv = "*"
+# To control physics simulation time frame
+ticktock = "0.8.0" 
 
 [profile.dev.package.rapier2d]
+opt-level = 3
+
+[profile.dev.package.macroquad]
 opt-level = 3

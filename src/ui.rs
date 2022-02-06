@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 use crate::conf::*;
 use crate::networking::RobotServer;
 use crate::physics::*;
-use log::{debug, info};
+use log::{debug, info,warn};
 use macroquad::prelude::*;
 use macroquad::ui::{
     hash, root_ui,
@@ -29,6 +29,8 @@ use macroquad_profiler;
 use nalgebra;
 use std::sync::mpsc;
 use std::{thread,path};
+use ticktock;
+use std::time;
 
 
 struct GTank {
@@ -404,12 +406,14 @@ fn keyboard_input_phy_sim(selected_tank: &mut usize, p_engine: &mut PhysicsEngin
 
     if is_key_released(KeyCode::O) {
         *step_frame += 1;
+        debug!("Increased simulation speed to X{}",step_frame);
     }
 
     if is_key_released(KeyCode::L) {
         if *step_frame > 1 {
             *step_frame -= 1;
         }
+        debug!("Decreased simulation speed to X{}",step_frame);
     }
 
     if is_key_down(KeyCode::Q) && is_key_down(KeyCode::LeftControl) {
@@ -436,11 +440,17 @@ fn print_centered(text: &str, x: f32, y: f32, font_size: f32, color: Color) {
     );
 }
 
+
+
 pub fn start_gui(num_tanks: u8, udp_port: u16, max_steps: u32) {
     info!("Started");
     //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
-    let (tx_data, rx_data) = mpsc::sync_channel::<(Vec<Tank>, Vec<Bullet>, usize)>(1);
-
+    let (tx_data, rx_data) = mpsc::channel::<(Vec<Tank>, Vec<Bullet>, usize)>();
+    let now = time::Instant::now();
+    // show some fps measurements every 5 seconds
+    let mut fps_counter = ticktock::Timer::apply(|delta_t, prev_tick| (delta_t, *prev_tick), 0)
+    .every(time::Duration::from_secs(5))
+    .start(now);
     //Create thread that perform physics simulation
     thread::spawn(move || {
         let mut selected_tank: usize = 0;
@@ -448,14 +458,14 @@ pub fn start_gui(num_tanks: u8, udp_port: u16, max_steps: u32) {
         let mut server = RobotServer::new();
         server.wait_connections(num_tanks, &mut p_engine, udp_port);
         let mut step_frame : u16=1; // Num of simulation step before sending data to ui engine.
-        loop {
+        for (tick,now) in ticktock::Clock::framerate(SIMULATION_RATE).iter() {
             {
                 //let start = time::Instant::now();
                 keyboard_input_phy_sim(&mut selected_tank, &mut p_engine, &mut step_frame);
                 server.process_request(&mut p_engine);
-                p_engine.step();
-                if (p_engine.tick() % step_frame as u32) != 0 {
-                    continue;
+                
+                for _ in 0..step_frame  {
+                    p_engine.step();
                 }
                 tx_data
                     .send((
@@ -464,13 +474,14 @@ pub fn start_gui(num_tanks: u8, udp_port: u16, max_steps: u32) {
                         selected_tank,
                     ))
                     .unwrap();
-                //    match rx_trigger.try_recv() {
-                //        Ok(_) => {
-                //         tx_data.send(p_engine.tanks.clone()).unwrap();
-                //        },
-                //        Err(_) => continue,
-                //    };
-                //thread::sleep(one_sixty-start.elapsed());
+                    if let Some((delta_t, prev_tick)) = fps_counter.update(now) {
+                        fps_counter.set_value(tick);
+                        let fps = (tick - prev_tick) as f64 / delta_t.as_secs_f64();
+                        debug!("FPS: {}", fps);
+                        if fps < 59.0 {
+                            warn!("Simulation framerate is low {} expected {}",fps,SIMULATION_RATE)
+                        }
+                    }
             }
         }
     });
@@ -502,7 +513,7 @@ async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>, usize)>,num_ta
                 break;
             }
             Err(_) => (),
-        }
+    }
 
         print_centered(
             &message,
@@ -540,14 +551,16 @@ async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>, usize)>,num_ta
         if game_ui.show_stats {
             macroquad_profiler::profiler(Default::default());
         };
-        match rx_data.try_recv() {
-            Ok((tanks, bullets, sel_tank)) => {
-                p_tanks = tanks;
-                p_bullets = bullets;
-                selected_tank = sel_tank;
-            }
-            Err(_) => (),
-        };
+        // Keep just last data in queue
+        for msg in rx_data.try_iter() {
+            match msg {
+                (tanks, bullets, sel_tank) => {
+                    p_tanks = tanks;
+                    p_bullets = bullets;
+                    selected_tank = sel_tank;
+                }
+            };
+        }
         // if received == true{
         //     tx_trigger.send(1).unwrap();
         //     received=false;

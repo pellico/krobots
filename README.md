@@ -12,6 +12,12 @@ At the center of simulated world there is power source that charges  tanks but i
 * Graphical UI for easier debugging.
 * Server-client communication based on **UDP** packet
 
+## Getting started
+
+* Download and install following the instruction from [releases page](https://github.com/pellico/krobots/releases).
+* Open a shell and run server: ```ktanks_server.exe 2```
+* Open two other shell where run `dumb_robot.py <tank_name>` (in `examples.zip`) 
+
 ## Command line options to launch simulation server
 ```bash
 USAGE:
@@ -138,6 +144,7 @@ Presently only a python library is provided to communicate with server.
 
 # Credits
 Tank .png pictures are from [Robocode project](https://robocode.sourceforge.io/)
+Tank icon [Tank icon](https://commons.wikimedia.org/wiki/File:Panzer_aus_Zusatzzeichen_1049-12.svg)
 
 
 
