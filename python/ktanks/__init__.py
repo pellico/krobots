@@ -17,10 +17,10 @@ from .tank_pb2 import *
 import socket
 class Tank:
     """
-    Tank in server
+    Class to interface with simulation server
     """
     def __init__(self,name:str,server_ip : str,port:int) -> None:
-        """Create a tank at the server.
+        """Create a tank at the server and control it.
         
         :param name: Name of tank
         :param server_ip: IP of simulation server
@@ -122,5 +122,39 @@ class Tank:
         data = command.SerializeToString()
         self.txSocket.send(data)
         answer= self.txSocket.recv(2048)
+        expected_answer.ParseFromString(answer)
+        
+class TankDebug(Tank):
+    """
+    Class to interface with simulation server
+    This support server in debug mode. It doesn't raise an exception
+    if server is not answering within the timeout of 2 sec.
+    It has the same functionaliaty as Tank
+    """
+    def __init__(self,name:str,server_ip : str,port:int) -> None:
+        """
+        Class to interface with simulation server
+        This support server in debug mode. It doesn't raise an exception
+        if server is not answering within the timeout of 2 sec.
+        It has the same functionaliaty as Tank
+        
+        :param name: Name of tank
+        :param server_ip: IP of simulation server
+        :param port: Port of simulation server
+        
+        """
+        super().__init__(name,server_ip,port)
+        
+    def _command_receive(self,command,expected_answer):
+        data = command.SerializeToString()
+        self.txSocket.send(data)
+        answer = None
+        while True:
+            try:
+                answer= self.txSocket.recv(2048)
+            except socket.timeout:
+                pass
+            if answer != None:
+                break
         expected_answer.ParseFromString(answer)
         

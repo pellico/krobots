@@ -27,7 +27,7 @@ use macroquad::ui::{
 use macroquad_particles::{AtlasConfig, BlendMode, Emitter, EmitterConfig};
 use macroquad_profiler;
 use nalgebra;
-use std::sync::mpsc;
+use std::sync::{mpsc};
 use std::{thread,path};
 use ticktock;
 use std::time;
@@ -53,6 +53,7 @@ struct GameUI {
     bullet_texture: Texture2D,
     hit_texture: Texture2D,
     show_stats: bool,
+    selected_tank: usize,
 }
 
 async fn texture_load(path :&str) -> Texture2D {
@@ -143,7 +144,7 @@ impl GameUI {
         }
     }
 
-    fn robot_data_ui(&mut self, p_tanks: &Vec<Tank>, selected_tank: usize) {
+    fn robot_data_ui(&mut self, p_tanks: &Vec<Tank>) {
         if is_key_released(KeyCode::Q) {
             self.ui_visible ^= true;
         }
@@ -161,7 +162,7 @@ impl GameUI {
                 for index in 0..self.tanks.len() {
                     let p_tank = &p_tanks[index];
                     let uppercase_label;
-                    let label = if index == selected_tank {
+                    let label = if index == self.selected_tank {
                         uppercase_label = p_tank.name.to_uppercase();
                         &uppercase_label
                     } else {
@@ -213,7 +214,7 @@ impl GameUI {
             });
     }
 
-    fn update_camera(&mut self, p_tanks: &Vec<Tank>, selected_tank: usize, scaling_factor: f32) {
+    fn process_keyboard_input(&mut self, p_tanks: &Vec<Tank>, scaling_factor: f32,tx_ui_command : &mpsc::Sender<UICommand>) {
         let zoom = &mut self.zoom;
         let camera = &mut self.camera;
         if is_key_down(KeyCode::KpAdd) {
@@ -246,12 +247,30 @@ impl GameUI {
         //Reset camera to selected tank
         if is_key_down(KeyCode::Kp0) {
             let tank_screen_position =
-                p_tanks[selected_tank].position.translation.vector * scaling_factor;
+                p_tanks[self.selected_tank].position.translation.vector * scaling_factor;
             camera.target = tank_screen_position.into();
         }
         camera.zoom = vec2(*zoom, *zoom * screen_width() / screen_height());
         set_camera(camera);
+
+        if is_key_released(KeyCode::PageUp) {
+            if self.selected_tank > 0 {
+                self.selected_tank -= 1;
+            }
+        }
+    
+        if is_key_released(KeyCode::PageDown) {
+            if self.selected_tank < self.tanks.len() - 1 {
+                self.selected_tank += 1;
+            };
+        }
+
+        if is_key_down(KeyCode::Q) && is_key_down(KeyCode::LeftControl) {
+            tx_ui_command.send(UICommand::QUIT).expect("Failed to send quit command");
+        } 
     }
+
+
 }
 
 fn draw_polyline(polyline: &Vec<Point2<Real>>, scaling_factor: f32) {
@@ -361,67 +380,6 @@ impl GTank {
     }
 }
 
-fn exit_application(p_engine: &PhysicsEngine) -> ! {
-    p_engine.exit_simulation();
-}
-
-/// Get keyboard input for physics simulation thread.
-fn keyboard_input_phy_sim(selected_tank: &mut usize, p_engine: &mut PhysicsEngine, step_frame: &mut u16) {
-    if is_key_released(KeyCode::Left) {
-        let power_setpoint = p_engine.tank_turning_power(*selected_tank) - 0.1;
-        p_engine.set_tank_turning_power(power_setpoint, *selected_tank);
-    }
-
-    if is_key_released(KeyCode::Right) {
-        let power_setpoint = p_engine.tank_turning_power(*selected_tank) + 0.1;
-        p_engine.set_tank_turning_power(power_setpoint, *selected_tank);
-    }
-
-    if is_key_released(KeyCode::Up) {
-        let energy_setpoint = p_engine.tank_engine_power_percentage(*selected_tank) + 0.1;
-        p_engine.set_tank_engine_power(energy_setpoint, *selected_tank)
-    }
-
-    if is_key_released(KeyCode::Down) {
-        let energy_setpoint = p_engine.tank_engine_power_percentage(*selected_tank) - 0.1;
-        p_engine.set_tank_engine_power(energy_setpoint, *selected_tank)
-    }
-
-    if is_key_released(KeyCode::Key0) {
-        p_engine.set_tank_engine_power(0.0, *selected_tank);
-        p_engine.set_tank_turning_power(0.0, *selected_tank);
-    }
-
-    if is_key_released(KeyCode::PageUp) {
-        if *selected_tank > 0 {
-            *selected_tank -= 1;
-        }
-    }
-
-    if is_key_released(KeyCode::PageDown) {
-        if *selected_tank < p_engine.tanks.len() - 1 {
-            *selected_tank += 1;
-        };
-    }
-
-    if is_key_released(KeyCode::O) {
-        *step_frame += 1;
-        debug!("Increased simulation speed to X{}",step_frame);
-    }
-
-    if is_key_released(KeyCode::L) {
-        if *step_frame > 1 {
-            *step_frame -= 1;
-        }
-        debug!("Decreased simulation speed to X{}",step_frame);
-    }
-
-    if is_key_down(KeyCode::Q) && is_key_down(KeyCode::LeftControl) {
-        exit_application(p_engine);
-    } 
-    
-}
-
 fn scaling_factor() -> f32 {
     10.0
 }
@@ -440,12 +398,20 @@ fn print_centered(text: &str, x: f32, y: f32, font_size: f32, color: Color) {
     );
 }
 
+enum UICommand {
+    QUIT,
+}
 
-
-pub fn start_gui(num_tanks: u8, udp_port: u16, max_steps: u32) {
+pub fn start_gui(opts: crate::Opts) {
+    let num_tanks = opts.num_tanks;
+    let udp_port = opts.port;
+    let max_steps = opts.max_steps;
+    let debug_mode = opts.debug_mode;
+    let simulation_rate = opts.sim_step_rate;
     info!("Started");
     //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
-    let (tx_data, rx_data) = mpsc::channel::<(Vec<Tank>, Vec<Bullet>, usize)>();
+    let (tx_data, rx_data) = mpsc::channel::<(Vec<Tank>, Vec<Bullet>)>();
+    let (tx_ui_command,rx_ui_command) =  mpsc::channel::<UICommand>();
     let now = time::Instant::now();
     // show some fps measurements every 5 seconds
     let mut fps_counter = ticktock::Timer::apply(|delta_t, prev_tick| (delta_t, *prev_tick), 0)
@@ -453,25 +419,25 @@ pub fn start_gui(num_tanks: u8, udp_port: u16, max_steps: u32) {
     .start(now);
     //Create thread that perform physics simulation
     thread::spawn(move || {
-        let mut selected_tank: usize = 0;
-        let mut p_engine = create_physics_engine(max_steps);
-        let mut server = RobotServer::new();
+
+        let mut p_engine = PhysicsEngine::new(max_steps);
+        let mut server = RobotServer::new(debug_mode);
         server.wait_connections(num_tanks, &mut p_engine, udp_port);
-        let mut step_frame : u16=1; // Num of simulation step before sending data to ui engine.
-        for (tick,now) in ticktock::Clock::framerate(SIMULATION_RATE).iter() {
+    
+        for (tick,now) in ticktock::Clock::framerate(simulation_rate).iter() {
             {
-                //let start = time::Instant::now();
-                keyboard_input_phy_sim(&mut selected_tank, &mut p_engine, &mut step_frame);
+                //Check if received command to exit
+                match rx_ui_command.try_recv() {
+                    Ok(UICommand::QUIT) => p_engine.exit_simulation(),
+                    Err(_) => ()
+                };
                 server.process_request(&mut p_engine);
+                p_engine.step();
                 
-                for _ in 0..step_frame  {
-                    p_engine.step();
-                }
                 tx_data
                     .send((
                         p_engine.tanks.clone(),
                         p_engine.bullets.clone(),
-                        selected_tank,
                     ))
                     .unwrap();
                     if let Some((delta_t, prev_tick)) = fps_counter.update(now) {
@@ -479,7 +445,7 @@ pub fn start_gui(num_tanks: u8, udp_port: u16, max_steps: u32) {
                         let fps = (tick - prev_tick) as f64 / delta_t.as_secs_f64();
                         debug!("FPS: {}", fps);
                         if fps < 59.0 {
-                            warn!("Simulation framerate is low {} expected {}",fps,SIMULATION_RATE)
+                            warn!("Simulation framerate is low {} expected {}",fps,simulation_rate)
                         }
                     }
             }
@@ -494,22 +460,20 @@ pub fn start_gui(num_tanks: u8, udp_port: u16, max_steps: u32) {
         //fullscreen: true,
         ..Default::default()
     };
-    macroquad::Window::from_config(conf, ui_main(rx_data,num_tanks));
+    macroquad::Window::from_config(conf, ui_main(rx_data,num_tanks,tx_ui_command));
     
 }
 
 
-async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>, usize)>,num_tanks:u8) {
+async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>)>,num_tanks:u8,tx_ui_command : mpsc::Sender<UICommand>) {
     let mut p_tanks;
     let mut p_bullets;
-    let mut selected_tank;
     let message = format!("Waiting for all {} tanks", num_tanks);
     loop {
         match rx_data.try_recv() {
-            Ok((tanks, bullets, sel_tank)) => {
+            Ok((tanks, bullets)) => {
                 p_tanks = tanks;
                 p_bullets = bullets;
-                selected_tank = sel_tank;
                 break;
             }
             Err(_) => (),
@@ -539,6 +503,7 @@ async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>, usize)>,num_ta
         bullet_texture: texture_load("bullet.png").await,
         hit_texture: texture_load("smoke_fire.png").await,
         show_stats: false,
+        selected_tank : 0,
     };
     game_ui.initialize(&p_tanks).await;
 
@@ -554,10 +519,9 @@ async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>, usize)>,num_ta
         // Keep just last data in queue
         for msg in rx_data.try_iter() {
             match msg {
-                (tanks, bullets, sel_tank) => {
+                (tanks, bullets) => {
                     p_tanks = tanks;
                     p_bullets = bullets;
-                    selected_tank = sel_tank;
                 }
             };
         }
@@ -566,12 +530,12 @@ async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>, usize)>,num_ta
         //     received=false;
         // }
         let scaling_factor: f32 = scaling_factor();
-        game_ui.update_camera(&p_tanks, selected_tank, scaling_factor);
+        game_ui.process_keyboard_input(&p_tanks, scaling_factor,&tx_ui_command);
         //Draw background
         draw_circle_lines(0.0, 0.0, ZERO_POWER_LIMIT * scaling_factor, 3.0, RED);
         game_ui.draw_tanks(&p_tanks, scaling_factor);
         game_ui.draw_bullets(&p_bullets, scaling_factor);
-        game_ui.robot_data_ui(&p_tanks, selected_tank);
+        game_ui.robot_data_ui(&p_tanks);
         next_frame().await;
     }
     //handle.join().unwrap();

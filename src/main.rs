@@ -26,29 +26,36 @@ pub mod tank_proto {
 }
 use macroquad::prelude::*;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Run krobots server
 #[derive(Parser)]
-#[clap(version = "0.1", author = "Oreste Bernardi <oreste@oreste.eu>")]
-struct Opts {
-    /// How manyt tanks in this game
+#[clap(version = VERSION, author = "Oreste Bernardi <oreste@oreste.eu>")]
+pub struct Opts {
+    /// How many tanks in this game
     num_tanks: u8,
     /// Port used to register new tanks
     #[clap(short, long, default_value = "55230")]
     port: u16,
-    //Log level to be used if enviromental variable RUST_LOG is not set.
+    //Log level to be used if environmental variable RUST_LOG is not set.
     #[clap(short, long, default_value = "info",possible_values=["error","warn","info","debug","trace"])]
     log_level: String,
     /// Max number of simulation step. If 0 no end until only one survived.
     #[clap(short, long, default_value = "0")]
     max_steps: u32,
+    /// Simulator stop waiting for command from tank client
+    #[clap(short, long)]
+    debug_mode: bool,
+    /// Simulation step x sec. This has no relation with ui frame rate.
+    #[clap(long, default_value = "60.0")]
+    sim_step_rate: f64,
 
 }
 
 
 fn main() {
     let opts: Opts = Opts::parse();
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(opts.log_level)).init();
-    ui::start_gui(opts.num_tanks,opts.port,opts.max_steps);
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(opts.log_level.clone())).init();
+    ui::start_gui(opts);
 
 }

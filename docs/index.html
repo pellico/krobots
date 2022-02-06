@@ -367,12 +367,10 @@ div.code-block-caption {
 <h1>Welcome to krobots’s documentation!<a class="headerlink" href="#welcome-to-krobots-s-documentation" title="Permalink to this headline">¶</a></h1>
 <p>The physical unit are pseudo physical unit used in the simulator. e.g. sec are not real world sec. The real duration of a sec
 depends on simulation speed.</p>
-<div class="toctree-wrapper compound">
-</div>
 <dl class="py class">
 <dt class="sig sig-object py" id="ktanks.Tank">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.</span></span><span class="sig-name descname"><span class="pre">Tank</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">server_ip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ktanks.Tank" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a tank at the server.</p>
+<dd><p>Create a tank at the server and control it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -452,6 +450,24 @@ depends on simulation speed.</p>
 <span class="sig-name descname"><span class="pre">simulation_configuration</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#ktanks.tank_pb2.SimulationConfig" title="ktanks.tank_pb2.SimulationConfig"><span class="pre">tank_pb2.SimulationConfig</span></a></em><a class="headerlink" href="#ktanks.Tank.simulation_configuration" title="Permalink to this definition">¶</a></dt>
 <dd><p>Configuration of simulator</p>
 </dd></dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="ktanks.TankDebug">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.</span></span><span class="sig-name descname"><span class="pre">TankDebug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">server_ip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ktanks.TankDebug" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#ktanks.Tank" title="ktanks.Tank"><code class="xref py py-class docutils literal notranslate"><span class="pre">ktanks.Tank</span></code></a></p>
+<p>Class to interface with simulation server
+This support server in debug mode. It doesn’t raise an exception
+if server is not answering within the timeout of 2 sec.
+It has the same functionaliaty as Tank</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Name of tank</p></li>
+<li><p><strong>server_ip</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – IP of simulation server</p></li>
+<li><p><strong>port</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Port of simulation server</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 <span class="target" id="module-ktanks.tank_pb2"></span><dl class="py class">
 <dt class="sig sig-object py" id="ktanks.tank_pb2.PolarVector">

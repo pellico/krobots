@@ -10,8 +10,8 @@
         "name": "(Windows) Launch",
         "type": "cppvsdbg",
         "request": "launch",
-        "program": "${workspaceFolder}/target/debug/krobots.exe",
-        "args": ["11"],
+        "program": "${workspaceFolder}/target/debug/ktanks_server.exe",
+        "args": ["2"],
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}",
         "environment": [{ "name": "RUST_LOG", "value": "trace" }],
@@ -24,15 +24,15 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=krobots",
-                    "--package=krobots"
+                    "--bin=ktanks_server",
+                    "--package=ktanks_server"
                 ],
                 "filter": {
-                    "name": "krobots",
+                    "name": "ktanks_server",
                     "kind": "bin"
                 }
             },
-            "args": ["11"],
+            "args": ["2","-d"],
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_LOG": "trace",
@@ -47,15 +47,15 @@
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=krobots",
-                    "--package=krobots"
+                    "--bin=ktanks_server",
+                    "--package=ktanks_server"
                 ],
                 "filter": {
-                    "name": "krobots",
+                    "name": "ktanks_server",
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["2"],
             "cwd": "${workspaceFolder}",
             "environment": [{ "name": "RUST_LOG", "value": "trace" }]
         }

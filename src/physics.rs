@@ -307,6 +307,28 @@ pub struct PhysicsEngine {
 }
 
 impl PhysicsEngine {
+    pub fn new(max_steps: u32) -> PhysicsEngine {
+        let engine = PhysicsEngine {
+            max_ticks: max_steps,
+            tanks_alive: 0,
+            tanks: vec![],
+            bullets: vec![],
+            tick: 0,
+            rigid_body_set: RigidBodySet::new(),
+            collider_set: ColliderSet::new(),
+            integration_parameters: IntegrationParameters::default(),
+            physics_pipeline: PhysicsPipeline::new(),
+            island_manager: IslandManager::new(),
+            broad_phase: BroadPhase::new(),
+            narrow_phase: NarrowPhase::new(),
+            joint_set: JointSet::new(),
+            ccd_solver: CCDSolver::new(),
+            physics_hooks: MyPhysicsHooks {},
+            event_handler: (),
+            gravity_vector: vector![0.0, 0.0], //No gravity
+        };
+        return engine;
+    }
     pub fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) {
         //This tank index is used to set userdata of all collider to skip detection.
         let tank_index = self.tanks.len();
@@ -731,28 +753,7 @@ impl PhysicsEngine {
     }
 }
 
-pub fn create_physics_engine(max_steps: u32) -> PhysicsEngine {
-    let engine = PhysicsEngine {
-        max_ticks: max_steps,
-        tanks_alive: 0,
-        tanks: vec![],
-        bullets: vec![],
-        tick: 0,
-        rigid_body_set: RigidBodySet::new(),
-        collider_set: ColliderSet::new(),
-        integration_parameters: IntegrationParameters::default(),
-        physics_pipeline: PhysicsPipeline::new(),
-        island_manager: IslandManager::new(),
-        broad_phase: BroadPhase::new(),
-        narrow_phase: NarrowPhase::new(),
-        joint_set: JointSet::new(),
-        ccd_solver: CCDSolver::new(),
-        physics_hooks: MyPhysicsHooks {},
-        event_handler: (),
-        gravity_vector: vector![0.0, 0.0], //No gravity
-    };
-    return engine;
-}
+
 
 #[cfg(test)]
 mod tests {

@@ -8,18 +8,18 @@ Welcome to krobots's documentation!
 The physical unit are pseudo physical unit used in the simulator. e.g. sec are not real world sec. The real duration of a sec
 depends on simulation speed.
 
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-
-   
+ 
 .. autoclass:: ktanks.Tank
    :members:
    :no-undoc-members:
-   
-   
+
+
+
+.. autoclass:: ktanks.TankDebug
+   :show-inheritance:
+
+
+
 .. automodule::ktanks.tank_pb2
    :noindex: 
    

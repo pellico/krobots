@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 use macroquad::color::{*};
 
-pub const SIMULATION_RATE:f64 = 60.0; //Step x sec
 pub const TANK_WIDTH_M:f32 = 7.0;
 pub const TANK_DEPTH_M:f32 = 3.0;
 pub const TURRET_WIDTH_M:f32 = 2.5;

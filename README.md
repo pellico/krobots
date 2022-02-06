@@ -19,7 +19,7 @@ At the center of simulated world there is power source that charges  tanks but i
 * Open two other shell where run `dumb_robot.py <tank_name>` (in `examples.zip`) 
 
 ## Command line options to launch simulation server
-```bash
+```cmd
 USAGE:
     ktanks_server.exe [OPTIONS] <NUM_TANKS>
 
@@ -27,13 +27,26 @@ ARGS:
     <NUM_TANKS>    How many tanks in this game
 
 OPTIONS:
-    -h, --help                     Print help information
-    -l, --log-level <LOG_LEVEL>    [default: info] [possible values: error, warn, info, debug,
-                                   trace]
-    -m, --max-steps <MAX_STEPS>    Max number of simulation step. If 0 no end until only one
-                                   survived [default: 0]
-    -p, --port <PORT>              Port used to register new tanks [default: 55230]
-    -V, --version                  Print version information
+    -d, --debug-mode
+            Simulator stop waiting for command from tank client
+
+    -h, --help
+            Print help information
+
+    -l, --log-level <LOG_LEVEL>
+            [default: info] [possible values: error, warn, info, debug, trace]
+
+    -m, --max-steps <MAX_STEPS>
+            Max number of simulation step. If 0 no end until only one survived [default: 0]
+
+    -p, --port <PORT>
+            Port used to register new tanks [default: 55230]
+
+        --sim-step-rate <SIM_STEP_RATE>
+            Simulation step x sec. This has no relation with ui frame rate [default: 60.0]
+
+    -V, --version
+            Print version information
 
 ```
 
@@ -53,14 +66,11 @@ UI is mainly intended to support debugging of tank controlling software.
 
 * **Ctrl-q**: exit
 * **q**: hide/show tank data 
-* **o**: increase simulation speed
-* **l**: decrease simulation speed
 * **F1**: rendering stats
 * **keypad 2,4,6,8**: move camera
 * **PageUp / PageDown**: Select tank: Selected tank has uppercase name in tank list.
 * **keypad 5**: reset to coordinates (0,0) or position of energy source
 * **keypad 0**: to move camera to selected tank 
-
 
 ## Server graphics element description.
 

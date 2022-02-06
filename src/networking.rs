@@ -21,20 +21,24 @@ use crate::tank_proto::*;
 use log::{debug, error, info};
 use prost::Message;
 use std::net::{UdpSocket};
+use std::time::Duration;
 
 
 const BUFFER_SIZE: usize = 2048;
 pub struct ConnectedRobot {
     socket: UdpSocket,
+    name: String,
 }
 pub struct RobotServer {
     connected_robots: Vec<ConnectedRobot>,
+    debug_mode: bool,
 }
 
 impl RobotServer {
-    pub fn new() -> RobotServer {
+    pub fn new(debug_mode:bool) -> RobotServer {
         RobotServer {
             connected_robots: Vec::new(),
+            debug_mode : debug_mode
         }
     }
     pub fn wait_connections(
@@ -69,14 +73,22 @@ impl RobotServer {
             //Angle to compute starting position of tank
             let tank_position = Isometry2::new(tank_vector_position, tank_pos_angle);
             p_engine.add_tank(tank_position,tank_id.name.clone());
-            names.push(tank_id.name);
+            names.push(tank_id.name.clone());
 
             //Create connection and store connection data
             dedicated_connection_port += 1;
             let dedicated_socket = UdpSocket::bind(("127.0.0.1", dedicated_connection_port))
                 .expect("Not able to open socket");
-            dedicated_socket.connect(src).unwrap();
-            dedicated_socket.set_nonblocking(true).unwrap();
+            dedicated_socket.connect(src).unwrap();           
+            
+            if self.debug_mode {
+                // When in debug mode we want to wait for tank client Command
+                // but we would like to be able to kill process as well.
+                dedicated_socket.set_nonblocking(false).unwrap();
+                dedicated_socket.set_read_timeout(Some(Duration::from_secs(3))).unwrap();
+            } else {
+                dedicated_socket.set_nonblocking(true).unwrap();
+            }
             //Send answer
             let answer = Self::get_register_tank_answer();
             let mut transmit_buff = Vec::new();
@@ -86,6 +98,7 @@ impl RobotServer {
             dedicated_socket.send(&transmit_buff).unwrap();
             self.connected_robots.push(ConnectedRobot {
                 socket: dedicated_socket,
+                name: tank_id.name
             });
 
         }
@@ -99,6 +112,7 @@ impl RobotServer {
             tank.socket
                 .send(&transmit_buff)
                 .expect("not able to send start packet");
+            debug!("Sent start packet to {}",tank.name);
         }
         names
     }
@@ -239,18 +253,34 @@ impl RobotServer {
     pub fn process_request(&self, p_engine: &mut PhysicsEngine) {
         let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
         for index in 0..self.connected_robots.len() {
-            let ConnectedRobot { socket } = &self.connected_robots[index];
+            let ConnectedRobot { socket,name } = &self.connected_robots[index];
+            let num_rec_bytes =  if self.debug_mode {
+                // If in debug mode, wait for command of client 
+                // but it shall be possible to interrupt the process with e.g. Ctrl-C
+                loop {
+                    match socket.recv(&mut buffer) {
+                        Ok(num) => break num,
+                        Err(_) => continue,
+                    };
+                } 
 
-            let num_rec_bytes = match socket.recv(&mut buffer) {
-                Ok(num) => num,
-                Err(_) => continue,
+            } else {
+                // In regular mode don't wait for tank command and go to next tank    
+                match socket.recv(&mut buffer) {
+                    Ok(num) => num,
+                    Err(_) => continue,
+                }
             };
+
             let transmit_buffer = Self::process_command(&buffer[..num_rec_bytes], index, p_engine);
             match transmit_buffer {
                 Ok(transmit_data) => {
                     socket.send(&transmit_data).expect("Failed to send");
                 }
-                Err(_) => continue,
+                Err(_) => {
+                    error!("Unable to decode command of tank {}", name );
+                    continue
+                },
             }
         }
     }
