@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!python
 # encoding: utf-8
 '''
 multi_launcher -- Easier launch multi instance of tank
@@ -14,8 +14,8 @@ multi_launcher is a convenience tool to launch multiple isntance of same tank
 @contact:    
 @deffield    updated: Updated
 '''
-import argparse,pathlib
-from subprocess import PIPE,Popen
+import argparse, pathlib,time,os
+from subprocess import PIPE, Popen
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Tank launcher")
@@ -30,18 +30,18 @@ if __name__ == '__main__':
         help="Num anks to launch"
         )
     parser.add_argument(
-        "--name", 
+        "--name",
         type=str,
-        required = False, 
+        required=False,
         help="Base name of tank max 20 chars",
-        default = "tank"
+        default="tank"
         )
     parser.add_argument(
         "--ip",
         required=False,
         type=str,
         help="server ip address",
-        default = "127.0.0.1"
+        default="127.0.0.1"
     )
     
     parser.add_argument(
@@ -49,10 +49,11 @@ if __name__ == '__main__':
         required=False,
         type=int,
         help="server port number",
-        default = 55230
+        default=55230
     )
     args = parser.parse_args()
     print(args.num_tanks)
+    procs = []
     for index in range(args.num_tanks):
         command = 'python ' + str(args.tank_script) + f" {args.name}_{index} --ip {args.ip} --port {args.port}"
         print(command)
@@ -61,9 +62,15 @@ if __name__ == '__main__':
         #     shell = True,
         #     stdout=PIPE
         #     )
-        Popen(
-            ["python.exe",str(args.tank_script),args.name+"_"+f"{index}"],
-            shell = True,
-            stdout=PIPE
+        procs.append(Popen(
+            ["python.exe", str(args.tank_script), args.name + "_" + f"{index}"],
+            shell=True,
+            stdout=PIPE,
+
             )
+            )
+    for x in procs:
+        while x.poll() == None:
+            time.sleep(1)
+   
         

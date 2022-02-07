@@ -13,16 +13,8 @@ depends on simulation speed.
    :members:
    :no-undoc-members:
 
-
-
-.. autoclass:: ktanks.TankDebug
-   :show-inheritance:
-
-
-
 .. automodule::ktanks.tank_pb2
-   :noindex: 
-   
+   :noindex:    
 
 .. include:: server_answer.txt      
 
