@@ -460,15 +460,19 @@ pub fn start_gui(opts: crate::Opts) {
         //fullscreen: true,
         ..Default::default()
     };
-    macroquad::Window::from_config(conf, ui_main(rx_data,num_tanks,tx_ui_command));
+    macroquad::Window::from_config(conf, ui_main(rx_data,num_tanks,tx_ui_command,opts.debug_mode));
     
 }
 
 
-async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>)>,num_tanks:u8,tx_ui_command : mpsc::Sender<UICommand>) {
+async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>)>,num_tanks:u8,tx_ui_command : mpsc::Sender<UICommand>,debug_mode:bool) {
     let mut p_tanks;
     let mut p_bullets;
-    let message = format!("Waiting for all {} tanks", num_tanks);
+    let message = if debug_mode {
+        format!("Debug Mode: Waiting for all {} tanks\n", num_tanks)
+    } else {
+        format!("Waiting for all {} tanks\n", num_tanks)
+    };
     loop {
         match rx_data.try_recv() {
             Ok((tanks, bullets)) => {

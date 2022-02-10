@@ -15,10 +15,18 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from .tank_pb2 import *
 import socket
+from typing import Callable,Any,Union
+
+
+from typing import TypeVar
+# Workaroudn waiting for  PEP673
+TTank = TypeVar("TTank", bound="Tank")
+TResult = TypeVar("TResult",bound = Union[RadarResult,SimulationConfig,TankStatus])
 class Tank:
     """
     Class to interface with simulation server
-    """
+    """ 
+        
     def __init__(self,name:str,server_ip : str,port:int) -> None:
         """Create a tank at the server and control it.
         
@@ -118,10 +126,15 @@ class Tank:
         return result
         
     
-    def _command_receive(self,command,expected_answer):
+    def _command_receive_release(self,command : Command,expected_answer : TResult):
         data = command.SerializeToString()
         self.txSocket.send(data)
-        answer = None
+        answer= self.txSocket.recv(2048)
+        expected_answer.ParseFromString(answer)
+    
+    def _command_receive_debug(self,command:Command,expected_answer:TResult):
+        data = command.SerializeToString()
+        self.txSocket.send(data)
         while True:
             # This support server in debug mode. It doesn't raise an exception
             # if server is not answering within the timeout of 2 sec.
@@ -129,9 +142,28 @@ class Tank:
             try:
                 answer= self.txSocket.recv(2048)
             except socket.timeout:
-                pass
-            if answer != None:
-                break
-        expected_answer.ParseFromString(answer)
+                continue
+            expected_answer.ParseFromString(answer)
+            break
+        
+    
+    _command_receive : Callable[[TTank, Command,TResult], Any] =_command_receive_release
+    
+    @classmethod
+    def enable_debug(cls):
+        """
+        Enable debug mode. Client debug mode is compatible with any running mode
+        of game server.
+        
+        """
+        cls._command_receive=cls._command_receive_debug
+    
+    @classmethod
+    def disable_debug(cls):
+        """
+        Disable debug. If game server is running debug mode and some
+        client are stopped, client can fail with timeout 
+        """
+        cls._command_receive=cls._command_receive_release
         
         

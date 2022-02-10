@@ -15,13 +15,13 @@ def angle_wrapping(angle:float) -> float :
             angle_res=angle_res + 2.0 * pi
         else:
             break
-    p
     return angle_res
 
 class Tank:
     def __init__(self,name):
         self.name = name
-        self.comm = ktanks.TankDebug(name,"127.0.0.1",55230)
+        #ktanks.Tank.enable_debug()
+        self.comm = ktanks.Tank(name,"127.0.0.1",55230)
         self.forward_power= 0.0
         self.target_angle = 0.0
         self.angimp_set = 0.0
