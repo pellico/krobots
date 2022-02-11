@@ -17,18 +17,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 use crate::conf::*;
 use log::{debug, error, info};
-pub use nalgebra::{vector, Isometry2, Rotation2};
-pub use nalgebra::{Point2, Vector2};
 pub use rapier2d::prelude::Real;
 use rapier2d::prelude::*;
 use std::f32::consts::PI;
+pub use rapier2d::na::{vector, Isometry2, Rotation2};
+pub use rapier2d::na::{Point2, Vector2};
+use serde::{Serialize, Deserialize};
 mod report;
 
 const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b001, 0b101);
 const TURRET_GROUP: InteractionGroups = InteractionGroups::new(0b010, 0b110);
 const BULLET_GROUP: InteractionGroups = InteractionGroups::new(0b100, 0b011);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug,Serialize,Deserialize)]
 pub struct Turret {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
@@ -39,7 +40,7 @@ pub struct Turret {
     cannon_temperature: f32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug,Serialize,Deserialize)]
 pub struct Bullet {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,
@@ -48,7 +49,7 @@ pub struct Bullet {
     pub position: Isometry2<Real>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug,Serialize,Deserialize)]
 pub struct Tank {
     phy_body_handle: RigidBodyHandle,
     collider_handle: ColliderHandle,

@@ -9,12 +9,10 @@ prost-build = "0.9"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rapier2d = { version = "*", features = [ "simd-stable" ] }
+rapier2d = { version = "*", features = [ "simd-stable","serde-serialize" ] }
 macroquad = { version = "*"}
 macroquad-profiler = {version = "*"}
 macroquad-particles = {version = "*"}
-glam = {version = "0.14.0"}
-nalgebra = {version = "0.29.0",features = [ "convert-glam014" ]  } #Version shall be the same as the one required by rapier2d
 # Logging  libraries
 env_logger = {version = "*"}
 log = {version = "*", features = ["max_level_debug"]}
@@ -25,6 +23,13 @@ clap = { version = "3.0.10", features = ["derive"] }
 csv = "*"
 # To control physics simulation time frame
 ticktock = "0.8.0" 
+serde = "*"
+
+[dependencies.nalgebra]
+features =[ "convert-glam014" ,"serde-serialize"]
+
+[dependencies.glam]
+version ="0.14.0"
 
 [profile.dev.package.rapier2d]
 opt-level = 3
