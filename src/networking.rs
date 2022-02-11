@@ -20,7 +20,7 @@ use crate::physics::{PhysicsEngine,Vector2,Real,Isometry2,Rotation2};
 use crate::tank_proto::*;
 use log::{debug, error, info};
 use prost::Message;
-use std::net::{UdpSocket};
+use std::net::{UdpSocket,Ipv4Addr};
 use std::time::Duration;
 
 
@@ -49,7 +49,7 @@ impl RobotServer {
     ) -> Vec<String> {
         let mut dedicated_connection_port = udp_port;
         info!("Waiting connections on port {}", udp_port);
-        let socket = UdpSocket::bind(("127.0.0.1", udp_port)).expect("Not able to open socket: {}");
+        let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, udp_port)).expect("Not able to open socket: {}");
         let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
         let mut names = Vec::<String>::new();
         //Position of first tank. Other tank positions are computed by rotating it.
@@ -77,7 +77,7 @@ impl RobotServer {
 
             //Create connection and store connection data
             dedicated_connection_port += 1;
-            let dedicated_socket = UdpSocket::bind(("127.0.0.1", dedicated_connection_port))
+            let dedicated_socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, dedicated_connection_port))
                 .expect("Not able to open socket");
             dedicated_socket.connect(src).unwrap();           
             
