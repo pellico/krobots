@@ -44,3 +44,23 @@ pub fn angle_wrapping(angle: f32) -> f32 {
     }
     angle_res
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_add() {
+        let mut result = angle_wrapping(PI);
+        assert_eq!(result, PI);
+        result = angle_wrapping(-PI);
+        assert_eq!(result, PI);
+        result = angle_wrapping(-2.0 * PI);
+        assert_eq!(result, 0.0);
+        result = angle_wrapping(-4.0 * PI);
+        assert_eq!(result, 0.0);
+        result = angle_wrapping(4.0 * PI);
+        assert_eq!(result, 0.0);
+    }
+}

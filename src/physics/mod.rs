@@ -18,18 +18,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 mod tank;
 mod util;
 mod ui_interface;
+mod networking;
+mod report;
+use networking::RobotServer;
+use std::thread::{spawn,JoinHandle};
 use self::tank::*;
 pub use self::tank::{Tank,Bullet};
 pub use self::ui_interface::*;
 use self::util::*;
 use crate::conf::*;
-use log::{debug, error, info};
+use log::{debug, error,warn, info};
 pub use rapier2d::prelude::Real;
 use rapier2d::prelude::*;
 use std::f32::consts::PI;
 pub use rapier2d::na::{vector, Isometry2, Rotation2};
 pub use rapier2d::na::{Point2, Vector2};
-mod report;
+use std::time;
 
 
 const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b001, 0b101);
@@ -82,11 +86,18 @@ pub struct PhysicsEngine {
     physics_hooks: MyPhysicsHooks,
     event_handler: (),
     gravity_vector: Vector2<Real>,
+
 }
 
 impl PhysicsEngine {
-    pub fn new(max_steps: u32) -> PhysicsEngine {
-        let engine = PhysicsEngine {
+    pub fn new (opts: &crate::Opts,state_sender : Box<dyn GameStateSender>, command_receiver : Box<dyn UICommandReceiver>) -> JoinHandle<()> {
+        let num_tanks = opts.num_tanks;
+        let udp_port = opts.port;
+        let max_steps = opts.max_steps;
+        let debug_mode = opts.debug_mode;
+        let simulation_rate = opts.sim_step_rate;
+
+        let mut p_engine = PhysicsEngine {
             max_ticks: max_steps,
             tanks_alive: 0,
             tanks: vec![],
@@ -105,7 +116,43 @@ impl PhysicsEngine {
             event_handler: (),
             gravity_vector: vector![0.0, 0.0], //No gravity
         };
-        return engine;
+
+        let now = time::Instant::now();
+        // show some fps measurements every 5 seconds
+        let mut fps_counter = ticktock::Timer::apply(|delta_t, prev_tick| (delta_t, *prev_tick), 0)
+        .every(time::Duration::from_secs(5))
+        .start(now);
+        info!("Starting simulation");
+        //Create thread that perform physics simulation
+        let join_handle = spawn( move || {
+
+            let mut server = RobotServer::new(debug_mode);
+            server.wait_connections(num_tanks, &mut p_engine, udp_port);
+        
+            for (tick,now) in ticktock::Clock::framerate(simulation_rate).iter() {
+                {
+                    //Check if received command to exit
+                    match command_receiver.receive() {
+                        Some(UICommand::QUIT) => p_engine.exit_simulation(),
+                        None => ()
+                    };
+                    server.process_request(&mut p_engine);
+                    p_engine.step();
+                    state_sender.send((&p_engine.tanks,&p_engine.bullets)).unwrap();
+
+                        if let Some((delta_t, prev_tick)) = fps_counter.update(now) {
+                            fps_counter.set_value(tick);
+                            let fps = (tick - prev_tick) as f64 / delta_t.as_secs_f64();
+                            debug!("FPS: {}", fps);
+                            if fps < 59.0 {
+                                warn!("Simulation framerate is low {} expected {}",fps,simulation_rate)
+                            }
+                        }
+                }
+            }
+        });
+
+        return join_handle;
     }
     pub fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) {
         //This tank index is used to set userdata of all collider to skip detection.
@@ -532,22 +579,3 @@ impl PhysicsEngine {
 }
 
 
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_add() {
-        let mut result = angle_wrapping(PI);
-        assert_eq!(result, PI);
-        result = angle_wrapping(-PI);
-        assert_eq!(result, PI);
-        result = angle_wrapping(-2.0 * PI);
-        assert_eq!(result, 0.0);
-        result = angle_wrapping(-4.0 * PI);
-        assert_eq!(result, 0.0);
-        result = angle_wrapping(4.0 * PI);
-        assert_eq!(result, 0.0);
-    }
-}

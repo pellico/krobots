@@ -16,9 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 use crate::conf::*;
-use crate::networking::RobotServer;
 use crate::physics::*;
-use log::{debug, info,warn};
+use log::{debug};
 use macroquad::prelude::*;
 use macroquad::ui::{
     hash, root_ui,
@@ -28,9 +27,8 @@ use macroquad_particles::{AtlasConfig, BlendMode, Emitter, EmitterConfig};
 use macroquad_profiler;
 use nalgebra;
 use std::sync::{mpsc};
-use std::{thread,path};
-use ticktock;
-use std::time;
+use std::{path};
+
 
 
 struct GTank {
@@ -214,7 +212,7 @@ impl GameUI {
             });
     }
 
-    fn process_keyboard_input(&mut self, p_tanks: &Vec<Tank>, scaling_factor: f32,tx_ui_command : &mpsc::Sender<UICommand>) {
+    fn process_keyboard_input(&mut self, p_tanks: &Vec<Tank>, scaling_factor: f32,tx_ui_command : &CommandLocalSender) {
         let zoom = &mut self.zoom;
         let camera = &mut self.camera;
         if is_key_down(KeyCode::KpAdd) {
@@ -398,57 +396,90 @@ fn print_centered(text: &str, x: f32, y: f32, font_size: f32, color: Color) {
     );
 }
 
+struct UILocalSender {
+    tx_data : mpsc::Sender<(Vec<Tank>, Vec<Bullet>)>
+
+}
+
+impl GameStateSender for UILocalSender {
+    #[inline]
+    fn send(&self,state : (&Vec<Tank>, &Vec<Bullet>)) -> Result<(),ErrorUIComm> {
+        match self.tx_data
+        .send((
+            state.0.to_owned(),
+            state.1.to_owned(),
+        )) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(ErrorUIComm)
+
+        }
+    }
+}
+
+struct UILocalReceiver {
+    rx_data : mpsc::Receiver<(Vec<Tank>, Vec<Bullet>)>,
+
+}
+
+impl GameStateReceiver for UILocalReceiver {
+    #[inline]
+    fn receiver(&self) -> Option<(Vec<Tank>, Vec<Bullet>)>{
+        // Keep just last data in queue
+        self.rx_data.try_iter().last()
+    }
+}
+
+struct CommandLocalSender {
+    tx_data : mpsc::Sender<UICommand>
+
+}
+
+impl UICommandSender for CommandLocalSender {
+    #[inline]
+    fn send(&self,command : UICommand) -> Result<(),ErrorUIComm> {
+        match self.tx_data.send(command) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(ErrorUIComm)
+        }
+    }
+}
+
+struct CommandLocalReceiver {
+    rx_data : mpsc::Receiver<UICommand>,
+
+}
+impl UICommandReceiver for CommandLocalReceiver {
+    #[inline]
+    fn receive(&self) -> Option<UICommand> {
+        match self.rx_data.try_recv() {
+            Ok(a) => Some(a),
+            Err(_) => None
+        }
+    }
+}
+
+
+fn create_state_channels() -> (UILocalSender,UILocalReceiver) {
+    let (tx_data, rx_data) = mpsc::channel::<(Vec<Tank>, Vec<Bullet>)>();
+    let sender = UILocalSender {tx_data : tx_data};
+    let receiver = UILocalReceiver {rx_data : rx_data};
+    (sender,receiver)
+}
+
+
+fn create_command_channels() -> (CommandLocalSender,CommandLocalReceiver) {
+    let (tx_data, rx_data) = mpsc::channel::<UICommand>();
+    let sender = CommandLocalSender {tx_data : tx_data};
+    let receiver = CommandLocalReceiver {rx_data : rx_data};
+    (sender,receiver)
+}
 
 
 pub fn start_gui(opts: crate::Opts) {
     let num_tanks = opts.num_tanks;
-    let udp_port = opts.port;
-    let max_steps = opts.max_steps;
-    let debug_mode = opts.debug_mode;
-    let simulation_rate = opts.sim_step_rate;
-    info!("Started");
-    //let (tx_trigger, rx_trigger) = mpsc::channel::<u32>();
-    let (tx_data, rx_data) = mpsc::channel::<(Vec<Tank>, Vec<Bullet>)>();
-    let (tx_ui_command,rx_ui_command) =  mpsc::channel::<UICommand>();
-    let now = time::Instant::now();
-    // show some fps measurements every 5 seconds
-    let mut fps_counter = ticktock::Timer::apply(|delta_t, prev_tick| (delta_t, *prev_tick), 0)
-    .every(time::Duration::from_secs(5))
-    .start(now);
-    //Create thread that perform physics simulation
-    thread::spawn(move || {
-
-        let mut p_engine = PhysicsEngine::new(max_steps);
-        let mut server = RobotServer::new(debug_mode);
-        server.wait_connections(num_tanks, &mut p_engine, udp_port);
-    
-        for (tick,now) in ticktock::Clock::framerate(simulation_rate).iter() {
-            {
-                //Check if received command to exit
-                match rx_ui_command.try_recv() {
-                    Ok(UICommand::QUIT) => p_engine.exit_simulation(),
-                    Err(_) => ()
-                };
-                server.process_request(&mut p_engine);
-                p_engine.step();
-                
-                tx_data
-                    .send((
-                        p_engine.tanks.clone(),
-                        p_engine.bullets.clone(),
-                    ))
-                    .unwrap();
-                    if let Some((delta_t, prev_tick)) = fps_counter.update(now) {
-                        fps_counter.set_value(tick);
-                        let fps = (tick - prev_tick) as f64 / delta_t.as_secs_f64();
-                        debug!("FPS: {}", fps);
-                        if fps < 59.0 {
-                            warn!("Simulation framerate is low {} expected {}",fps,simulation_rate)
-                        }
-                    }
-            }
-        }
-    });
+    let (tx_state, rx_state) = create_state_channels();
+    let (tx_ui_command,rx_ui_command) =  create_command_channels();
+    PhysicsEngine::new(&opts,Box::new(tx_state),Box::new(rx_ui_command));
     // Bypass the macro. Not supported by macroquad
     // see macroquad macro main source code.
     let conf =  Conf {
@@ -458,12 +489,12 @@ pub fn start_gui(opts: crate::Opts) {
         //fullscreen: true,
         ..Default::default()
     };
-    macroquad::Window::from_config(conf, ui_main(rx_data,num_tanks,tx_ui_command,opts.debug_mode));
+    macroquad::Window::from_config(conf, ui_main(rx_state,num_tanks,tx_ui_command,opts.debug_mode));
     
 }
 
 
-async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>)>,num_tanks:u8,tx_ui_command : mpsc::Sender<UICommand>,debug_mode:bool) {
+async fn ui_main(rx_data:UILocalReceiver,num_tanks:u8,tx_ui_command : CommandLocalSender,debug_mode:bool) {
     let mut p_tanks;
     let mut p_bullets;
     let message = if debug_mode {
@@ -472,13 +503,13 @@ async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>)>,num_tanks:u8,
         format!("Waiting for all {} tanks\n", num_tanks)
     };
     loop {
-        match rx_data.try_recv() {
-            Ok((tanks, bullets)) => {
+        match rx_data.receiver() {
+            Some((tanks, bullets)) => {
                 p_tanks = tanks;
                 p_bullets = bullets;
                 break;
             }
-            Err(_) => (),
+            None => (),
     }
 
         print_centered(
@@ -518,19 +549,12 @@ async fn ui_main(rx_data: mpsc::Receiver<(Vec<Tank>, Vec<Bullet>)>,num_tanks:u8,
         if game_ui.show_stats {
             macroquad_profiler::profiler(Default::default());
         };
-        // Keep just last data in queue
-        for msg in rx_data.try_iter() {
-            match msg {
-                (tanks, bullets) => {
-                    p_tanks = tanks;
-                    p_bullets = bullets;
-                }
-            };
-        }
-        // if received == true{
-        //     tx_trigger.send(1).unwrap();
-        //     received=false;
-        // }
+
+        match rx_data.receiver() {
+            Some((tanks,bullets)) => {p_tanks=tanks; p_bullets = bullets},
+            None => ()
+        };
+
         let scaling_factor: f32 = scaling_factor();
         game_ui.process_keyboard_input(&p_tanks, scaling_factor,&tx_ui_command);
         //Draw background

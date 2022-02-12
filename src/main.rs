@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 mod ui;
 mod physics;
 mod conf;
-mod networking;
 use clap::{Parser};
 // Include the `items` module, which is generated from items.proto.
 pub mod tank_proto {
