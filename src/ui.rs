@@ -26,7 +26,6 @@ use macroquad::ui::{
 use macroquad_particles::{AtlasConfig, BlendMode, Emitter, EmitterConfig};
 use macroquad_profiler;
 use nalgebra;
-use std::sync::{mpsc};
 use std::{path};
 
 
@@ -212,7 +211,7 @@ impl GameUI {
             });
     }
 
-    fn process_keyboard_input(&mut self, p_tanks: &Vec<Tank>, scaling_factor: f32,tx_ui_command : &CommandLocalSender) {
+    fn process_keyboard_input(&mut self, p_tanks: &Vec<Tank>, scaling_factor: f32,tx_ui_command : &Box<dyn UICommandSender>) {
         let zoom = &mut self.zoom;
         let camera = &mut self.camera;
         if is_key_down(KeyCode::KpAdd) {
@@ -396,90 +395,10 @@ fn print_centered(text: &str, x: f32, y: f32, font_size: f32, color: Color) {
     );
 }
 
-struct UILocalSender {
-    tx_data : mpsc::Sender<(Vec<Tank>, Vec<Bullet>)>
 
-}
-
-impl GameStateSender for UILocalSender {
-    #[inline]
-    fn send(&self,state : (&Vec<Tank>, &Vec<Bullet>)) -> Result<(),ErrorUIComm> {
-        match self.tx_data
-        .send((
-            state.0.to_owned(),
-            state.1.to_owned(),
-        )) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(ErrorUIComm)
-
-        }
-    }
-}
-
-struct UILocalReceiver {
-    rx_data : mpsc::Receiver<(Vec<Tank>, Vec<Bullet>)>,
-
-}
-
-impl GameStateReceiver for UILocalReceiver {
-    #[inline]
-    fn receiver(&self) -> Option<(Vec<Tank>, Vec<Bullet>)>{
-        // Keep just last data in queue
-        self.rx_data.try_iter().last()
-    }
-}
-
-struct CommandLocalSender {
-    tx_data : mpsc::Sender<UICommand>
-
-}
-
-impl UICommandSender for CommandLocalSender {
-    #[inline]
-    fn send(&self,command : UICommand) -> Result<(),ErrorUIComm> {
-        match self.tx_data.send(command) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(ErrorUIComm)
-        }
-    }
-}
-
-struct CommandLocalReceiver {
-    rx_data : mpsc::Receiver<UICommand>,
-
-}
-impl UICommandReceiver for CommandLocalReceiver {
-    #[inline]
-    fn receive(&self) -> Option<UICommand> {
-        match self.rx_data.try_recv() {
-            Ok(a) => Some(a),
-            Err(_) => None
-        }
-    }
-}
-
-
-fn create_state_channels() -> (UILocalSender,UILocalReceiver) {
-    let (tx_data, rx_data) = mpsc::channel::<(Vec<Tank>, Vec<Bullet>)>();
-    let sender = UILocalSender {tx_data : tx_data};
-    let receiver = UILocalReceiver {rx_data : rx_data};
-    (sender,receiver)
-}
-
-
-fn create_command_channels() -> (CommandLocalSender,CommandLocalReceiver) {
-    let (tx_data, rx_data) = mpsc::channel::<UICommand>();
-    let sender = CommandLocalSender {tx_data : tx_data};
-    let receiver = CommandLocalReceiver {rx_data : rx_data};
-    (sender,receiver)
-}
-
-
-pub fn start_gui(opts: crate::Opts) {
+pub fn start_gui (opts: crate::Opts,rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn UICommandSender> ) {
     let num_tanks = opts.num_tanks;
-    let (tx_state, rx_state) = create_state_channels();
-    let (tx_ui_command,rx_ui_command) =  create_command_channels();
-    PhysicsEngine::new(&opts,Box::new(tx_state),Box::new(rx_ui_command));
+    
     // Bypass the macro. Not supported by macroquad
     // see macroquad macro main source code.
     let conf =  Conf {
@@ -494,7 +413,7 @@ pub fn start_gui(opts: crate::Opts) {
 }
 
 
-async fn ui_main(rx_data:UILocalReceiver,num_tanks:u8,tx_ui_command : CommandLocalSender,debug_mode:bool) {
+async fn ui_main(rx_data:Box<dyn GameStateReceiver>,num_tanks:u8,tx_ui_command : Box<dyn UICommandSender>,debug_mode:bool) {
     let mut p_tanks;
     let mut p_bullets;
     let message = if debug_mode {
