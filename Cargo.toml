@@ -20,12 +20,13 @@ log = {version = "*", features = ["max_level_debug"]}
 prost = "0.9"
 # command line parser
 clap = { version = "3.0.10", features = ["derive"] }
-csv = "*"
+csv = "1.1.6"
 # To control physics simulation time frame
 ticktock = "0.8.0" 
-serde = "*"
+serde = "1.0.135"
 
 [dependencies.nalgebra]
+version = " 0.29.0"
 features =[ "convert-glam014" ,"serde-serialize"]
 
 [dependencies.glam]

@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-use super::{Tank};
+use super::tank::{Tank};
 use std::fs::{File};
 use csv;
 pub(super) fn save_tank_report(path:&str,tanks:&Vec<Tank>) -> std::io::Result<()> {

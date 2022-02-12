@@ -398,9 +398,7 @@ fn print_centered(text: &str, x: f32, y: f32, font_size: f32, color: Color) {
     );
 }
 
-enum UICommand {
-    QUIT,
-}
+
 
 pub fn start_gui(opts: crate::Opts) {
     let num_tanks = opts.num_tanks;
