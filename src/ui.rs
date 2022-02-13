@@ -396,9 +396,7 @@ fn print_centered(text: &str, x: f32, y: f32, font_size: f32, color: Color) {
 }
 
 
-pub fn start_gui (opts: crate::Opts,rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn UICommandSender> ) {
-    let num_tanks = opts.num_tanks;
-    
+pub fn start_gui (rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn UICommandSender> ) {    
     // Bypass the macro. Not supported by macroquad
     // see macroquad macro main source code.
     let conf =  Conf {
@@ -408,28 +406,27 @@ pub fn start_gui (opts: crate::Opts,rx_state : Box<dyn GameStateReceiver> ,tx_ui
         //fullscreen: true,
         ..Default::default()
     };
-    macroquad::Window::from_config(conf, ui_main(rx_state,num_tanks,tx_ui_command,opts.debug_mode));
+    macroquad::Window::from_config(conf, ui_main(rx_state,tx_ui_command));
     
 }
 
 
-async fn ui_main(rx_data:Box<dyn GameStateReceiver>,num_tanks:u8,tx_ui_command : Box<dyn UICommandSender>,debug_mode:bool) {
-    let mut p_tanks;
-    let mut p_bullets;
-    let message = if debug_mode {
-        format!("Debug Mode: Waiting for all {} tanks\n", num_tanks)
-    } else {
-        format!("Waiting for all {} tanks\n", num_tanks)
-    };
+async fn ui_main(rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn UICommandSender>) {
+    let mut game_state : UIGameState= UIGameState::default();
     loop {
+        // Wait for first message
         match rx_data.receiver() {
-            Some((tanks, bullets)) => {
-                p_tanks = tanks;
-                p_bullets = bullets;
-                break;
-            }
+            Some(state) => {game_state = state},
             None => (),
-    }
+        }
+        if matches!(game_state.state,SimulationState::Running) {
+            break;
+        }
+        let message = if game_state.debug_mode {
+            format!("Debug Mode: Connected {} tanks of {}\n", game_state.tanks.len(),game_state.max_num_tanks)
+        } else {
+            format!("Connected {} tanks of {}\n", game_state.tanks.len(),game_state.max_num_tanks)
+        };
 
         print_centered(
             &message,
@@ -438,10 +435,12 @@ async fn ui_main(rx_data:Box<dyn GameStateReceiver>,num_tanks:u8,tx_ui_command :
             40.0,
             GREEN,
         );
+
         next_frame().await;
     }
+    info!("Registered num tanks {}",game_state.tanks.len());
     let mut game_ui = GameUI {
-        tanks: Vec::<GTank>::with_capacity(p_tanks.len()),
+        tanks: Vec::<GTank>::with_capacity(game_state.tanks.len()),
         ui_visible: true,
         camera: Camera2D {
             zoom: vec2(
@@ -457,7 +456,7 @@ async fn ui_main(rx_data:Box<dyn GameStateReceiver>,num_tanks:u8,tx_ui_command :
         show_stats: false,
         selected_tank : 0,
     };
-    game_ui.initialize(&p_tanks).await;
+    game_ui.initialize(&game_state.tanks).await;
 
     /*
     Used to track when received an update in order to avoid too many message
@@ -470,17 +469,17 @@ async fn ui_main(rx_data:Box<dyn GameStateReceiver>,num_tanks:u8,tx_ui_command :
         };
 
         match rx_data.receiver() {
-            Some((tanks,bullets)) => {p_tanks=tanks; p_bullets = bullets},
+            Some(state) => {game_state=state},
             None => ()
         };
 
         let scaling_factor: f32 = scaling_factor();
-        game_ui.process_keyboard_input(&p_tanks, scaling_factor,&tx_ui_command);
+        game_ui.process_keyboard_input(&game_state.tanks, scaling_factor,&tx_ui_command);
         //Draw background
         draw_circle_lines(0.0, 0.0, ZERO_POWER_LIMIT * scaling_factor, 3.0, RED);
-        game_ui.draw_tanks(&p_tanks, scaling_factor);
-        game_ui.draw_bullets(&p_bullets, scaling_factor);
-        game_ui.robot_data_ui(&p_tanks);
+        game_ui.draw_tanks(&game_state.tanks, scaling_factor);
+        game_ui.draw_bullets(&game_state.bullets, scaling_factor);
+        game_ui.robot_data_ui(&game_state.tanks);
         next_frame().await;
     }
     //handle.join().unwrap();

@@ -22,7 +22,7 @@ use log::{debug, error, info};
 use prost::Message;
 use std::net::{UdpSocket,Ipv4Addr};
 use std::time::Duration;
-
+use super::GameStateSender;
 
 const BUFFER_SIZE: usize = 2048;
 pub struct ConnectedRobot {
@@ -43,10 +43,11 @@ impl RobotServer {
     }
     pub fn wait_connections(
         &mut self,
-        expected_connections: u8,
         p_engine: &mut PhysicsEngine,
-        udp_port: u16
-    ) -> Vec<String> {
+        udp_port: u16,
+        state_sender : &Box<dyn GameStateSender>
+        
+    ) {
         let mut dedicated_connection_port = udp_port;
         info!("Waiting connections on port {}", udp_port);
         let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, udp_port)).expect("Not able to open socket: {}");
@@ -54,7 +55,7 @@ impl RobotServer {
         let mut names = Vec::<String>::new();
         //Position of first tank. Other tank positions are computed by rotating it.
         let position_vector = Vector2::new(conf::START_DISTANCE, 0.0);
-        for tank_index in 0..expected_connections {
+        for tank_index in 0..p_engine.max_num_tanks {
             let (amt, src) = socket.recv_from(&mut buffer).expect("Not received data");
             debug!("Received a packet from {}", src);
             let tank_id = match RegisterTank::decode(&buffer[..amt]) {
@@ -67,7 +68,7 @@ impl RobotServer {
 
             info!("IP:{} is registering tank {} server port {}",src,tank_id.name,dedicated_connection_port);
             //Compute position of new tank
-            let tank_pos_angle = (2.0 * std::f32::consts::PI / expected_connections as f32)
+            let tank_pos_angle = (2.0 * std::f32::consts::PI / p_engine.max_num_tanks as f32)
                 * (tank_index + 1) as f32;
             let tank_vector_position = Isometry2::rotation(tank_pos_angle) * position_vector;
             //Angle to compute starting position of tank
@@ -100,6 +101,7 @@ impl RobotServer {
                 socket: dedicated_socket,
                 name: tank_id.name
             });
+            state_sender.send(p_engine).expect("Error sending info to UI");
 
         }
         //After registration of all tank send start packet
@@ -114,7 +116,7 @@ impl RobotServer {
                 .expect("not able to send start packet");
             debug!("Sent start packet to {}",tank.name);
         }
-        names
+        
     }
 
     fn get_register_tank_answer() -> SimulationConfig {

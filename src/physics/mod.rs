@@ -36,6 +36,7 @@ pub use rapier2d::na::{Point2, Vector2};
 use std::time;
 
 
+
 const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b001, 0b101);
 const TURRET_GROUP: InteractionGroups = InteractionGroups::new(0b010, 0b110);
 const BULLET_GROUP: InteractionGroups = InteractionGroups::new(0b100, 0b011);
@@ -68,11 +69,21 @@ impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum SimulationState {
+    WaitingConnection,
+    Running
+}
+impl Default for SimulationState {
+    fn default() -> Self { SimulationState::WaitingConnection }
+}
+
 pub struct PhysicsEngine {
+    max_num_tanks: usize,
     max_ticks: u32,
-    tanks_alive: u16,
-    pub tanks: Vec<Tank>,
-    pub bullets: Vec<Bullet>,
+    tanks_alive: u32,
+    tanks: Vec<Tank>,
+    bullets: Vec<Bullet>,
     tick: u32,
     rigid_body_set: RigidBodySet,
     collider_set: ColliderSet,
@@ -86,19 +97,19 @@ pub struct PhysicsEngine {
     physics_hooks: MyPhysicsHooks,
     event_handler: (),
     gravity_vector: Vector2<Real>,
+    debug_mode: bool,
+    state: SimulationState
 
 }
 
 impl PhysicsEngine {
     pub fn new (opts: &crate::Opts,state_sender : Box<dyn GameStateSender>, command_receiver : Box<dyn UICommandReceiver>) -> JoinHandle<()> {
-        let num_tanks = opts.num_tanks;
         let udp_port = opts.port;
-        let max_steps = opts.max_steps;
-        let debug_mode = opts.debug_mode;
         let simulation_rate = opts.sim_step_rate;
 
         let mut p_engine = PhysicsEngine {
-            max_ticks: max_steps,
+            max_num_tanks : opts.num_tanks,
+            max_ticks: opts.max_steps,
             tanks_alive: 0,
             tanks: vec![],
             bullets: vec![],
@@ -115,6 +126,8 @@ impl PhysicsEngine {
             physics_hooks: MyPhysicsHooks {},
             event_handler: (),
             gravity_vector: vector![0.0, 0.0], //No gravity
+            debug_mode: opts.debug_mode,
+            state: SimulationState::WaitingConnection 
         };
 
         let now = time::Instant::now();
@@ -122,13 +135,14 @@ impl PhysicsEngine {
         let mut fps_counter = ticktock::Timer::apply(|delta_t, prev_tick| (delta_t, *prev_tick), 0)
         .every(time::Duration::from_secs(5))
         .start(now);
-        info!("Starting simulation");
+        
         //Create thread that perform physics simulation
         let join_handle = spawn( move || {
-
-            let mut server = RobotServer::new(debug_mode);
-            server.wait_connections(num_tanks, &mut p_engine, udp_port);
-        
+            info!("Start waiting connections");
+            let mut server = RobotServer::new(p_engine.debug_mode);
+            server.wait_connections(&mut p_engine, udp_port,&state_sender);
+            info!("Starting simulation");
+            p_engine.state = SimulationState::Running;
             for (tick,now) in ticktock::Clock::framerate(simulation_rate).iter() {
                 {
                     //Check if received command to exit
@@ -138,7 +152,8 @@ impl PhysicsEngine {
                     };
                     server.process_request(&mut p_engine);
                     p_engine.step();
-                    state_sender.send((&p_engine.tanks,&p_engine.bullets)).unwrap();
+            
+                    state_sender.send(&p_engine).unwrap();
 
                         if let Some((delta_t, prev_tick)) = fps_counter.update(now) {
                             fps_counter.set_value(tick);

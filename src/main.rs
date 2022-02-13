@@ -18,14 +18,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 mod ui;
 mod physics;
 mod conf;
+mod local_ch;
 use clap::{Parser};
 // Include the `items` module, which is generated from items.proto.
 pub mod tank_proto {
     include!(concat!(env!("OUT_DIR"), "/protobuffer.tank.rs"));
 }
 use macroquad::prelude::*;
-use physics::*;
-use std::sync::{mpsc};
+use physics::{PhysicsEngine};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -34,7 +34,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[clap(version = VERSION, author = "Oreste Bernardi <oreste@oreste.eu>")]
 pub struct Opts {
     /// How many tanks in this game
-    num_tanks: u8,
+    num_tanks: usize,
     /// Port used to register new tanks
     #[clap(short, long, default_value = "55230")]
     port: u16,
@@ -53,92 +53,15 @@ pub struct Opts {
 
 }
 
-struct UILocalSender {
-    tx_data : mpsc::Sender<(Vec<Tank>, Vec<Bullet>)>
-
-}
-
-impl GameStateSender for UILocalSender {
-    #[inline]
-    fn send(&self,state : (&Vec<Tank>, &Vec<Bullet>)) -> Result<(),ErrorUIComm> {
-        match self.tx_data
-        .send((
-            state.0.to_owned(),
-            state.1.to_owned(),
-        )) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(ErrorUIComm)
-
-        }
-    }
-}
-
-struct UILocalReceiver {
-    rx_data : mpsc::Receiver<(Vec<Tank>, Vec<Bullet>)>,
-
-}
-
-impl GameStateReceiver for UILocalReceiver {
-    #[inline]
-    fn receiver(&self) -> Option<(Vec<Tank>, Vec<Bullet>)>{
-        // Keep just last data in queue
-        self.rx_data.try_iter().last()
-    }
-}
-
-struct CommandLocalSender {
-    tx_data : mpsc::Sender<UICommand>
-
-}
-
-impl UICommandSender for CommandLocalSender {
-    #[inline]
-    fn send(&self,command : UICommand) -> Result<(),ErrorUIComm> {
-        match self.tx_data.send(command) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(ErrorUIComm)
-        }
-    }
-}
-
-struct CommandLocalReceiver {
-    rx_data : mpsc::Receiver<UICommand>,
-
-}
-impl UICommandReceiver for CommandLocalReceiver {
-    #[inline]
-    fn receive(&self) -> Option<UICommand> {
-        match self.rx_data.try_recv() {
-            Ok(a) => Some(a),
-            Err(_) => None
-        }
-    }
-}
-
-
-fn create_state_channels() -> (UILocalSender,UILocalReceiver) {
-    let (tx_data, rx_data) = mpsc::channel::<(Vec<Tank>, Vec<Bullet>)>();
-    let sender = UILocalSender {tx_data : tx_data};
-    let receiver = UILocalReceiver {rx_data : rx_data};
-    (sender,receiver)
-}
-
-
-fn create_command_channels() -> (CommandLocalSender,CommandLocalReceiver) {
-    let (tx_data, rx_data) = mpsc::channel::<UICommand>();
-    let sender = CommandLocalSender {tx_data : tx_data};
-    let receiver = CommandLocalReceiver {rx_data : rx_data};
-    (sender,receiver)
-}
 
 fn main() {
 
     let opts: Opts = Opts::parse();
-    let (tx_state, rx_state) = create_state_channels();
-    let (tx_ui_command,rx_ui_command) =  create_command_channels();
+    let (tx_state, rx_state) = local_ch::create_state_channels();
+    let (tx_ui_command,rx_ui_command) =  local_ch::create_command_channels();
     PhysicsEngine::new(&opts,Box::new(tx_state),Box::new(rx_ui_command));
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(opts.log_level.clone())).init();
-    ui::start_gui(opts,Box::new(rx_state),Box::new(tx_ui_command));
+    ui::start_gui(Box::new(rx_state),Box::new(tx_ui_command));
 
 }
