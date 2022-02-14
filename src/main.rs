@@ -19,6 +19,7 @@ mod ui;
 mod physics;
 mod conf;
 mod local_ch;
+mod remote_ch;
 use clap::{Parser};
 // Include the `items` module, which is generated from items.proto.
 pub mod tank_proto {

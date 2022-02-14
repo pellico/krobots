@@ -34,6 +34,7 @@ use std::f32::consts::PI;
 pub use rapier2d::na::{vector, Isometry2, Rotation2};
 pub use rapier2d::na::{Point2, Vector2};
 use std::time;
+use serde::{Serialize, Deserialize}; 
 
 
 
@@ -69,7 +70,7 @@ impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy,Serialize,Deserialize)]
 pub enum SimulationState {
     WaitingConnection,
     Running

@@ -1,6 +1,6 @@
 pub use super::tank::{Bullet, Tank};
 pub use super::{PhysicsEngine,SimulationState};
-
+use serde::{Serialize, Deserialize}; 
 #[derive(Debug, Clone)]
 pub struct ErrorUIComm;
 
@@ -12,7 +12,7 @@ impl std::fmt::Display for ErrorUIComm {
     }
 }
 
-#[derive(Default)]
+#[derive(Default,Serialize,Deserialize)]
 pub struct UIGameState {
     pub tanks: Vec<Tank>,
     pub bullets: Vec<Bullet>,
