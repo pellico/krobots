@@ -4,6 +4,10 @@ version = "0.1.3"
 edition = "2018"
 build = "build.rs"
 
+[features]
+# If enabled tcp is used instead of udp for tank client 
+server_tcp = [] 
+
 [[bin]]
 name = "ui_client"
 

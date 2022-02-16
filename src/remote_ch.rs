@@ -5,7 +5,7 @@ use message_io::node::{
     self, NodeHandler, NodeEvent, NodeTask, StoredNetEvent, StoredNodeEvent,
 };
 use std::net::SocketAddr;
-use std::thread;
+use std::{thread,time};
 use std::sync::mpsc;
 use std;
 use bincode;
@@ -32,13 +32,12 @@ impl UISender {
         let (handler, listener) = node::split::<UIGameState>();
         let handler_copy = handler.clone();
         match handler.network().listen(Transport::FramedTcp, (addr,port)) {
-            Ok((_id, real_addr)) => info!("Server running at {} by {}", real_addr, TRANSPORT),
+            Ok((_id, real_addr)) => info!("Waiting ui client connection at {} by {}", real_addr, TRANSPORT),
             Err(_) => {
                 error!("Can not listening at {} by {}", addr, TRANSPORT);
                 panic!("Not able to listen connection");
             }
         }
-
         thread::spawn(move || {
             let mut endpoint_stored:Option<Endpoint> = None;
             let mut state = UIGameState::default();
@@ -178,6 +177,10 @@ impl CommandReceiver {
         ctrlc::set_handler(move || {
             debug!("Received Ctrl-C quit application");
             tx_data.send(UICommand::QUIT).expect("Failed to send quit command");
+            //If not exiting in regular way just quit application
+            thread::sleep(time::Duration::from_secs(4));
+            error!("Failed to exit in regular way by generating game report. Forcing application exit");
+            std::process::exit(-1);
         }).expect("Error setting Ctrl-C handler");
 
         CommandReceiver{
