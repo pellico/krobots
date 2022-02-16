@@ -1,5 +1,5 @@
 use std::sync::{mpsc};
-use crate::physics::*;
+use ktanks_server::physics::*;
 pub struct UILocalSender {
     tx_data : mpsc::Sender<UIGameState>
 
@@ -7,7 +7,7 @@ pub struct UILocalSender {
 
 impl GameStateSender for UILocalSender {
     #[inline]
-    fn send(&self,state : &PhysicsEngine) -> Result<(),ErrorUIComm> {
+    fn send(&mut self,state : &PhysicsEngine) -> Result<(),ErrorUIComm> {
         let state_to_transfer = self.create_state(state);
         match self.tx_data
         .send(state_to_transfer) {
@@ -25,7 +25,7 @@ pub struct UILocalReceiver {
 
 impl GameStateReceiver for UILocalReceiver {
     #[inline]
-    fn receiver(&self) -> Option<UIGameState>{
+    fn receiver(&mut self) -> Option<UIGameState>{
         // Keep just last data in queue
         self.rx_data.try_iter().last()
     }

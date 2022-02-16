@@ -58,6 +58,28 @@
             "args": ["2"],
             "cwd": "${workspaceFolder}",
             "environment": [{ "name": "RUST_LOG", "value": "trace" }]
-        }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'ui_client'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=ui_client",
+                    "--package=ktanks_server"
+                ],
+                "filter": {
+                    "name": "ui_client",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "trace",
+                "RUST_BACKTRACE": "1",
+            }
+        },
     ]
 }

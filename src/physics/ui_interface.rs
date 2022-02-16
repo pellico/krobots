@@ -48,9 +48,9 @@ pub trait GameStateSender: Send {
             state: state.state
         }
     }
-    fn send(&self, state: &PhysicsEngine) -> Result<(), ErrorUIComm>;
+    fn send(&mut self, state: &PhysicsEngine) -> Result<(), ErrorUIComm>;
 }
 
 pub trait GameStateReceiver: Send {
-    fn receiver(&self) -> Option<UIGameState>;
+    fn receiver(&mut self) -> Option<UIGameState>;
 }

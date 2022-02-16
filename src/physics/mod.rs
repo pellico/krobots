@@ -20,6 +20,7 @@ mod util;
 mod ui_interface;
 mod networking;
 mod report;
+use crate::Opts;
 use networking::RobotServer;
 use std::thread::{spawn,JoinHandle};
 use self::tank::*;
@@ -104,7 +105,7 @@ pub struct PhysicsEngine {
 }
 
 impl PhysicsEngine {
-    pub fn new (opts: &crate::Opts,state_sender : Box<dyn GameStateSender>, command_receiver : Box<dyn UICommandReceiver>) -> JoinHandle<()> {
+    pub fn new (opts: &Opts,mut state_sender : Box<dyn GameStateSender>, command_receiver : Box<dyn UICommandReceiver>) -> JoinHandle<()> {
         let udp_port = opts.port;
         let simulation_rate = opts.sim_step_rate;
 
@@ -141,7 +142,7 @@ impl PhysicsEngine {
         let join_handle = spawn( move || {
             info!("Start waiting connections");
             let mut server = RobotServer::new(p_engine.debug_mode);
-            server.wait_connections(&mut p_engine, udp_port,&state_sender);
+            server.wait_connections(&mut p_engine, udp_port,&mut state_sender);
             info!("Starting simulation");
             p_engine.state = SimulationState::Running;
             for (tick,now) in ticktock::Clock::framerate(simulation_rate).iter() {

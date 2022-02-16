@@ -411,7 +411,7 @@ pub fn start_gui (rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn
 }
 
 
-async fn ui_main(rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn UICommandSender>) {
+async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn UICommandSender>) {
     let mut game_state : UIGameState= UIGameState::default();
     loop {
         // Wait for first message

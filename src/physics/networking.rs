@@ -45,7 +45,7 @@ impl RobotServer {
         &mut self,
         p_engine: &mut PhysicsEngine,
         udp_port: u16,
-        state_sender : &Box<dyn GameStateSender>
+        state_sender : & mut Box<dyn GameStateSender>
         
     ) {
         let mut dedicated_connection_port = udp_port;
