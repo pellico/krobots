@@ -27,7 +27,7 @@ class Tank:
     Class to interface with simulation server
     """ 
         
-    def __init__(self,name:str,server_ip : str,port:int) -> None:
+    def __init__(self,name:str,server_ip : str,port:int,use_tcp:bool=False) -> None:
         """Create a tank at the server and control it.
         
         :param name: Name of tank
@@ -37,14 +37,25 @@ class Tank:
         """
         self.server_register_port = port
         self.server_ip = server_ip
-        self.txSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        
         register_tank_command = RegisterTank()
         register_tank_command.name = name
         data = register_tank_command.SerializeToString()
-        self.txSocket.sendto(data,(self.server_ip,self.server_register_port))
-        answer, addr = self.txSocket.recvfrom(2048)
+
+        if use_tcp:
+            self.txSocket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+            self.txSocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            self.txSocket.connect((self.server_ip,self.server_register_port))
+            self.txSocket.settimeout(None)
+            self.txSocket.send(data)
+            answer, addr = self.txSocket.recvfrom(2048)
+        else:
+            self.txSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+            self.txSocket.sendto(data,(self.server_ip,self.server_register_port))
+            answer, addr = self.txSocket.recvfrom(2048)
+            self.txSocket.connect(addr)
+        
         self.port = addr[1]
-        self.txSocket.connect(addr)
         #: Configuration of simulator
         self.simulation_configuration : SimulationConfig  = SimulationConfig() 
         self.simulation_configuration.ParseFromString(answer)
@@ -60,6 +71,7 @@ class Tank:
         """
         command=Command()
         command.command=Command.CommandId.GET_STATUS
+        command.index = 0x12345 # This to avoid empty protobuf message. TCP cannot send empty messages.
         command.argument1 = 0.0
         command.argument2 = 0.0
         result =TankStatus()

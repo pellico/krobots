@@ -7,7 +7,7 @@
         
 
     {
-        "name": "(Windows) Launch",
+        "name": "(Windows) Launch vsdbg",
         "type": "cppvsdbg",
         "request": "launch",
         "program": "${workspaceFolder}/target/debug/ktanks_server.exe",
@@ -32,7 +32,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["2","-d"],
+            "args": ["2"],
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_LOG": "trace",

@@ -2,5 +2,8 @@
     "cSpell.words": [
         "angvel",
         "nalgebra"
-    ]
+    ],
+    "files.watcherExclude": {
+        "**/target/**": true
+    }
 }

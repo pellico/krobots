@@ -20,13 +20,14 @@ def angle_wrapping(angle:float) -> float :
 class Tank:
     def __init__(self,name):
         self.name = name
-        #ktanks.Tank.enable_debug()
-        self.comm = ktanks.Tank(name,"127.0.0.1",55230)
+        ktanks.Tank.enable_debug()
+        #self.comm = ktanks.Tank(name,"10.136.240.148",55230)
+        self.comm = ktanks.Tank(name,"127.0.0.1",55230,use_tcp=True)
         self.forward_power= 0.0
         self.target_angle = 0.0
         self.angimp_set = 0.0
         self.status = self.comm.get_status()
-    
+        print("Hello")
     def move_to_angle (self,angle,error):
         self.status = self.comm.get_status()
         self.target_angle = angle
