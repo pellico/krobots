@@ -108,7 +108,7 @@ impl PhysicsEngine {
     pub fn new (opts: &Opts,mut state_sender : Box<dyn GameStateSender>, command_receiver : Box<dyn UICommandReceiver>) -> JoinHandle<()> {
         let udp_port = opts.port;
         let simulation_rate = opts.sim_step_rate;
-
+        let use_tcp_tank_client = opts.tank_client_protocol == "tcp";
         let mut p_engine = PhysicsEngine {
             max_num_tanks : opts.num_tanks,
             max_ticks: opts.max_steps,
@@ -141,7 +141,7 @@ impl PhysicsEngine {
         //Create thread that perform physics simulation
         let join_handle = spawn( move || {
             info!("Start waiting connections");
-            let mut server = RobotServer::new(p_engine.debug_mode);
+            let mut server = RobotServer::new(p_engine.debug_mode,use_tcp_tank_client);
             server.wait_connections(&mut p_engine, udp_port,&mut state_sender);
             info!("Starting simulation");
             p_engine.state = SimulationState::Running;

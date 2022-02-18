@@ -23,15 +23,17 @@ impl ClientConnection for TankClientConnection {
     }
 }
 
-impl NetInterface<TankClientConnection> for ClientInterface {
-    fn new(port:u16,debug_mode:bool)->Self {
-        let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, port)).expect("Not able to open socket: {}");
-        ClientInterface {
-            listener : listener,
-            debug_mode : debug_mode
-        }
+pub (super) fn new(port:u16,debug_mode:bool)->ClientInterface {
+    let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, port)).expect("Not able to open socket: {}");
+    ClientInterface {
+        listener : listener,
+        debug_mode : debug_mode
     }
-    fn wait_new_tank(&mut self,buffer :&mut [u8]) -> (TankClientConnection,usize) {
+}
+
+impl NetInterface for ClientInterface {
+
+    fn wait_new_tank(&mut self,buffer :&mut [u8]) -> (Box<dyn ClientConnection>,usize) {
         let (mut stream,src)=self.listener.accept().expect("Error in while waiting for connection for simulator");
         debug!("Connection request form from {}", src);
         //stream.set_nonblocking(false).unwrap();
@@ -47,9 +49,9 @@ impl NetInterface<TankClientConnection> for ClientInterface {
             stream.set_nonblocking(true).unwrap();
         }
 
-        (TankClientConnection {
+        (Box::new(TankClientConnection {
             stream : stream,
-        },msg_size)
+        }),msg_size)
 
     }
 

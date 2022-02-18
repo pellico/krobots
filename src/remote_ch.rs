@@ -32,7 +32,7 @@ impl UISender {
         let (handler, listener) = node::split::<UIGameState>();
         let handler_copy = handler.clone();
         match handler.network().listen(Transport::FramedTcp, (addr,port)) {
-            Ok((_id, real_addr)) => info!("Waiting ui client connection at {} by {}", real_addr, TRANSPORT),
+            Ok((_id, real_addr)) => info!("Waiting ui client connection at {}", real_addr),
             Err(_) => {
                 error!("Can not listening at {} by {}", addr, TRANSPORT);
                 panic!("Not able to listen connection");
@@ -78,25 +78,25 @@ pub struct UIReceiver {
     handler: NodeHandler<()>,
     server_id: Endpoint,
     local_addr: SocketAddr,
-    remote_addr: String,
     receiver: EventReceiver<StoredNodeEvent<()>>,
+    remote_addr : String,
     _task: NodeTask, // Keep it to avoid drop of it.
 }
 
 impl UIReceiver {
-    pub fn new(remote_addr: &str) -> Self {
+    pub fn new(remote_ip:&str, remote_port:u16) -> Self {
         let (handler, listener) = node::split::<()>();
         let (task, receiver) = listener.enqueue();
         let (server_id, local_addr) = handler
             .network()
-            .connect(TRANSPORT, remote_addr.clone())
+            .connect(TRANSPORT, (remote_ip,remote_port))
             .unwrap();
         UIReceiver {
             handler: handler,
             server_id: server_id,
             local_addr: local_addr,
-            remote_addr: remote_addr.to_string(),
             receiver: receiver,
+            remote_addr : remote_ip.to_string(),
             _task: task,
         }
     }
@@ -123,8 +123,7 @@ impl GameStateReceiver for UIReceiver {
                             self.handler.network().send(endpoint,"start".as_bytes());
                         } else {
                             println!(
-                                "Can not connect to server at {} by {}",
-                                &self.remote_addr, TRANSPORT
+                                "Can not connect to server at {}",self.remote_addr
                             )
                         }
                     }

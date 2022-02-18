@@ -31,11 +31,14 @@ pub struct Opts {
     /// Simulation step x sec. This has no relation with ui frame rate.
     #[clap(long, default_value = "60.0")]
     pub (crate) sim_step_rate: f64,
-    /// Remote gui port.
+    /// Remote gui client port. Effective only if --no_gui is used.
     #[clap(long, default_value = "3042")]
     pub remote_gui_port: u16,
     /// Headless server When specified server will not show any ui but it expect a connection from ui_client
     #[clap(long)]
     pub no_gui: bool,
+    /// Tank client communication protocol. udp is faster but it has issue with NAT and firewall.
+    #[clap(long, default_value = "tcp",possible_values=["tcp","udp"])]
+    pub (crate) tank_client_protocol: String,
 
 }

@@ -25,19 +25,17 @@ use std::{io};
 use super::GameStateSender;
 mod udp;
 mod tcp;
-#[cfg(not(feature = "server_tcp"))]
-use udp::*;
-#[cfg(feature = "server_tcp")]
-use tcp::*;
+
 
 const BUFFER_SIZE: usize = 2048;
 pub struct ConnectedRobot {
-    connection: TankClientConnection,
+    connection: Box<dyn ClientConnection>,
     name: String,
 }
 pub struct RobotServer {
     connected_robots: Vec<ConnectedRobot>,
     debug_mode: bool,
+    tcp_connection:bool
 }
 
 trait ClientConnection {
@@ -45,16 +43,16 @@ trait ClientConnection {
     fn send(&mut self,buffer :&[u8]) -> io::Result<usize>;
 }
 
-trait NetInterface<T:ClientConnection> {
-    fn new(port:u16,debug_mode:bool)->Self;
-    fn wait_new_tank(&mut self,buffer :&mut [u8]) -> (T,usize);
+trait NetInterface {
+    fn wait_new_tank(&mut self,buffer :&mut [u8]) -> (Box<dyn ClientConnection>,usize);
 }
 
 impl RobotServer {
-    pub fn new(debug_mode:bool) -> RobotServer {
+    pub fn new(debug_mode:bool,tcp_connection:bool) -> RobotServer {
         RobotServer {
             connected_robots: Vec::new(),
-            debug_mode : debug_mode
+            debug_mode : debug_mode,
+            tcp_connection : tcp_connection
         }
     }
     pub fn wait_connections(
@@ -65,7 +63,11 @@ impl RobotServer {
         
     ) {
         info!("Waiting connections on port {}", udp_port);
-        let mut client_interface = ClientInterface::new(udp_port,self.debug_mode);
+        let mut client_interface : Box<dyn NetInterface> = if self.tcp_connection {
+            Box::new(tcp::new(udp_port,self.debug_mode))
+        } else {
+            Box::new(udp::new(udp_port,self.debug_mode))
+        };
     
         let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
         let mut names = Vec::<String>::new();

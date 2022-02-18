@@ -369,7 +369,7 @@ div.code-block-caption {
 depends on simulation speed.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="ktanks.Tank">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.</span></span><span class="sig-name descname"><span class="pre">Tank</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">server_ip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ktanks.Tank" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ktanks.</span></span><span class="sig-name descname"><span class="pre">Tank</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">server_ip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_tcp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ktanks.Tank" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a tank at the server and control it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -377,6 +377,7 @@ depends on simulation speed.</p>
 <li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Name of tank</p></li>
 <li><p><strong>server_ip</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – IP of simulation server</p></li>
 <li><p><strong>port</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>) – Port of simulation server</p></li>
+<li><p><strong>use_tcp</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>) – If false UDP protocol is used instead of TCP. It shall metch server setting</p></li>
 </ul>
 </dd>
 </dl>

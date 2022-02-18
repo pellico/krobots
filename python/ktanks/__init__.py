@@ -27,12 +27,13 @@ class Tank:
     Class to interface with simulation server
     """ 
         
-    def __init__(self,name:str,server_ip : str,port:int,use_tcp:bool=False) -> None:
+    def __init__(self,name:str,server_ip : str,port:int,use_tcp:bool=True) -> None:
         """Create a tank at the server and control it.
         
         :param name: Name of tank
         :param server_ip: IP of simulation server
         :param port: Port of simulation server
+        :param use_tcp: If false UDP protocol is used instead of TCP. It shall metch server setting
         
         """
         self.server_register_port = port

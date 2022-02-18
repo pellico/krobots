@@ -23,18 +23,18 @@ impl ClientConnection for TankClientConnection {
     }
 }
 
-
-
-impl NetInterface<TankClientConnection> for ClientInterface {
-    fn new(port:u16,debug_mode:bool)->Self {
-        let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port)).expect("Not able to open socket: {}");
-        ClientInterface {
-            socket : socket,
-            connection_port_counter : port,
-            debug_mode : debug_mode
-        }
+pub (super) fn new(port:u16,debug_mode:bool)->ClientInterface {
+    let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port)).expect("Not able to open socket: {}");
+    ClientInterface {
+        socket : socket,
+        connection_port_counter : port,
+        debug_mode : debug_mode
     }
-    fn wait_new_tank(&mut self,buffer :&mut [u8]) -> (TankClientConnection,usize) {
+}
+
+impl NetInterface for ClientInterface {
+
+    fn wait_new_tank(&mut self,buffer :&mut [u8]) -> (Box<dyn ClientConnection>,usize) {
         let (amt, src) = self.socket.recv_from(buffer).expect("Not received data");
         debug!("Connection request form from {}", src);
         //Create connection and store connection data
@@ -52,9 +52,9 @@ impl NetInterface<TankClientConnection> for ClientInterface {
             dedicated_socket.set_nonblocking(true).unwrap();
         }
 
-        (TankClientConnection {
+        (Box::new(TankClientConnection {
             socket : dedicated_socket,
-        },amt)
+        }),amt)
 
     }
 
