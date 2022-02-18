@@ -19,7 +19,7 @@ import ktanks
 
 project = 'ktanks'
 copyright = '2021, Oreste Bernardi'
-author = 'Oreste Bernardi'
+author = ''
 
 
 # -- General configuration ---------------------------------------------------
@@ -57,3 +57,5 @@ html_theme_options = {
     "headlinkcolor" : "#ffffff" 
 }
 autoclass_content = 'init'
+
+rinoh_documents = [{"doc":"index","target" : 'ktanks'}]

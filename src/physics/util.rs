@@ -26,11 +26,6 @@ pub fn get_velocity_at_point(x: f32, y: f32, rigid_body: &RigidBody) -> Vector<R
 }
 
 /// Wrap angle in range ]-PI,PI]
-///
-/// ```
-/// let result = angle_wrapping(PI);
-/// assert_eq!(result, -PI);
-/// ```
 pub fn angle_wrapping(angle: f32) -> f32 {
     let mut angle_res = angle;
     loop {
@@ -49,9 +44,8 @@ pub fn angle_wrapping(angle: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn test_add() {
+    fn test_angle_wrapping() {
         let mut result = angle_wrapping(PI);
         assert_eq!(result, PI);
         result = angle_wrapping(-PI);

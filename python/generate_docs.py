@@ -1,4 +1,5 @@
 import os
+os.system("make.bat rinoh")
 os.system("make.bat singlehtml")
 os.chdir('build/singlehtml')
 
@@ -12,5 +13,7 @@ for s in stylesheets:
     t['type'] = 'text/css'
     s.replaceWith(t)
 open("../../../docs/index.html", "w").write(str(soup))
+
+
 
 
