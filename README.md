@@ -20,6 +20,8 @@ At the center of simulated world there is power source that charges  tanks but i
 
 ## Command line options to launch simulation server
 ```cmd
+Run krobots server
+
 USAGE:
     ktanks_server.exe [OPTIONS] <NUM_TANKS>
 
@@ -39,11 +41,22 @@ OPTIONS:
     -m, --max-steps <MAX_STEPS>
             Max number of simulation step. If 0 no end until only one survived [default: 0]
 
+        --no-gui
+            Headless server When specified server will not show any ui but it expect a connection
+            from ui_client
+
     -p, --port <PORT>
             Port used to register new tanks [default: 55230]
 
+        --remote-gui-port <REMOTE_GUI_PORT>
+            Remote gui client port. Effective only if --no_gui is used [default: 3042]
+
         --sim-step-rate <SIM_STEP_RATE>
             Simulation step x sec. This has no relation with ui frame rate [default: 60.0]
+
+        --tank-client-protocol <TANK_CLIENT_PROTOCOL>
+            Tank client communication protocol. udp is faster but it has issue with NAT and firewall
+            [default: tcp] [possible values: tcp, udp]
 
     -V, --version
             Print version information
@@ -161,6 +174,33 @@ Also client library that communicate with the server shall be configured for deb
 Tank.enable_debug()
 ```
 This avoid to get communication timeout exception because server is blocked waiting for client command.
+
+# Headless mode and remote ui
+
+It is possible to run server in headless mode
+```bash
+ktanks_server.exe --no-gui 10
+```
+When server run in this mode it is possible to use `ui_client.exe` to connect to the server and show tank position.
+```bash
+ui_client.exe 127.0.0.1
+```
+
+## ui_client command line
+```bash
+USAGE:
+    ui_client.exe [OPTIONS] [ARGS]
+
+ARGS:
+    <IP>      ipv4 address [default: 127.0.0.1]
+    <PORT>    [default: 3042]
+
+OPTIONS:
+    -h, --help                     Print help information
+    -l, --log-level <LOG_LEVEL>    [default: info] [possible values: error, warn, info, debug,
+                                   trace]
+    -V, --version                  Print version information
+```
 
 
 # Credits
