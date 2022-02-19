@@ -30,9 +30,10 @@ csv = "1.1.6"
 # To control physics simulation time frame
 ticktock = "0.8.0" 
 serde = "1.0.135"
-message-io = "*"
+message-io = {version = "0.14.3",default-features = false, features = ["tcp", "udp"]} 
 bincode = "*"
 ctrlc = "3.2.1"
+human-panic = "1.0.3"
 
 
 [dependencies.nalgebra]
@@ -47,3 +48,10 @@ opt-level = 3
 
 [profile.dev.package.macroquad]
 opt-level = 3
+
+# Local version with patch to fix ICON issue in release mode.
+# see https://github.com/not-fl3/miniquad/pull/265/commits/726c20df575165b063dcd4e3d57b1024e0c3b3c0
+# and https://github.com/not-fl3/miniquad/issues/264
+# :TODO: remove it when bug will be fixed.
+[patch.crates-io]
+miniquad = { path = "miniquad-0.3.0-alpha.42_patch" }

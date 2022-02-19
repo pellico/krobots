@@ -21,11 +21,11 @@ use ktanks_server::ui;
 use ktanks_server::physics::{PhysicsEngine};
 use ktanks_server::Opts;
 use ktanks_server::remote_ch;
-
+use human_panic::setup_panic;
 
 
 fn main() {
-
+    setup_panic!();
     let opts: Opts = crate::Opts::parse();
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(opts.log_level.clone())).init();
     if opts.no_gui     {

@@ -1,6 +1,8 @@
 use clap::{Parser};
 use ktanks_server::remote_ch::*;
 use ktanks_server::ui;
+use human_panic::setup_panic;
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Run krobots ui client
@@ -20,7 +22,7 @@ pub struct Opts {
 
 
 fn main() {
-
+    setup_panic!();
     let opts: Opts = crate::Opts::parse();
     let rx_state = UIReceiver::new(&opts.ip,opts.port);
     let tx_ui_command=CommandSender;

@@ -27,7 +27,6 @@ use miniquad::conf::Icon;
 use macroquad_particles::{AtlasConfig, BlendMode, Emitter, EmitterConfig};
 use macroquad_profiler;
 use nalgebra;
-use std::{path};
 
 
 
@@ -54,6 +53,13 @@ struct GameUI {
     selected_tank: usize,
 }
 
+const BULLET_IMAGE : &[u8] = std::include_bytes!("icons\\bullet_64x64.data");
+const TANK_BODY_IMAGE : &[u8] = std::include_bytes!("icons\\body_36x38.data");
+const TURRET_IMAGE : &[u8] = std::include_bytes!("icons\\turret_20x54.data");
+const RADAR_IMAGE : &[u8] = std::include_bytes!("icons\\radar_22x16.data");
+const SMOKE_FIRE_IMAGE : &[u8] = std::include_bytes!("icons\\smoke_fire_64x64.data");
+
+/* No longer use. Keep here for future use
 async fn texture_load(path :&str) -> Texture2D {
     let mut executable_path = std::env::current_exe().expect("Unable to get executable path");
     executable_path.pop();
@@ -62,13 +68,14 @@ async fn texture_load(path :&str) -> Texture2D {
     load_texture(string_path).await.expect(&format!("Unable to load texture: {}",path))
 
 }
+*/
 
 impl GameUI {
     async fn initialize(&mut self, p_tanks: &Vec<Tank>) {
         for index in 0..p_tanks.len() {
-            let texture_body: Texture2D = texture_load("body.png").await;
-            let texture_turret: Texture2D = texture_load("turret.png").await;
-            let texture_radar: Texture2D = texture_load("radar.png").await;
+            let texture_body: Texture2D = Texture2D::from_rgba8(36, 38,TANK_BODY_IMAGE);
+            let texture_turret: Texture2D = Texture2D::from_rgba8(20, 54,TURRET_IMAGE);
+            let texture_radar: Texture2D = Texture2D::from_rgba8(22, 16,RADAR_IMAGE);
             self.tanks.push(GTank {
                 texture_body: texture_body,
                 texture_turret: texture_turret,
@@ -399,14 +406,14 @@ fn print_centered(text: &str, x: f32, y: f32, font_size: f32, color: Color) {
 const ICON : Icon = Icon {
     small : *std::include_bytes!("icons\\tank_icox16.data"),
     medium : *std::include_bytes!("icons\\tank_icox32.data"),
-    big :*std::include_bytes!("icons\\tank_icox64.data")
+    big : *std::include_bytes!("icons\\tank_icox64.data")
 
 };
 pub fn start_gui (rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn UICommandSender> ) {    
     // Bypass the macro. Not supported by macroquad
     // see macroquad macro main source code.
     let conf =  Conf {
-        window_title: "ETank".to_owned(),
+        window_title: "KTanks".to_owned(),
         window_width: 1024,
         window_height: 768,
         icon : Some(ICON),
@@ -416,7 +423,6 @@ pub fn start_gui (rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn
     macroquad::Window::from_config(conf, ui_main(rx_state,tx_ui_command));
     
 }
-
 
 async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn UICommandSender>) {
     let mut game_state : UIGameState= UIGameState::default();
@@ -458,8 +464,8 @@ async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn 
             ..Default::default()
         },
         zoom: DEFAULT_CAMERA_ZOOM,
-        bullet_texture: texture_load("bullet.png").await,
-        hit_texture: texture_load("smoke_fire.png").await,
+        bullet_texture: Texture2D::from_rgba8(64, 64, BULLET_IMAGE),
+        hit_texture: Texture2D::from_rgba8(64, 64, SMOKE_FIRE_IMAGE),
         show_stats: false,
         selected_tank : 0,
     };
