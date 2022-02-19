@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 use crate::conf::*;
 use crate::physics::*;
-use log::{debug};
+
 use macroquad::prelude::*;
 use macroquad::ui::{
     hash, root_ui,
@@ -27,7 +27,7 @@ use miniquad::conf::Icon;
 use macroquad_particles::{AtlasConfig, BlendMode, Emitter, EmitterConfig};
 use macroquad_profiler;
 use nalgebra;
-
+use log::{debug,info};
 
 
 struct GTank {
