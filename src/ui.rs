@@ -23,6 +23,7 @@ use macroquad::ui::{
     hash, root_ui,
     widgets::{self},
 };
+use miniquad::conf::Icon;
 use macroquad_particles::{AtlasConfig, BlendMode, Emitter, EmitterConfig};
 use macroquad_profiler;
 use nalgebra;
@@ -395,7 +396,12 @@ fn print_centered(text: &str, x: f32, y: f32, font_size: f32, color: Color) {
     );
 }
 
+const ICON : Icon = Icon {
+    small : *std::include_bytes!("icons\\tank_icox16.data"),
+    medium : *std::include_bytes!("icons\\tank_icox32.data"),
+    big :*std::include_bytes!("icons\\tank_icox64.data")
 
+};
 pub fn start_gui (rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn UICommandSender> ) {    
     // Bypass the macro. Not supported by macroquad
     // see macroquad macro main source code.
@@ -403,6 +409,7 @@ pub fn start_gui (rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn
         window_title: "ETank".to_owned(),
         window_width: 1024,
         window_height: 768,
+        icon : Some(ICON),
         //fullscreen: true,
         ..Default::default()
     };

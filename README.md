@@ -10,7 +10,7 @@ At the center of simulated world there is power source that charges  tanks but i
 ## Features
 * Tank software can be written in any language thanks to client-server architecture.
 * Graphical UI for easier debugging.
-* Server-client communication based on **UDP** packet
+* Server-client communication based on **TCP** stream or **UDP** packet
 
 ## Getting started
 
@@ -128,7 +128,7 @@ Angle are always in radians in the range of ]-PI,PI].
 ## Tank dynamics
 
 Tank body can rotate, move forward and backward.
-Developer can set the fraction [-1.0,1.0] of maximum power allowed to move forward (positive value) and backward (negative value). Also for rotating the tank developer can set a fraction of maximum allowed power to rotate counterclockwise (positive value) or clockwise (negative value). See server interface library for more details. 
+Developer can set the fraction [-1.0,1.0] of maximum power allowed to move forward (positive value) and backward (negative value). Also to rotate the tank, developer can set a fraction of maximum allowed power to rotate counterclockwise (positive value) or clockwise (negative value). See server interface library for more details. 
 
 Tank body has a mass so an inertia this means that setting power to 0.0 doesn't stop immediately the tank. 
 Due to the fact user set power, acceleration decrease with speed for a fixed power settings.
