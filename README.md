@@ -168,12 +168,6 @@ Presently only a python library is provided to communicate with server.
 Game server doesn't wait for command from tanks client but this doesn't allow to use breakpoint and stop client program to inspect variables and execute step by step client code.
 
 In order to overcome this limitation it his possible to run game server in debug mode by using option `--debug-mode`. When server runs in this mode, it wait for command from client.
-Also client library that communicate with the server shall be configured for debug mode.
-```python
-# For python library use below function before creating an instance of Tank
-Tank.enable_debug()
-```
-This avoid to get communication timeout exception because server is blocked waiting for client command.
 
 # Headless mode and remote ui
 
