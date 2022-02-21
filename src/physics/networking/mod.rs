@@ -94,7 +94,7 @@ impl RobotServer {
             names.push(tank_id.name.clone());
       
             //Send answer
-            let answer = Self::get_register_tank_answer();
+            let answer = self.get_register_tank_answer();
             let mut transmit_buff = Vec::new();
             answer
                 .encode(&mut transmit_buff)
@@ -122,7 +122,7 @@ impl RobotServer {
         
     }
 
-    fn get_register_tank_answer() -> SimulationConfig {
+    fn get_register_tank_answer(&self) -> SimulationConfig {
         let mut answer = SimulationConfig::default();
         answer.tank_energy_max = conf::TANK_ENERGY_MAX;
         answer.damage_max = conf::DAMAGE_MAX;
@@ -134,6 +134,7 @@ impl RobotServer {
         answer.bullet_speed = conf::BULLET_SPEED;
         answer.max_forward_power = conf::TANK_ENGINE_POWER_MAX;
         answer.max_turning_power = conf::TURNING_POWER_MAX;
+        answer.debug_mode = self.debug_mode;
         answer
     }
 

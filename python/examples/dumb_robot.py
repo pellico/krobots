@@ -26,7 +26,7 @@ def main_loop(name,ip,port):
     status = tank.get_status()
     forward_power = 0.9   # Initial tank body forward movement power
     tank.set_engine_power(forward_power,0.0)
-     # Angle of power source from tank position in world coordinates. (not referred to tank direction)
+    # Angle of power source from tank position in world coordinates. (not referred to tank direction)
     target_angle = status.power_source.p
     # Distance of power source from tank position
     last_power_distance = tank.get_status().power_source.r

@@ -108,4 +108,5 @@ message SimulationConfig {
     float bullet_speed = 8;
     float max_forward_power = 9;
     float max_turning_power = 10;
+    bool  debug_mode = 11; // When true all client shall run in debug mode. --> Wait forever for answer from server.
 }

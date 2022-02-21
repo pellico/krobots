@@ -11,7 +11,7 @@
         "type": "cppvsdbg",
         "request": "launch",
         "program": "${workspaceFolder}/target/debug/ktanks_server.exe",
-        "args": ["2"],
+        "args": ["2","-d"],
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}",
         "environment": [{ "name": "RUST_LOG", "value": "trace" }],

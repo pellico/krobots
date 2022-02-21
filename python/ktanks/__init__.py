@@ -65,6 +65,18 @@ class Tank:
         # Set timeout in order to allow python script kill by 
         # keyboard interrupt
         self.txSocket.settimeout(2)
+        self._command_receive : Callable[[Command,TResult], Any]
+        if self.simulation_configuration.debug_mode:
+            #Enable debug mode. Client debug mode is compatible with any running mode
+            #of game server.
+            self._command_receive=self._command_receive_debug
+        else:
+            #Disable debug. If game server is running debug mode and some
+            #client are stopped, client can fail with timeout 
+            self._command_receive=self._command_receive_release
+            
+        
+            
 
     def get_status(self)->TankStatus:
         """Get tank status
@@ -158,25 +170,5 @@ class Tank:
                 continue
             expected_answer.ParseFromString(answer)
             break
-        
-    
-    _command_receive : Callable[[TTank, Command,TResult], Any] =_command_receive_release
-    
-    @classmethod
-    def enable_debug(cls):
-        """
-        Enable debug mode. Client debug mode is compatible with any running mode
-        of game server.
-        
-        """
-        cls._command_receive=cls._command_receive_debug
-    
-    @classmethod
-    def disable_debug(cls):
-        """
-        Disable debug. If game server is running debug mode and some
-        client are stopped, client can fail with timeout 
-        """
-        cls._command_receive=cls._command_receive_release
         
         

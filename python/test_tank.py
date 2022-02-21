@@ -20,9 +20,8 @@ def angle_wrapping(angle:float) -> float :
 class Tank:
     def __init__(self,name):
         self.name = name
-        ktanks.Tank.enable_debug()
         #self.comm = ktanks.Tank(name,"10.136.240.148",55230,use_tcp=True)
-        self.comm = ktanks.Tank(name,"127.0.0.1",55230,use_tcp=False)
+        self.comm = ktanks.Tank(name,"127.0.0.1",55230)
         self.forward_power= 0.0
         self.target_angle = 0.0
         self.angimp_set = 0.0
@@ -98,7 +97,7 @@ def run_my_robot(name):
 
             
 if __name__ == '__main__':
-    for tank_id in range(0,10):
+    for tank_id in range(0,2):
         name = 'oreste_%d' % (tank_id)
         t2 = Process(name=name,target=run_my_robot, args=(name,))
         t2.start()
