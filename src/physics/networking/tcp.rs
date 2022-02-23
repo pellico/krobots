@@ -24,7 +24,13 @@ impl ClientConnection for TankClientConnection {
 }
 
 pub (super) fn new(port:u16,debug_mode:bool)->ClientInterface {
-    let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, port)).expect("Not able to open socket: {}");
+    let listener = match TcpListener::bind((Ipv4Addr::UNSPECIFIED, port)) {
+        Ok(listener) => listener,
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::AddrInUse => {error!("Port {} in use try another one",port);std::process::exit(-1);},
+            _ => panic!("{}",e),
+        },
+    };
     ClientInterface {
         listener : listener,
         debug_mode : debug_mode

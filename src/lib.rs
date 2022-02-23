@@ -42,3 +42,31 @@ pub struct Opts {
     pub (crate) tank_client_protocol: String,
 
 }
+
+
+pub fn enable_human_panic(){ 
+    #[allow(unused_imports)]
+    use std::panic::{self, PanicInfo};
+    #[allow(unused_imports)]
+    use human_panic::{handle_dump, print_msg, Metadata};
+
+    #[cfg(not(debug_assertions))]
+    match ::std::env::var("RUST_BACKTRACE") {
+      Err(_) => {
+        let meta = Metadata {
+          version: env!("CARGO_PKG_VERSION").into(),
+          name: env!("CARGO_PKG_NAME").into(),
+          authors: env!("CARGO_PKG_AUTHORS").replace(":", ", ").into(),
+          homepage: env!("CARGO_PKG_HOMEPAGE").into(),
+        };
+
+        panic::set_hook(Box::new(move |info: &PanicInfo| {
+          let file_path = handle_dump(&meta, info);
+          print_msg(file_path, &meta)
+            .expect("human-panic: printing error message to console failed");
+          std::process::exit(-1);
+        }));
+      }
+      Ok(_) => {}
+    }
+  }
