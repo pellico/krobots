@@ -15,7 +15,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-use macroquad::color::{*};
 
 pub const TANK_WIDTH_M:f32 = 7.0;
 pub const TANK_DEPTH_M:f32 = 3.0;
@@ -45,8 +44,6 @@ pub const POWER_ENERGY_SOURCE_STEP : f32 = TANK_ENERGY_MAX / 60.0 / 60.0;
 /// When tank distance from center is >= ZERO_POWER_LIMIT no charging is possible.
 /// When tank distance from center is < ZERO_POWER_LIMIT charging power is POWER_ENERGY_SOURCE_STEP *(1-distance/ZERO_POWER_LIMIT)
 pub const ZERO_POWER_LIMIT : f32 = 400.0;
-pub const TANK_COLORS : [Color;11] =[BLUE,GREEN,YELLOW,MAGENTA,VIOLET,PURPLE,LIME,BROWN,ORANGE,DARKBLUE,DARKGREEN];
-pub const DEFAULT_CAMERA_ZOOM : f32 = 0.00007848368;
 /// Minimum temperature of cannon.
 pub const CANNON_MIN_TEMP : f32 = 20.0;
 /// Max temperature of cannon. When cannon temperature is higher than this value

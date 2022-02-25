@@ -71,7 +71,7 @@ impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
     }
 }
 
-#[derive(Clone, Copy,Serialize,Deserialize)]
+#[derive(Clone, Copy,Serialize,Deserialize,Debug)]
 pub enum SimulationState {
     WaitingConnection,
     Running
@@ -254,6 +254,7 @@ impl PhysicsEngine {
             radar_position: 0.0,
             radar_width: RADAR_WIDTH_MAX,
             detected_tank: Vec::new(),
+            radar_range : RADAR_MAX_DETECTION_DISTANCE
            
         };
         self.tanks.push(tank);

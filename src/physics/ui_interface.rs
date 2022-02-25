@@ -3,6 +3,7 @@ pub use super::{PhysicsEngine,SimulationState};
 use serde::{Serialize, Deserialize}; 
 #[derive(Debug, Clone)]
 pub struct ErrorUIComm;
+use super::super::conf;
 
 impl std::error::Error for ErrorUIComm {}
 
@@ -20,7 +21,9 @@ pub struct UIGameState {
     pub tick: u32,
     pub max_ticks:u32,
     pub debug_mode : bool,
-    pub state: SimulationState
+    pub state: SimulationState,
+    pub zero_power_limit : f32,
+
 }
 
 pub enum UICommand {
@@ -45,7 +48,9 @@ pub trait GameStateSender: Send {
             tick : state.tick,
             max_ticks : state.max_ticks,
             debug_mode : state.debug_mode,
-            state: state.state
+            state: state.state,
+            zero_power_limit : conf::ZERO_POWER_LIMIT,
+
         }
     }
     fn send(&mut self, state: &PhysicsEngine) -> Result<(), ErrorUIComm>;

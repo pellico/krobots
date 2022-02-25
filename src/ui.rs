@@ -15,7 +15,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-use crate::conf::*;
 use crate::physics::*;
 
 use macroquad::prelude::*;
@@ -29,6 +28,8 @@ use macroquad_profiler;
 use nalgebra;
 use log::{debug,info};
 
+pub const TANK_COLORS : [Color;11] =[BLUE,GREEN,YELLOW,MAGENTA,VIOLET,PURPLE,LIME,BROWN,ORANGE,DARKBLUE,DARKGREEN];
+pub const DEFAULT_CAMERA_ZOOM : f32 = 0.00007848368;
 
 struct GTank {
     texture_body: Texture2D,
@@ -71,7 +72,8 @@ async fn texture_load(path :&str) -> Texture2D {
 */
 
 impl GameUI {
-    async fn initialize(&mut self, p_tanks: &Vec<Tank>) {
+    async fn initialize(&mut self, game_state: &UIGameState) {
+        let p_tanks = &game_state.tanks;
         for index in 0..p_tanks.len() {
             let texture_body: Texture2D = Texture2D::from_rgba8(36, 38,TANK_BODY_IMAGE);
             let texture_turret: Texture2D = Texture2D::from_rgba8(20, 54,TURRET_IMAGE);
@@ -110,6 +112,7 @@ impl GameUI {
                     blend_mode: BlendMode::Additive,
                     ..Default::default()
                 }),
+
             });
         }
     }
@@ -373,7 +376,7 @@ impl GTank {
         //:TODO: optimize speed . use glam
         let v1 = p_tank.position.translation.vector * scaling_factor;
         let (min_angle, max_angle) = p_tank.min_max_radar_angle();
-        let scaled_distance = RADAR_MAX_DETECTION_DISTANCE * scaling_factor;
+        let scaled_distance = p_tank.radar_range() * scaling_factor;
         let v2 = (nalgebra::Isometry2::rotation(min_angle)
             * nalgebra::vector![scaled_distance, 0.0])
             + v1;
@@ -469,7 +472,7 @@ async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn 
         show_stats: false,
         selected_tank : 0,
     };
-    game_ui.initialize(&game_state.tanks).await;
+    game_ui.initialize(&game_state).await;
 
     /*
     Used to track when received an update in order to avoid too many message
@@ -489,7 +492,7 @@ async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn 
         let scaling_factor: f32 = scaling_factor();
         game_ui.process_keyboard_input(&game_state.tanks, scaling_factor,&tx_ui_command);
         //Draw background
-        draw_circle_lines(0.0, 0.0, ZERO_POWER_LIMIT * scaling_factor, 3.0, RED);
+        draw_circle_lines(0.0, 0.0, game_state.zero_power_limit * scaling_factor, 3.0, RED);
         game_ui.draw_tanks(&game_state.tanks, scaling_factor);
         game_ui.draw_bullets(&game_state.bullets, scaling_factor);
         game_ui.robot_data_ui(&game_state.tanks);

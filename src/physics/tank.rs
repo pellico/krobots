@@ -45,12 +45,18 @@ pub struct Tank {
     pub radar_position: f32,
     pub radar_width: f32,
     pub detected_tank: Vec<Tank>,
+    pub (super) radar_range : f32,
 }
 
 impl Tank {
     #[inline]
     pub fn linear_velocity(&self) -> Real {
         self.linvel.norm()
+    }
+
+    #[inline]
+    pub fn radar_range(&self) -> f32{
+        self.radar_range()
     }
 
    
