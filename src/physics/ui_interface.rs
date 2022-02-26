@@ -3,7 +3,6 @@ pub use super::{PhysicsEngine,SimulationState};
 use serde::{Serialize, Deserialize}; 
 #[derive(Debug, Clone)]
 pub struct ErrorUIComm;
-use super::super::conf;
 
 impl std::error::Error for ErrorUIComm {}
 
@@ -49,7 +48,7 @@ pub trait GameStateSender: Send {
             max_ticks : state.max_ticks,
             debug_mode : state.debug_mode,
             state: state.state,
-            zero_power_limit : conf::ZERO_POWER_LIMIT,
+            zero_power_limit : state.conf.zero_power_limit,
 
         }
     }

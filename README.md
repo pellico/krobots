@@ -29,6 +29,9 @@ ARGS:
     <NUM_TANKS>    How many tanks in this game
 
 OPTIONS:
+        --configuration-file <CONFIGURATION_FILE>
+            Tank client communication protocol. udp is faster but it has issue with NAT and firewall
+
     -d, --debug-mode
             Simulator stop waiting for command from tank client
 

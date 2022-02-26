@@ -15,7 +15,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-use crate::conf;
 use crate::physics::{PhysicsEngine,Vector2,Real,Isometry2,Rotation2};
 use crate::tank_proto::*;
 use log::{debug, error, info};
@@ -72,7 +71,7 @@ impl RobotServer {
         let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
         let mut names = Vec::<String>::new();
         //Position of first tank. Other tank positions are computed by rotating it.
-        let position_vector = Vector2::new(conf::START_DISTANCE, 0.0);
+        let position_vector = Vector2::new(p_engine.conf.start_distance, 0.0);
         for tank_index in 0..p_engine.max_num_tanks {
             let (mut client_connection,amt)=client_interface.wait_new_tank(&mut buffer);
             let tank_id = match RegisterTank::decode(&buffer[..amt]) {
@@ -94,7 +93,7 @@ impl RobotServer {
             names.push(tank_id.name.clone());
       
             //Send answer
-            let answer = self.get_register_tank_answer();
+            let answer = self.get_register_tank_answer(p_engine);
             let mut transmit_buff = Vec::new();
             answer
                 .encode(&mut transmit_buff)
@@ -122,18 +121,18 @@ impl RobotServer {
         
     }
 
-    fn get_register_tank_answer(&self) -> SimulationConfig {
+    fn get_register_tank_answer(&self,p_engine:&PhysicsEngine) -> SimulationConfig {
         let mut answer = SimulationConfig::default();
-        answer.tank_energy_max = conf::TANK_ENERGY_MAX;
-        answer.damage_max = conf::DAMAGE_MAX;
-        answer.bullet_max_range = conf::BULLET_MAX_RANGE;
-        answer.zero_power_limit = conf::ZERO_POWER_LIMIT;
-        answer.radar_angle_increment_max = conf::RADAR_ANGLE_INCREMENT_MAX;
-        answer.radar_width_max = conf::RADAR_WIDTH_MAX;
-        answer.radar_max_detection_range = conf::RADAR_MAX_DETECTION_DISTANCE;
-        answer.bullet_speed = conf::BULLET_SPEED;
-        answer.max_forward_power = conf::TANK_ENGINE_POWER_MAX;
-        answer.max_turning_power = conf::TURNING_POWER_MAX;
+        answer.tank_energy_max = p_engine.conf.tank_energy_max;
+        answer.damage_max =  p_engine.conf.damage_max;
+        answer.bullet_max_range =  p_engine.conf.bullet_max_range;
+        answer.zero_power_limit = p_engine.conf.zero_power_limit;
+        answer.radar_angle_increment_max =  p_engine.conf.radar_angle_increment_max;
+        answer.radar_width_max = p_engine.conf.radar_width_max;
+        answer.radar_max_detection_range =  p_engine.conf.radar_max_detection_distance;
+        answer.bullet_speed =  p_engine.conf.bullet_speed;
+        answer.max_forward_power =  p_engine.conf.tank_engine_power_max;
+        answer.max_turning_power =  p_engine.conf.turning_power_max;
         answer.debug_mode = self.debug_mode;
         answer
     }

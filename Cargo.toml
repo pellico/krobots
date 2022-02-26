@@ -34,7 +34,7 @@ message-io = {version = "0.14.3",default-features = false, features = ["tcp", "u
 bincode = "*"
 ctrlc = "3.2.1"
 human-panic = "1.0.3"
-
+confy = "0.4.0"
 
 [dependencies.nalgebra]
 version = " 0.29.0"

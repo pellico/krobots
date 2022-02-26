@@ -23,7 +23,6 @@ mod report;
 use crate::Opts;
 use networking::RobotServer;
 use std::thread::{spawn,JoinHandle};
-use self::tank::*;
 pub use self::tank::{Tank,Bullet};
 pub use self::ui_interface::*;
 use self::util::*;
@@ -100,12 +99,13 @@ pub struct PhysicsEngine {
     event_handler: (),
     gravity_vector: Vector2<Real>,
     debug_mode: bool,
-    state: SimulationState
+    state: SimulationState,
+    conf : Conf
 
 }
 
 impl PhysicsEngine {
-    pub fn new (opts: &Opts,mut state_sender : Box<dyn GameStateSender>, command_receiver : Box<dyn UICommandReceiver>) -> JoinHandle<()> {
+    pub fn new (conf:Conf,opts: &Opts,mut state_sender : Box<dyn GameStateSender>, command_receiver : Box<dyn UICommandReceiver>) -> JoinHandle<()> {
         let udp_port = opts.port;
         let simulation_rate = opts.sim_step_rate;
         let use_tcp_tank_client = opts.tank_client_protocol == "tcp";
@@ -129,7 +129,8 @@ impl PhysicsEngine {
             event_handler: (),
             gravity_vector: vector![0.0, 0.0], //No gravity
             debug_mode: opts.debug_mode,
-            state: SimulationState::WaitingConnection 
+            state: SimulationState::WaitingConnection,
+            conf : conf 
         };
 
         let now = time::Instant::now();
@@ -174,98 +175,16 @@ impl PhysicsEngine {
     pub fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) {
         //This tank index is used to set userdata of all collider to skip detection.
         let tank_index = self.tanks.len();
-        let body = RigidBodyBuilder::new_dynamic()
-            .position(tank_position)
-            .linear_damping(LINEAR_DAMPING)
-            .angular_damping(ANGULAR_DAMPING)
-            .build();
-
-        let rigid_body_handle = self.rigid_body_set.insert(body);
-
-        let collider = ColliderBuilder::cuboid(TANK_WIDTH_M / 2.0, TANK_DEPTH_M / 2.0)
-            .restitution(0.7)
-            .density(TANK_COLLIDER_DENSITY)
-            .collision_groups(TANK_GROUP)
-            .active_hooks(ActiveHooks::FILTER_CONTACT_PAIRS)
-            .user_data(tank_index as u128)
-            .build();
-        let shape_polyline_tank = Self::get_collider_polyline_cuboid(&collider);
-        let collider_handle = self.collider_set.insert_with_parent(
-            collider,
-            rigid_body_handle,
-            &mut self.rigid_body_set,
-        );
-
-        /*
-        Setup turret
-        */
-        let turret_body = RigidBodyBuilder::new_dynamic()
-            .translation(tank_position.translation.vector)
-            .rotation(0.0)
-            .build();
-        let rigid_body_turret_handle = self.rigid_body_set.insert(turret_body);
-
-        let turret_collider = ColliderBuilder::cuboid(TURRET_WIDTH_M / 2.0, TURRET_DEPTH_M / 2.0)
-            .density(TURRET_COLLIDER_DENSITY)
-            .collision_groups(TURRET_GROUP)
-            .active_hooks(ActiveHooks::FILTER_CONTACT_PAIRS)
-            .user_data(tank_index as u128)
-            .build();
-
-        let shape_polyline_turret = Self::get_collider_polyline_cuboid(&turret_collider);
-
-        let collider_turret_handle = self.collider_set.insert_with_parent(
-            turret_collider,
-            rigid_body_turret_handle,
-            &mut self.rigid_body_set,
-        );
-        // Create joint to move turret together with tank.
-        let mut joint = BallJoint::new(point![0.0, 0.0], point![-TURRET_WIDTH_M / 2.0, 0.0]);
-        joint.configure_motor_model(SpringModel::VelocityBased);
-        joint.configure_motor_position(Rotation::new(0.0), TURRET_STIFFNESS, TURRET_DAMPING);
-        let cannon_joint_handle =
-            self.joint_set
-                .insert(rigid_body_handle, rigid_body_turret_handle, joint);
-
-        let tank = Tank {
-            name: name,
-            phy_body_handle: rigid_body_handle,
-            collider_handle: collider_handle,
-            cannon_joint_handle: cannon_joint_handle,
-            energy: TANK_ENERGY_MAX,
-            damage: 0.0,
-            turret: Turret {
-                phy_body_handle: rigid_body_turret_handle,
-                collider_handle: collider_turret_handle,
-                angle: 0.0,
-                shape_polyline: shape_polyline_turret,
-                fire: false,
-                new_angle: None,
-                cannon_temperature: CANNON_MIN_TEMP,
-            },
-            engine_power: 0.0,
-            max_engine_power: TANK_ENGINE_POWER_MAX,
-            turning_power: 0.0,
-            max_turning_power: TURNING_POWER_MAX,
-            shape_polyline: shape_polyline_tank,
-            position: Isometry2::identity(),
-            linvel: Vector2::identity(),
-            angular_velocity: 0.0,
-            radar_position: 0.0,
-            radar_width: RADAR_WIDTH_MAX,
-            detected_tank: Vec::new(),
-            radar_range : RADAR_MAX_DETECTION_DISTANCE
-           
-        };
+        let tank=Tank::new(self,tank_position,tank_index,name);
         self.tanks.push(tank);
     }
 
     pub fn step(&mut self) {
         //Execute all command
-        for (index, tank) in self.tanks.iter_mut().enumerate() {
+        for (tank_index, tank) in self.tanks.iter_mut().enumerate() {
             tank.turret.update_cannon_temp();
 
-            if !tank.update_energy() {
+            if !tank.update_energy(&self.conf) {
                 continue;
             }
 
@@ -278,11 +197,11 @@ impl PhysicsEngine {
             Self::apply_engine_power(tank_rigid_body, tank);
             tank_rigid_body
                 .apply_torque_impulse(tank.turning_power / (tank.angular_velocity.abs() + 1.0), true);
-            tank.set_cannon_position(&mut self.joint_set);
+            tank.set_cannon_position(&mut self.joint_set,self.conf.turret_stiffness,self.conf.turret_damping);
             let turret = &mut tank.turret;
             if turret.fire {
                 let (bullet_body, collider) =
-                    Self::create_bullet(&self.rigid_body_set[turret.phy_body_handle], index);
+                    Self::create_bullet(&self.conf,&self.rigid_body_set[turret.phy_body_handle], tank_index);
                 let bullet_position = *bullet_body.position();
                 let collider_polyline = Self::get_collider_polyline_cuboid(&collider);
                 let rigid_body_handle = self.rigid_body_set.insert(bullet_body);
@@ -294,13 +213,13 @@ impl PhysicsEngine {
                 let bullet = Bullet {
                     collider_handle: collider_handle,
                     phy_body_handle: rigid_body_handle,
-                    tick_counter: std::cmp::max(1, (BULLET_MAX_RANGE / BULLET_SPEED * 60.0) as u32), //remember that step is 1/60 simulation sec.
+                    tick_counter: std::cmp::max(1, (self.conf.bullet_max_range / self.conf.bullet_speed * 60.0) as u32), //remember that step is 1/60 simulation sec.
                     shape_polyline: collider_polyline,
                     position: bullet_position,
                 };
                 self.bullets.push(bullet);
                 turret.fire = false;
-                turret.cannon_temperature += CANNON_FIRE_TEMP_INCREASE;
+                turret.cannon_temperature += self.conf.cannon_fire_temp_increase;
             }
         }
         self.physics_pipeline.step(
@@ -415,13 +334,13 @@ impl PhysicsEngine {
         }
     }
 
-    pub fn create_bullet(cannon_body: &RigidBody, tank_index: usize) -> (RigidBody, Collider) {
+    pub fn create_bullet(conf:&Conf,cannon_body: &RigidBody, tank_index: usize) -> (RigidBody, Collider) {
         let cannon_position = cannon_body.position();
-        let velocity_cannon_edge = get_velocity_at_point(TURRET_WIDTH_M / 2.0, 0.0, cannon_body);
+        let velocity_cannon_edge = get_velocity_at_point(conf.turret_width_m / 2.0, 0.0, cannon_body);
         let angle = cannon_position.rotation.angle();
         debug!("Created bullet angle:{}", angle * 180.0 / PI);
         //Compute bullet speed and sum cannon edge speed (world speed)
-        let velocity = (cannon_position * vector![BULLET_SPEED, 0.0]) + velocity_cannon_edge;
+        let velocity = (cannon_position * vector![conf.bullet_speed, 0.0]) + velocity_cannon_edge;
         //bullet shall be created in front of cannon and outside of the tank
         let bullet_position = cannon_position * Point2::new(1.8, 0.0);
         let bullet_body = RigidBodyBuilder::new_dynamic()
@@ -449,7 +368,8 @@ impl PhysicsEngine {
 
     #[inline]
     pub fn tank_engine_power_percentage(&self, tank_id: usize) -> f32 {
-        self.tanks[tank_id].engine_power / TANK_ENGINE_POWER_MAX
+        let tank =  &self.tanks[tank_id];
+        tank.engine_power / tank.max_engine_power
     }
     pub fn set_tank_engine_power(&mut self, power_fraction: f32, tank_id: usize) {
         let tank = &mut self.tanks[tank_id];
@@ -505,7 +425,8 @@ impl PhysicsEngine {
     /// Get turning power.
     #[inline]
     pub fn tank_turning_power(&self, tank_id: usize) -> f32 {
-        self.tanks[tank_id].turning_power / TURNING_POWER_MAX
+        let tank = &self.tanks[tank_id];
+        tank.turning_power / tank.turning_power_max
     }
 
     pub fn set_tank_turning_power(&mut self, power_fraction: f32, tank_id: usize) {
@@ -517,7 +438,7 @@ impl PhysicsEngine {
         } else {
             power_fraction
         };
-        tank.turning_power = tank.max_turning_power * power_fraction_wrapped;
+        tank.turning_power = tank.turning_power_max * power_fraction_wrapped;
     }
 
     fn get_collider_polyline_cuboid(collider: &Collider) -> Vec<Point2<Real>> {
@@ -556,7 +477,7 @@ impl PhysicsEngine {
                 target_tank.position.translation.vector - tank.position.translation.vector;
             let distance = relative_vector.norm();
 
-            if distance < RADAR_MAX_DETECTION_DISTANCE {
+            if distance < target_tank.radar_max_detection_distance {
                 let radar_vector =
                     Isometry2::rotation(tank.radar_position + tank.position.rotation.angle())
                         * Vector2::<Real>::x();

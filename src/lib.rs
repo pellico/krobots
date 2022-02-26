@@ -40,6 +40,9 @@ pub struct Opts {
     /// Tank client communication protocol. udp is faster but it has issue with NAT and firewall.
     #[clap(long, default_value = "tcp",possible_values=["tcp","udp"])]
     pub (crate) tank_client_protocol: String,
+    /// Tank client communication protocol. udp is faster but it has issue with NAT and firewall.
+    #[clap(long)]
+    pub configuration_file: Option<String>,
 
 }
 
