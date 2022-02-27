@@ -1,6 +1,7 @@
+# This tank move to center and then stop
+# it tries to scan fire to all tanks it detects
 import ktanks,argparse
 from math import pi,cos
-
 
 def angle_wrapping(angle:float) -> float :
     """
@@ -21,15 +22,13 @@ def angle_wrapping(angle:float) -> float :
 
 def main_loop(name,ip,port):
     tank=ktanks.Tank(name,ip,port) # Create the proxy object to communicate with server
-    turn_back_distance=150.0 # At this distance from power source turn back to power source
+    stop_distance=150.0 # Below this distance from center tank shall stop and just search and fire target.
     status = tank.get_status()
     forward_power = 0.9   # Initial tank body forward movement power
     tank.set_engine_power(forward_power,0.0)
     # Angle of power source from tank position in world coordinates. (not referred to tank direction)
     target_angle = status.power_source.p
-    # Distance of power source from tank position
-    last_power_distance = tank.get_status().power_source.r
-    
+
     while True :
         # Radar manager and fire control
         radar_result = tank.get_radar_result(-0.17,0.17)
@@ -45,33 +44,32 @@ def main_loop(name,ip,port):
                 tank.set_cannon_position(radar_result.angle)
                 if radar_result.tanks and radar_result.tanks[0].distance < tank.simulation_configuration.bullet_max_range:
                     tank.fire_cannon()
+                     
         
-        # Adjust tank angle to keep correct direction    
-        status = tank.get_status()
-        delta_ang = angle_wrapping(target_angle- status.angle)
-        angimp_set = (0.5*delta_ang - 0.01*status.angvel)*abs(status.angvel)
-        # If too big error angle reduce forward speed 
-        tank.set_engine_power(forward_power/(1+10*abs(delta_ang)),angimp_set)
-        
-        # When passing the distance limit turn_back_distance.
+        # When passing the distance limit stop_distance.
         # slow down the tank before changing direction. 
-        if status.power_source.r > turn_back_distance and last_power_distance <= turn_back_distance:
-            # Slow down for easier turning
-            while True:
-                status = tank.get_status()
-                # this is speed in the direction of tank.
-                vel_direction = status.velocity.r * cos(status.velocity.p - status.angle)
-                if vel_direction < 0.1:
-                    break
-                tank.set_engine_power(-0.001*vel_direction,0)
-
-            #update target angle to the direction of power source
+        if status.power_source.r <  stop_distance:
+            if forward_power != 0.0: 
+                # Slow down for easier turning
+                while True:
+                    status = tank.get_status()
+                    # this is speed in the direction of tank.
+                    vel_direction = status.velocity.r * cos(status.velocity.p - status.angle)
+                    if vel_direction < 0.1:
+                        break
+                    tank.set_engine_power(-0.001*vel_direction,0)
+                forward_power=0.0
+                tank.set_engine_power(0,0)
+        else:
+            forward_power = 0.9
             target_angle = status.power_source.p
+            # Adjust tank angle to keep correct direction    
+            status = tank.get_status()
+            delta_ang = angle_wrapping(target_angle- status.angle)
+            angimp_set = (0.5*delta_ang - 0.01*status.angvel)*abs(status.angvel)
+            # If too big error angle reduce forward speed 
+            tank.set_engine_power(forward_power/(1+10*abs(delta_ang)),angimp_set) 
             
-        last_power_distance = status.power_source.r
-        
-        
-
 
 
 if __name__ == '__main__':
