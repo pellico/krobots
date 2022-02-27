@@ -197,7 +197,7 @@ impl PhysicsEngine {
             Self::apply_engine_power(tank_rigid_body, tank);
             tank_rigid_body
                 .apply_torque_impulse(tank.turning_power / (tank.angular_velocity.abs() + 1.0), true);
-            tank.set_cannon_position(&mut self.joint_set,self.conf.turret_stiffness,self.conf.turret_damping);
+            tank.set_cannon_position(&mut self.joint_set,&self.conf);
             let turret = &mut tank.turret;
             if turret.fire {
                 let (bullet_body, collider) =
