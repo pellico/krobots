@@ -118,7 +118,7 @@ Angle are always in radians in the range of ]-PI,PI].
                 |
                 |
                 |
--PI -------------------------- PI
+-PI -------------------------- 0
                 |
                 |
                 |

@@ -48,10 +48,14 @@ struct GameUI {
     ui_visible: bool,
     zoom: f32,
     camera: Camera2D,
+    /// Precomputed camera to draw text. For some reason the zoom y shall be negative 
+    /// in order to have correct draw text
+    camera_text : Camera2D,
     bullet_texture: Texture2D,
     hit_texture: Texture2D,
     show_stats: bool,
     selected_tank: usize,
+    font_name : Font,
 }
 
 const BULLET_IMAGE : &[u8] = std::include_bytes!("icons\\bullet_64x64.data");
@@ -59,7 +63,6 @@ const TANK_BODY_IMAGE : &[u8] = std::include_bytes!("icons\\body_36x38.data");
 const TURRET_IMAGE : &[u8] = std::include_bytes!("icons\\turret_20x54.data");
 const RADAR_IMAGE : &[u8] = std::include_bytes!("icons\\radar_22x16.data");
 const SMOKE_FIRE_IMAGE : &[u8] = std::include_bytes!("icons\\smoke_fire_64x64.data");
-
 /* No longer use. Keep here for future use
 async fn texture_load(path :&str) -> Texture2D {
     let mut executable_path = std::env::current_exe().expect("Unable to get executable path");
@@ -72,13 +75,45 @@ async fn texture_load(path :&str) -> Texture2D {
 */
 
 impl GameUI {
-    async fn initialize(&mut self, game_state: &UIGameState) {
+    #[inline]
+    fn compute_camera_text(camera:&Camera2D) -> Camera2D {
+        // Workaround to draw correct text
+        // We need some special settings
+        let mut camera_text = camera.clone();
+        camera_text.zoom[1] = -camera.zoom[1];
+        camera_text.rotation = -camera.rotation;
+        camera_text.target[1] = -camera.target[1];
+        camera_text
+
+    }
+    async fn new(game_state: &UIGameState) -> GameUI {
+        let camera_default = Camera2D {
+            zoom: vec2(
+                DEFAULT_CAMERA_ZOOM,
+                DEFAULT_CAMERA_ZOOM * screen_width() / screen_height(),
+            ),
+            //target: Vec2::new(0.0, 0.0),
+            ..Default::default()
+        };
+        let mut game_ui = GameUI {
+            tanks: Vec::<GTank>::with_capacity(game_state.tanks.len()),
+            ui_visible: true,
+            zoom: DEFAULT_CAMERA_ZOOM,
+            camera_text : Self::compute_camera_text(&camera_default),
+            camera: camera_default,
+            bullet_texture: Texture2D::from_rgba8(64, 64, BULLET_IMAGE),
+            hit_texture: Texture2D::from_rgba8(64, 64, SMOKE_FIRE_IMAGE),
+            show_stats: false,
+            selected_tank : 0,
+            font_name : load_ttf_font_from_bytes(include_bytes!("icons\\arial.ttf")).unwrap(),
+        };
+       
         let p_tanks = &game_state.tanks;
         for index in 0..p_tanks.len() {
             let texture_body: Texture2D = Texture2D::from_rgba8(36, 38,TANK_BODY_IMAGE);
             let texture_turret: Texture2D = Texture2D::from_rgba8(20, 54,TURRET_IMAGE);
             let texture_radar: Texture2D = Texture2D::from_rgba8(22, 16,RADAR_IMAGE);
-            self.tanks.push(GTank {
+            game_ui.tanks.push(GTank {
                 texture_body: texture_body,
                 texture_turret: texture_turret,
                 texture_radar: texture_radar,
@@ -97,7 +132,7 @@ impl GameUI {
                 color: TANK_COLORS[index % TANK_COLORS.len()],
                 last_damage: 0.0,
                 hit_emitter: Emitter::new(EmitterConfig {
-                    texture: Some(self.hit_texture),
+                    texture: Some(game_ui.hit_texture),
                     one_shot: true,
                     emitting: false,
                     lifetime: 0.5,
@@ -115,13 +150,14 @@ impl GameUI {
 
             });
         }
+        game_ui
     }
 
     fn draw_tanks<'b>(&mut self, p_tanks: &'b Vec<Tank>, scaling_factor: f32) {
         for index in 0..self.tanks.len() {
             let g_tank = &mut self.tanks[index];
             let p_tank = &p_tanks[index];
-            g_tank.draw(p_tank, scaling_factor);
+            g_tank.draw(p_tank, scaling_factor,self.font_name,&self.camera_text);
             g_tank.draw_collider(p_tank, scaling_factor);
             g_tank.draw_radar_range(p_tank, scaling_factor);
         }
@@ -153,17 +189,10 @@ impl GameUI {
     }
 
     fn robot_data_ui(&mut self, p_tanks: &Vec<Tank>) {
-        if is_key_released(KeyCode::Q) {
-            self.ui_visible ^= true;
-        }
         if self.ui_visible == false {
             return;
         }
-        //This to show/hide stats
-        if is_key_released(KeyCode::F1) {
-            self.show_stats ^= true;
-        }
-        widgets::Window::new(hash!(), vec2(0., 0.), vec2(250., 300.))
+        widgets::Window::new(hash!(), vec2(0., 0.), vec2(300., 400.))
             .label("Robots")
             .titlebar(true)
             .ui(&mut *root_ui(), |ui| {
@@ -223,6 +252,13 @@ impl GameUI {
     }
 
     fn process_keyboard_input(&mut self, p_tanks: &Vec<Tank>, scaling_factor: f32,tx_ui_command : &Box<dyn UICommandSender>) {
+        if is_key_released(KeyCode::Q) {
+            self.ui_visible ^= true;
+        }
+        //This to show/hide stats
+        if is_key_released(KeyCode::F1) {
+            self.show_stats ^= true;
+        }
         let zoom = &mut self.zoom;
         let camera = &mut self.camera;
         if is_key_down(KeyCode::KpAdd) {
@@ -233,7 +269,6 @@ impl GameUI {
             *zoom *= 1.1f32.powf(-1.0);
             debug!("zoom {}", zoom);
         }
-        camera.zoom = vec2(*zoom, *zoom * screen_width() / screen_height());
         if is_key_down(KeyCode::Kp4) {
             camera.target.x -= 0.05 / *zoom;
         }
@@ -259,7 +294,9 @@ impl GameUI {
             camera.target = tank_screen_position.into();
         }
         camera.zoom = vec2(*zoom, *zoom * screen_width() / screen_height());
-        set_camera(camera);
+        // Compute camera to be used for text drawing
+        self.camera_text = Self::compute_camera_text(&camera);
+        
 
         if is_key_released(KeyCode::PageUp) {
             if self.selected_tank > 0 {
@@ -276,6 +313,7 @@ impl GameUI {
         if is_key_down(KeyCode::Q) && is_key_down(KeyCode::LeftControl) {
             tx_ui_command.send(UICommand::QUIT).expect("Failed to send quit command");
         } 
+
     }
 
 
@@ -309,7 +347,7 @@ fn draw_polyline(polyline: &Vec<Point2<Real>>, scaling_factor: f32) {
 }
 
 impl GTank {
-    fn draw(&mut self, p_tank: &Tank, scaling_factor: f32) {
+    fn draw(&mut self, p_tank: &Tank, scaling_factor: f32,font_name:Font,camera_text:&Camera2D) {
         let p_tank_position = p_tank.position;
         let t_x = p_tank_position.translation.x * scaling_factor;
         let t_y = p_tank_position.translation.y * scaling_factor;
@@ -331,6 +369,20 @@ impl GTank {
                 ..Default::default()
             },
         );
+        // Draw tank name
+        // Need special workaround. Draw text has some issue in present macroquad version.
+        push_camera_state();
+        set_camera(camera_text);
+        let (font_size, font_scale,font_scale_aspect) = camera_font_scale(40.0);
+        draw_text_ex(&p_tank.name, g_x, -g_y + 20.0, TextParams{
+            font_size,
+            font_scale,
+            font_scale_aspect,
+            color: WHITE,
+            font : font_name
+        });
+        pop_camera_state();
+
         let turret_x: f32 = t_x - self.turret_texture_size.x / 2.;
         let turret_y: f32 = t_y - self.turret_texture_size.y / 2.;
         draw_texture_ex(
@@ -455,24 +507,7 @@ async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn 
         next_frame().await;
     }
     info!("Registered num tanks {}",game_state.tanks.len());
-    let mut game_ui = GameUI {
-        tanks: Vec::<GTank>::with_capacity(game_state.tanks.len()),
-        ui_visible: true,
-        camera: Camera2D {
-            zoom: vec2(
-                DEFAULT_CAMERA_ZOOM,
-                DEFAULT_CAMERA_ZOOM * screen_width() / screen_height(),
-            ),
-            target: Vec2::new(0.0, 0.0),
-            ..Default::default()
-        },
-        zoom: DEFAULT_CAMERA_ZOOM,
-        bullet_texture: Texture2D::from_rgba8(64, 64, BULLET_IMAGE),
-        hit_texture: Texture2D::from_rgba8(64, 64, SMOKE_FIRE_IMAGE),
-        show_stats: false,
-        selected_tank : 0,
-    };
-    game_ui.initialize(&game_state).await;
+    let mut game_ui = GameUI::new(&game_state).await;
 
     /*
     Used to track when received an update in order to avoid too many message
@@ -480,6 +515,8 @@ async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn 
     Assumption that physics engine is faster than graphical engine.
     */
     loop {
+        clear_background(BLACK);
+        set_camera(&game_ui.camera);
         if game_ui.show_stats {
             macroquad_profiler::profiler(Default::default());
         };
