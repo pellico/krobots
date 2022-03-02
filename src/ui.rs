@@ -19,14 +19,14 @@ use crate::physics::*;
 
 use macroquad::prelude::*;
 use macroquad::ui::{
-    hash, root_ui,
+    hash, root_ui,Skin,
     widgets::{self},
 };
 use miniquad::conf::Icon;
 use macroquad_particles::{AtlasConfig, BlendMode, Emitter, EmitterConfig};
 use macroquad_profiler;
 use nalgebra;
-use log::{debug,info};
+use log::{info};
 
 pub const TANK_COLORS : [Color;11] =[BLUE,GREEN,YELLOW,MAGENTA,VIOLET,PURPLE,LIME,BROWN,ORANGE,DARKBLUE,DARKGREEN];
 //pub const DEFAULT_CAMERA_ZOOM : f32 = 0.00007848368;
@@ -61,11 +61,12 @@ struct GameUI {
     zoom : f32,
 }
 
-const BULLET_IMAGE : &[u8] = std::include_bytes!("icons\\bullet_64x64.data");
-const TANK_BODY_IMAGE : &[u8] = std::include_bytes!("icons\\body_36x38.data");
-const TURRET_IMAGE : &[u8] = std::include_bytes!("icons\\turret_20x54.data");
-const RADAR_IMAGE : &[u8] = std::include_bytes!("icons\\radar_22x16.data");
-const SMOKE_FIRE_IMAGE : &[u8] = std::include_bytes!("icons\\smoke_fire_64x64.data");
+const BULLET_IMAGE : &[u8] = include_bytes!("icons\\bullet_64x64.data");
+const TANK_BODY_IMAGE : &[u8] = include_bytes!("icons\\body_36x38.data");
+const TURRET_IMAGE : &[u8] = include_bytes!("icons\\turret_20x54.data");
+const RADAR_IMAGE : &[u8] = include_bytes!("icons\\radar_22x16.data");
+const SMOKE_FIRE_IMAGE : &[u8] = include_bytes!("icons\\smoke_fire_64x64.data");
+const ARIAL_TTF : &[u8] = include_bytes!("icons\\arial.ttf");
 /* No longer use. Keep here for future use
 async fn texture_load(path :&str) -> Texture2D {
     let mut executable_path = std::env::current_exe().expect("Unable to get executable path");
@@ -117,6 +118,17 @@ impl GameUI {
     async fn new(game_state: &UIGameState,physical_scaling_factor:f32) -> GameUI {
         let default_zoom = 1.0/(game_state.zero_power_limit * physical_scaling_factor);
         let camera_default = Self::get_default_camera(default_zoom);
+        let label_style = root_ui().style_builder().font(ARIAL_TTF.clone()).unwrap()
+        .text_color(Color::from_rgba(0, 0, 0, 255))
+        .color_selected(Color::from_rgba(255, 0, 0, 255))
+        .font_size(15)
+        .build();
+        let default_skin = Skin {
+            tabbar_style : label_style.clone(),
+            label_style,
+            ..root_ui().default_skin()
+        };
+        root_ui().push_skin(&default_skin);
         let mut game_ui = GameUI {
             tanks: Vec::<GTank>::with_capacity(game_state.tanks.len()),
             ui_visible: true,
@@ -128,8 +140,9 @@ impl GameUI {
             hit_texture: Texture2D::from_rgba8(64, 64, SMOKE_FIRE_IMAGE),
             show_stats: false,
             selected_tank : 0,
-            font_name : load_ttf_font_from_bytes(include_bytes!("icons\\arial.ttf")).unwrap(),
+            font_name : load_ttf_font_from_bytes(ARIAL_TTF).unwrap(),
             physical_scaling_factor,
+    
         };
        
         let p_tanks = &game_state.tanks;
@@ -218,7 +231,7 @@ impl GameUI {
             return;
         }
         widgets::Window::new(hash!(), vec2(0., 0.), vec2(300., 400.))
-            .label("Robots")
+            .label("Tanks")
             .titlebar(true)
             .ui(&mut *root_ui(), |ui| {
                 for index in 0..self.tanks.len() {
@@ -396,13 +409,11 @@ impl GTank {
         // Need special workaround. Draw text has some issue in present macroquad version.
         push_camera_state();
         set_camera(camera_text);
-        let (font_size, font_scale,font_scale_aspect) = camera_font_scale(80.0);
         draw_text_ex(&p_tank.name, g_x, -g_y + 20.0, TextParams{
-            font_size,
-            font_scale,
-            font_scale_aspect,
+            font_size : 40,
             color: WHITE,
-            font : font_name
+            font : font_name,
+            ..Default::default()
         });
         pop_camera_state();
 

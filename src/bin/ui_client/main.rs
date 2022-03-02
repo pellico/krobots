@@ -19,7 +19,7 @@ pub struct Opts {
     log_level: String,
     /// Scaling factor of ui graphics compared to physical simulation dimension.
     /// Increment teh value to see bigger graphics compared to physical collider
-    #[clap(long, default_value = "0.20")]
+    #[clap(long, default_value = "0.15")]
     pub graphics_scaling_factor: f32,
 }
 
