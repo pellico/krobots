@@ -162,7 +162,7 @@ impl PhysicsEngine {
                             fps_counter.set_value(tick);
                             let fps = (tick - prev_tick) as f64 / delta_t.as_secs_f64();
                             debug!("FPS: {}", fps);
-                            if fps < 59.0 {
+                            if fps < (simulation_rate - 1.0) {
                                 warn!("Simulation framerate is low {} expected {}",fps,simulation_rate)
                             }
                         }
