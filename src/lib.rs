@@ -34,6 +34,9 @@ pub struct Opts {
     /// Remote gui client port. Effective only if --no_gui is used.
     #[clap(long, default_value = "3042")]
     pub remote_gui_port: u16,
+    /// Maximum number supported of remote GUI Effective only if --no_gui is used.
+    #[clap(long, default_value = "1")]
+    pub max_num_remote_gui: u8,
     /// Headless server When specified server will not show any ui but it expect a connection from ui_client
     #[clap(long)]
     pub no_gui: bool,
@@ -43,6 +46,10 @@ pub struct Opts {
     /// Tank client communication protocol. udp is faster but it has issue with NAT and firewall.
     #[clap(long)]
     pub configuration_file: Option<String>,
+    /// Scaling factor of graphics compared to physical simulation dimension.
+    /// Increment teh value to see bigger graphics compared to physical collider
+    #[clap(long, default_value = "0.25")]
+    pub graphics_scaling_factor: f32,
 
 }
 

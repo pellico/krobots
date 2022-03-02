@@ -29,7 +29,7 @@ use nalgebra;
 use log::{debug,info};
 
 pub const TANK_COLORS : [Color;11] =[BLUE,GREEN,YELLOW,MAGENTA,VIOLET,PURPLE,LIME,BROWN,ORANGE,DARKBLUE,DARKGREEN];
-pub const DEFAULT_CAMERA_ZOOM : f32 = 0.00007848368;
+//pub const DEFAULT_CAMERA_ZOOM : f32 = 0.00007848368;
 
 struct GTank {
     texture_body: Texture2D,
@@ -46,7 +46,6 @@ struct GTank {
 struct GameUI {
     tanks: Vec<GTank>,
     ui_visible: bool,
-    zoom: f32,
     camera: Camera2D,
     /// Precomputed camera to draw text. For some reason the zoom y shall be negative 
     /// in order to have correct draw text
@@ -56,6 +55,10 @@ struct GameUI {
     show_stats: bool,
     selected_tank: usize,
     font_name : Font,
+    /// Multiplication factor for physical simulation entity e.g. collider box, position etc...
+    physical_scaling_factor : f32,
+    default_zoom : f32,
+    zoom : f32,
 }
 
 const BULLET_IMAGE : &[u8] = std::include_bytes!("icons\\bullet_64x64.data");
@@ -86,26 +89,47 @@ impl GameUI {
         camera_text
 
     }
-    async fn new(game_state: &UIGameState) -> GameUI {
-        let camera_default = Camera2D {
+    /// Get camera zoom such that world height fit in camera space
+    fn get_default_camera(zoom_y : f32) -> Camera2D {        
+        Camera2D {
             zoom: vec2(
-                DEFAULT_CAMERA_ZOOM,
-                DEFAULT_CAMERA_ZOOM * screen_width() / screen_height(),
+                zoom_y * screen_height()/ screen_width(),
+                zoom_y
             ),
             //target: Vec2::new(0.0, 0.0),
             ..Default::default()
-        };
+        }   
+    }
+
+    fn update_camera_zoom(&mut self) {
+        self.camera.zoom = vec2(
+            self.zoom * screen_height()/ screen_width(),
+            self.zoom
+        );
+    } 
+
+    fn reset_camera(&mut self) {
+        self.zoom = self.default_zoom;
+        self.camera = Self::get_default_camera(self.zoom);
+        self.camera_text =  Self::compute_camera_text(&self.camera);
+    }
+ 
+    async fn new(game_state: &UIGameState,physical_scaling_factor:f32) -> GameUI {
+        let default_zoom = 1.0/(game_state.zero_power_limit * physical_scaling_factor);
+        let camera_default = Self::get_default_camera(default_zoom);
         let mut game_ui = GameUI {
             tanks: Vec::<GTank>::with_capacity(game_state.tanks.len()),
             ui_visible: true,
-            zoom: DEFAULT_CAMERA_ZOOM,
             camera_text : Self::compute_camera_text(&camera_default),
-            camera: camera_default,
+            camera: camera_default.clone(),
+            default_zoom,
+            zoom : default_zoom,
             bullet_texture: Texture2D::from_rgba8(64, 64, BULLET_IMAGE),
             hit_texture: Texture2D::from_rgba8(64, 64, SMOKE_FIRE_IMAGE),
             show_stats: false,
             selected_tank : 0,
             font_name : load_ttf_font_from_bytes(include_bytes!("icons\\arial.ttf")).unwrap(),
+            physical_scaling_factor,
         };
        
         let p_tanks = &game_state.tanks;
@@ -153,23 +177,24 @@ impl GameUI {
         game_ui
     }
 
-    fn draw_tanks<'b>(&mut self, p_tanks: &'b Vec<Tank>, scaling_factor: f32) {
+
+    fn draw_tanks<'b>(&mut self, p_tanks: &'b Vec<Tank>) {
         for index in 0..self.tanks.len() {
             let g_tank = &mut self.tanks[index];
             let p_tank = &p_tanks[index];
-            g_tank.draw(p_tank, scaling_factor,self.font_name,&self.camera_text);
-            g_tank.draw_collider(p_tank, scaling_factor);
-            g_tank.draw_radar_range(p_tank, scaling_factor);
+            g_tank.draw(p_tank, self.physical_scaling_factor,self.font_name,&self.camera_text);
+            g_tank.draw_collider(p_tank, self.physical_scaling_factor);
+            g_tank.draw_radar_range(p_tank, self.physical_scaling_factor);
         }
     }
 
-    fn draw_bullets<'a>(&self, p_bullets: &'a Vec<Bullet>, scaling_factor: f32) {
+    fn draw_bullets<'a>(&self, p_bullets: &'a Vec<Bullet>) {
         for p_bullet in p_bullets {
             let bullet_position = p_bullet.position;
             let g_x: f32 =
-                bullet_position.translation.x * scaling_factor - self.bullet_texture.width() / 2.;
+                bullet_position.translation.x * self.physical_scaling_factor - self.bullet_texture.width() / 2.;
             let g_y: f32 =
-                bullet_position.translation.y * scaling_factor - self.bullet_texture.height() / 2.;
+                bullet_position.translation.y * self.physical_scaling_factor - self.bullet_texture.height() / 2.;
             let bullet_angle: f32 = bullet_position.rotation.angle() + std::f32::consts::FRAC_PI_2;
 
             draw_texture_ex(
@@ -184,7 +209,7 @@ impl GameUI {
                     ..Default::default()
                 },
             );
-            draw_polyline(&p_bullet.shape_polyline, scaling_factor);
+            draw_polyline(&p_bullet.shape_polyline, self.physical_scaling_factor);
         }
     }
 
@@ -251,7 +276,7 @@ impl GameUI {
             });
     }
 
-    fn process_keyboard_input(&mut self, p_tanks: &Vec<Tank>, scaling_factor: f32,tx_ui_command : &Box<dyn UICommandSender>) {
+    fn process_keyboard_input(&mut self, p_tanks: &Vec<Tank>,tx_ui_command : &Box<dyn UICommandSender>) {
         if is_key_released(KeyCode::Q) {
             self.ui_visible ^= true;
         }
@@ -259,43 +284,41 @@ impl GameUI {
         if is_key_released(KeyCode::F1) {
             self.show_stats ^= true;
         }
-        let zoom = &mut self.zoom;
-        let camera = &mut self.camera;
+
         if is_key_down(KeyCode::KpAdd) {
-            *zoom *= 1.1f32.powf(1.0);
-            debug!("zoom {}", zoom);
+            self.zoom *= 1.1f32.powf(1.0);
         }
         if is_key_down(KeyCode::KpSubtract) {
-            *zoom *= 1.1f32.powf(-1.0);
-            debug!("zoom {}", zoom);
+            self.zoom *= 1.1f32.powf(-1.0);
         }
+        self.update_camera_zoom();
+
         if is_key_down(KeyCode::Kp4) {
-            camera.target.x -= 0.05 / *zoom;
+            self.camera.target.x -= 0.05 / self.camera.zoom[0];
         }
         if is_key_down(KeyCode::Kp6) {
-            camera.target.x += 0.05 / *zoom;
+            self.camera.target.x += 0.05 / self.camera.zoom[0];
         }
         if is_key_down(KeyCode::Kp8) {
-            camera.target.y -= 0.05 / *zoom;
+            self.camera.target.y -= 0.05 / self.camera.zoom[1];
         }
         if is_key_down(KeyCode::Kp2) {
-            camera.target.y += 0.05 / *zoom;
+            self.camera.target.y += 0.05 / self.camera.zoom[1];
         }
         //Reset camera to home and default zoom
         if is_key_down(KeyCode::Kp5) {
-            camera.target.x = 0.0;
-            camera.target.y = 0.0;
-            *zoom = DEFAULT_CAMERA_ZOOM;
+            self.reset_camera();
+
         }
         //Reset camera to selected tank
         if is_key_down(KeyCode::Kp0) {
             let tank_screen_position =
-                p_tanks[self.selected_tank].position.translation.vector * scaling_factor;
-            camera.target = tank_screen_position.into();
+                p_tanks[self.selected_tank].position.translation.vector * self.physical_scaling_factor;
+            self.camera.target = tank_screen_position.into();
         }
-        camera.zoom = vec2(*zoom, *zoom * screen_width() / screen_height());
-        // Compute camera to be used for text drawing
-        self.camera_text = Self::compute_camera_text(&camera);
+
+         // Compute camera to be used for text drawing
+         self.camera_text = Self::compute_camera_text(&self.camera);
         
 
         if is_key_released(KeyCode::PageUp) {
@@ -373,7 +396,7 @@ impl GTank {
         // Need special workaround. Draw text has some issue in present macroquad version.
         push_camera_state();
         set_camera(camera_text);
-        let (font_size, font_scale,font_scale_aspect) = camera_font_scale(40.0);
+        let (font_size, font_scale,font_scale_aspect) = camera_font_scale(80.0);
         draw_text_ex(&p_tank.name, g_x, -g_y + 20.0, TextParams{
             font_size,
             font_scale,
@@ -440,9 +463,7 @@ impl GTank {
     }
 }
 
-fn scaling_factor() -> f32 {
-    10.0
-}
+
 
 /*
 Print text on screen centered
@@ -464,7 +485,7 @@ const ICON : Icon = Icon {
     big : *std::include_bytes!("icons\\tank_icox64.data")
 
 };
-pub fn start_gui (rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn UICommandSender> ) {    
+pub fn start_gui (rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn UICommandSender>,physical_scaling_factor:f32) {    
     // Bypass the macro. Not supported by macroquad
     // see macroquad macro main source code.
     let conf =  Conf {
@@ -475,11 +496,11 @@ pub fn start_gui (rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn
         //fullscreen: true,
         ..Default::default()
     };
-    macroquad::Window::from_config(conf, ui_main(rx_state,tx_ui_command));
+    macroquad::Window::from_config(conf, ui_main(rx_state,tx_ui_command,physical_scaling_factor));
     
 }
 
-async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn UICommandSender>) {
+async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn UICommandSender>,physical_scaling_factor:f32) {
     let mut game_state : UIGameState= UIGameState::default();
     loop {
         // Wait for first message
@@ -507,7 +528,7 @@ async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn 
         next_frame().await;
     }
     info!("Registered num tanks {}",game_state.tanks.len());
-    let mut game_ui = GameUI::new(&game_state).await;
+    let mut game_ui = GameUI::new(&game_state,physical_scaling_factor).await;
 
     /*
     Used to track when received an update in order to avoid too many message
@@ -526,14 +547,12 @@ async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn 
             None => ()
         };
 
-        let scaling_factor: f32 = scaling_factor();
-        game_ui.process_keyboard_input(&game_state.tanks, scaling_factor,&tx_ui_command);
+        game_ui.process_keyboard_input(&game_state.tanks,&tx_ui_command);
         //Draw background
-        draw_circle_lines(0.0, 0.0, game_state.zero_power_limit * scaling_factor, 3.0, RED);
-        game_ui.draw_tanks(&game_state.tanks, scaling_factor);
-        game_ui.draw_bullets(&game_state.bullets, scaling_factor);
+        draw_circle_lines(0.0, 0.0, game_state.zero_power_limit * game_ui.physical_scaling_factor, 3.0, RED);
+        game_ui.draw_tanks(&game_state.tanks);
+        game_ui.draw_bullets(&game_state.bullets);
         game_ui.robot_data_ui(&game_state.tanks);
         next_frame().await;
     }
-    //handle.join().unwrap();
 }

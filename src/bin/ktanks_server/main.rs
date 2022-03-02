@@ -38,7 +38,7 @@ fn main() {
         }
     };
     if opts.no_gui     {
-        let tx_state = remote_ch::UISender::new(opts.remote_gui_port);
+        let tx_state = remote_ch::UISender::new(opts.remote_gui_port,opts.max_num_remote_gui as usize);
         let rx_ui_command = remote_ch::CommandReceiver::new();
         let handle = PhysicsEngine::new(conf,&opts,Box::new(tx_state),Box::new(rx_ui_command));
         handle.join().expect("Failed simulation end");
@@ -48,7 +48,8 @@ fn main() {
         let (tx_state, rx_state) = local_ch::create_state_channels();
         let (tx_ui_command,rx_ui_command) =local_ch::create_command_channels();
         PhysicsEngine::new(conf,&opts,Box::new(tx_state),Box::new(rx_ui_command));
-        ui::start_gui(Box::new(rx_state),Box::new(tx_ui_command));
+        ui::start_gui(Box::new(rx_state),Box::new(tx_ui_command),1.0/opts.graphics_scaling_factor );
+       
     }
 
     } 
