@@ -54,4 +54,4 @@ opt-level = 3
 # and https://github.com/not-fl3/miniquad/issues/264
 # :TODO: remove it when bug will be fixed.
 [patch.crates-io]
-miniquad = { path = "miniquad-0.3.0-alpha.42_patch" }
+miniquad = { path = "miniquad-0.3.0-alpha.45_patch" }
