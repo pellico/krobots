@@ -49,14 +49,13 @@ class Tank:
             self.txSocket.connect((self.server_ip,self.server_register_port))
             self.txSocket.settimeout(None)
             self.txSocket.send(data)
-            answer, addr = self.txSocket.recvfrom(2048)
+            answer = self.txSocket.recv(2048)
         else:
             self.txSocket = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
             self.txSocket.sendto(data,(self.server_ip,self.server_register_port))
             answer, addr = self.txSocket.recvfrom(2048)
             self.txSocket.connect(addr)
         
-        self.port = addr[1]
         #: Configuration of simulator
         self.simulation_configuration : SimulationConfig  = SimulationConfig() 
         self.simulation_configuration.ParseFromString(answer)

@@ -16,6 +16,7 @@ multi_launcher is a convenience tool to launch multiple isntance of same tank
 '''
 import argparse, pathlib,time,os
 from subprocess import PIPE, Popen
+from pickle import TRUE
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Tank launcher")
@@ -56,15 +57,15 @@ if __name__ == '__main__':
     procs = []
     for index in range(args.num_tanks):
         command = 'python ' + str(args.tank_script) + f" {args.name}_{index} --ip {args.ip} --port {args.port}"
-        print(command)
-        # run(
-        #     ["dir"],
-        #     shell = True,
-        #     stdout=PIPE
-        #     )
+        if os.name == "nt":
+            # I need shell true in order to use the virtualenv
+            shell = True
+        else:
+            # in Linux shell true has issue and it seems that it is not required.
+            shell = False
         procs.append(Popen(
-            ["python.exe", str(args.tank_script), args.name + "_" + f"{index}"],
-            shell=True,
+            ["python", str(args.tank_script), args.name + "_" + f"{index}","--ip",str(args.ip),"--port",str(args.port)],
+            shell=shell,
             stdout=PIPE,
 
             )
