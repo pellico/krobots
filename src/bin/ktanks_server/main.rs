@@ -47,9 +47,9 @@ fn main() {
     {
         let (tx_state, rx_state) = local_ch::create_state_channels();
         let (tx_ui_command,rx_ui_command) =local_ch::create_command_channels();
-        PhysicsEngine::new(conf,&opts,Box::new(tx_state),Box::new(rx_ui_command));
+        let handle = PhysicsEngine::new(conf,&opts,Box::new(tx_state),Box::new(rx_ui_command));
         ui::start_gui(Box::new(rx_state),Box::new(tx_ui_command),1.0/opts.graphics_scaling_factor );
-       
+        handle.join().expect("Failed simulation end");
     }
 
     } 

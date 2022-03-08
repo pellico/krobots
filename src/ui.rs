@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 use crate::physics::*;
-
+use crate::{is_exit_application,signal_exit};
 use macroquad::prelude::*;
 use macroquad::ui::{
     hash, root_ui,Skin,
@@ -290,7 +290,7 @@ impl GameUI {
     }
 
     fn process_keyboard_input(&mut self, p_tanks: &Vec<Tank>,tx_ui_command : &Box<dyn UICommandSender>) {
-        if is_key_released(KeyCode::Q) {
+        if is_key_released(KeyCode::Q) && !is_key_down(KeyCode::LeftControl) {
             self.ui_visible ^= true;
         }
         //This to show/hide stats
@@ -346,8 +346,9 @@ impl GameUI {
             };
         }
 
-        if is_key_down(KeyCode::Q) && is_key_down(KeyCode::LeftControl) {
+        if (is_key_released(KeyCode::Q) && is_key_down(KeyCode::LeftControl)) || is_quit_requested()  {
             tx_ui_command.send(UICommand::QUIT).expect("Failed to send quit command");
+            signal_exit();
         } 
 
     }
@@ -512,8 +513,12 @@ pub fn start_gui (rx_state : Box<dyn GameStateReceiver> ,tx_ui_command : Box<dyn
 }
 
 async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn UICommandSender>,physical_scaling_factor:f32) {
+    prevent_quit();
     let mut game_state : UIGameState= UIGameState::default();
     loop {
+        if is_exit_application() {
+            break;
+        }
         // Wait for first message
         match rx_data.receiver() {
             Some(state) => {game_state = state},
@@ -538,6 +543,9 @@ async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn 
 
         next_frame().await;
     }
+    if is_exit_application() {
+        return;
+    }
     info!("Registered num tanks {}",game_state.tanks.len());
     let mut game_ui = GameUI::new(&game_state,physical_scaling_factor).await;
 
@@ -547,18 +555,20 @@ async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn 
     Assumption that physics engine is faster than graphical engine.
     */
     loop {
+        if is_exit_application() {
+            break;
+        }
         clear_background(BLACK);
         set_camera(&game_ui.camera);
         if game_ui.show_stats {
             macroquad_profiler::profiler(Default::default());
         };
 
+        game_ui.process_keyboard_input(&game_state.tanks,&tx_ui_command);
         match rx_data.receiver() {
             Some(state) => {game_state=state},
             None => ()
         };
-
-        game_ui.process_keyboard_input(&game_state.tanks,&tx_ui_command);
         //Draw background
         draw_circle_lines(0.0, 0.0, game_state.zero_power_limit * game_ui.physical_scaling_factor, 3.0, RED);
         game_ui.draw_tanks(&game_state.tanks);

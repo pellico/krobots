@@ -15,33 +15,30 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-mod tank;
-mod util;
-mod ui_interface;
 mod networking;
 mod report;
-use crate::Opts;
-use networking::RobotServer;
-use std::thread::{spawn,JoinHandle};
-pub use self::tank::{Tank,Bullet};
+mod tank;
+mod ui_interface;
+mod util;
+pub use self::tank::{Bullet, Tank};
 pub use self::ui_interface::*;
 use self::util::*;
 use crate::conf::*;
-use log::{debug, error,warn, info};
-pub use rapier2d::prelude::Real;
-use rapier2d::prelude::*;
-use std::f32::consts::PI;
+use crate::{is_exit_application, signal_exit, Opts};
+use log::{debug, error, info, warn};
+use networking::RobotServer;
 pub use rapier2d::na::{vector, Isometry2, Rotation2};
 pub use rapier2d::na::{Point2, Vector2};
+pub use rapier2d::prelude::Real;
+use rapier2d::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::f32::consts::PI;
+use std::thread::{spawn, JoinHandle};
 use std::time;
-use serde::{Serialize, Deserialize}; 
-
-
 
 const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b001, 0b101);
 const TURRET_GROUP: InteractionGroups = InteractionGroups::new(0b010, 0b110);
 const BULLET_GROUP: InteractionGroups = InteractionGroups::new(0b100, 0b011);
-
 
 struct MyPhysicsHooks;
 
@@ -70,13 +67,15 @@ impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
     }
 }
 
-#[derive(Clone, Copy,Serialize,Deserialize,Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum SimulationState {
     WaitingConnection,
-    Running
+    Running,
 }
 impl Default for SimulationState {
-    fn default() -> Self { SimulationState::WaitingConnection }
+    fn default() -> Self {
+        SimulationState::WaitingConnection
+    }
 }
 
 pub struct PhysicsEngine {
@@ -100,17 +99,21 @@ pub struct PhysicsEngine {
     gravity_vector: Vector2<Real>,
     debug_mode: bool,
     state: SimulationState,
-    conf : Conf
-
+    conf: Conf,
 }
 
 impl PhysicsEngine {
-    pub fn new (conf:Conf,opts: &Opts,mut state_sender : Box<dyn GameStateSender>, command_receiver : Box<dyn UICommandReceiver>) -> JoinHandle<()> {
+    pub fn new(
+        conf: Conf,
+        opts: &Opts,
+        mut state_sender: Box<dyn GameStateSender>,
+        command_receiver: Box<dyn UICommandReceiver>,
+    ) -> JoinHandle<()> {
         let udp_port = opts.port;
         let simulation_rate = opts.sim_step_rate;
         let use_tcp_tank_client = opts.tank_client_protocol == "tcp";
         let mut p_engine = PhysicsEngine {
-            max_num_tanks : opts.num_tanks,
+            max_num_tanks: opts.num_tanks,
             max_ticks: opts.max_steps,
             tanks_alive: 0,
             tanks: vec![],
@@ -130,42 +133,57 @@ impl PhysicsEngine {
             gravity_vector: vector![0.0, 0.0], //No gravity
             debug_mode: opts.debug_mode,
             state: SimulationState::WaitingConnection,
-            conf : conf 
+            conf: conf,
         };
 
         let now = time::Instant::now();
         // show some fps measurements every 5 seconds
         let mut fps_counter = ticktock::Timer::apply(|delta_t, prev_tick| (delta_t, *prev_tick), 0)
-        .every(time::Duration::from_secs(5))
-        .start(now);
-        
+            .every(time::Duration::from_secs(5))
+            .start(now);
         //Create thread that perform physics simulation
-        let join_handle = spawn( move || {
+        let join_handle = spawn(move || {
             info!("Start waiting connections");
-            let mut server = RobotServer::new(p_engine.debug_mode,use_tcp_tank_client);
-            server.wait_connections(&mut p_engine, udp_port,&mut state_sender);
+            let mut server = RobotServer::new(p_engine.debug_mode, use_tcp_tank_client);
+            server.wait_connections(&mut p_engine, udp_port, &mut state_sender);
             info!("Starting simulation");
             p_engine.state = SimulationState::Running;
-            for (tick,now) in ticktock::Clock::framerate(simulation_rate).iter() {
+            for (tick, now) in ticktock::Clock::framerate(simulation_rate).iter() {
                 {
                     //Check if received command to exit
                     match command_receiver.receive() {
                         Some(UICommand::QUIT) => p_engine.exit_simulation(),
-                        None => ()
+                        None => (),
                     };
+                    // Process all request coming from client
                     server.process_request(&mut p_engine);
                     p_engine.step();
-            
-                    state_sender.send(&p_engine).unwrap();
+                    
+                    // Try to lazly send game state to UI 
+                    // If failing teh send ignore it.
+                    match state_sender.send(&p_engine) {
+                        Ok(_) => (),
+                        Err(_) => debug!("Failed sending state to UI ignore it"),
 
-                        if let Some((delta_t, prev_tick)) = fps_counter.update(now) {
-                            fps_counter.set_value(tick);
-                            let fps = (tick - prev_tick) as f64 / delta_t.as_secs_f64();
-                            debug!("FPS: {}", fps);
-                            if fps < (simulation_rate - 1.0) {
-                                warn!("Simulation framerate is low {} expected {}",fps,simulation_rate)
-                            }
+                    }
+
+                    if let Some((delta_t, prev_tick)) = fps_counter.update(now) {
+                        fps_counter.set_value(tick);
+                        let fps = (tick - prev_tick) as f64 / delta_t.as_secs_f64();
+                        debug!("FPS: {}", fps);
+                        if fps < (simulation_rate - 1.0) {
+                            warn!(
+                                "Simulation framerate is low {} expected {}",
+                                fps, simulation_rate
+                            )
                         }
+                    }
+                    // The position of exit is very important for --no-gui option.
+                    // When exiting the application we allows to send a message to UI sender thread  (state_sender) so it can wakeup and exit. 
+                    if is_exit_application() {
+                        debug!("Exiting physical simulation thread");
+                        break;
+                    }
                 }
             }
         });
@@ -175,7 +193,7 @@ impl PhysicsEngine {
     pub fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) {
         //This tank index is used to set userdata of all collider to skip detection.
         let tank_index = self.tanks.len();
-        let tank=Tank::new(self,tank_position,tank_index,name);
+        let tank = Tank::new(self, tank_position, tank_index, name);
         self.tanks.push(tank);
     }
 
@@ -195,13 +213,18 @@ impl PhysicsEngine {
             let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
             // Power = F . v. Here we consider the speed along the direction of tank
             Self::apply_engine_power(tank_rigid_body, tank);
-            tank_rigid_body
-                .apply_torque_impulse(tank.turning_power / (tank.angular_velocity.abs() + 1.0), true);
-            tank.set_cannon_position(&mut self.joint_set,&self.conf);
+            tank_rigid_body.apply_torque_impulse(
+                tank.turning_power / (tank.angular_velocity.abs() + 1.0),
+                true,
+            );
+            tank.set_cannon_position(&mut self.joint_set, &self.conf);
             let turret = &mut tank.turret;
             if turret.fire {
-                let (bullet_body, collider) =
-                    Self::create_bullet(&self.conf,&self.rigid_body_set[turret.phy_body_handle], tank_index);
+                let (bullet_body, collider) = Self::create_bullet(
+                    &self.conf,
+                    &self.rigid_body_set[turret.phy_body_handle],
+                    tank_index,
+                );
                 let bullet_position = *bullet_body.position();
                 let collider_polyline = Self::get_collider_polyline_cuboid(&collider);
                 let rigid_body_handle = self.rigid_body_set.insert(bullet_body);
@@ -213,7 +236,10 @@ impl PhysicsEngine {
                 let bullet = Bullet {
                     collider_handle: collider_handle,
                     phy_body_handle: rigid_body_handle,
-                    tick_counter: std::cmp::max(1, (self.conf.bullet_max_range / self.conf.bullet_speed * 60.0) as u32), //remember that step is 1/60 simulation sec.
+                    tick_counter: std::cmp::max(
+                        1,
+                        (self.conf.bullet_max_range / self.conf.bullet_speed * 60.0) as u32,
+                    ), //remember that step is 1/60 simulation sec.
                     shape_polyline: collider_polyline,
                     position: bullet_position,
                 };
@@ -334,9 +360,14 @@ impl PhysicsEngine {
         }
     }
 
-    pub fn create_bullet(conf:&Conf,cannon_body: &RigidBody, tank_index: usize) -> (RigidBody, Collider) {
+    pub fn create_bullet(
+        conf: &Conf,
+        cannon_body: &RigidBody,
+        tank_index: usize,
+    ) -> (RigidBody, Collider) {
         let cannon_position = cannon_body.position();
-        let velocity_cannon_edge = get_velocity_at_point(conf.turret_width_m / 2.0, 0.0, cannon_body);
+        let velocity_cannon_edge =
+            get_velocity_at_point(conf.turret_width_m / 2.0, 0.0, cannon_body);
         let angle = cannon_position.rotation.angle();
         debug!("Created bullet angle:{}", angle * 180.0 / PI);
         //Compute bullet speed and sum cannon edge speed (world speed)
@@ -368,7 +399,7 @@ impl PhysicsEngine {
 
     #[inline]
     pub fn tank_engine_power_percentage(&self, tank_id: usize) -> f32 {
-        let tank =  &self.tanks[tank_id];
+        let tank = &self.tanks[tank_id];
         tank.engine_power / tank.max_engine_power
     }
     pub fn set_tank_engine_power(&mut self, power_fraction: f32, tank_id: usize) {
@@ -413,15 +444,12 @@ impl PhysicsEngine {
     }
 
     #[inline]
-    fn apply_engine_power(tank_rigid_body: &mut RigidBody, tank:&Tank) {
-  
+    fn apply_engine_power(tank_rigid_body: &mut RigidBody, tank: &Tank) {
         //We don't have infinite force at 0 speed.
         let force = tank.engine_power / (tank.forward_velocity().abs() + 0.5);
         let force_forward_vector = tank_rigid_body.position() * vector![force, 0.0];
         tank_rigid_body.apply_force(force_forward_vector, true);
-        
     }
-    
     /// Get turning power.
     #[inline]
     pub fn tank_turning_power(&self, tank_id: usize) -> f32 {
@@ -452,21 +480,24 @@ impl PhysicsEngine {
     }
 
     /// Move radar and return detected tanks
-    pub fn get_radar_result(&mut self, tank_id: usize,radar_increment:f32,radar_width:f32) -> (f32, Vec<(&Tank, f32)>) {
-        
+    pub fn get_radar_result(
+        &mut self,
+        tank_id: usize,
+        radar_increment: f32,
+        radar_width: f32,
+    ) -> (f32, Vec<(&Tank, f32)>) {
         let tank = &mut self.tanks[tank_id];
         // Update radar position
         let enough_energy = tank.update_radar_attribute(radar_increment, radar_width);
         // If not enough energy for operation return present position and empty list of detected tank
-        if ! enough_energy {
-            return (tank.radar_position,Vec::new());
+        if !enough_energy {
+            return (tank.radar_position, Vec::new());
         }
         // Detect tank in radar detection area.
         let mut result = Vec::new();
-        let tank =  &self.tanks[tank_id];
-    
+        let tank = &self.tanks[tank_id];
         //Search detected tank
-        for  index in 0..self.tanks.len() {
+        for index in 0..self.tanks.len() {
             //Tank don't detect itself
             if index == tank_id {
                 continue;
@@ -505,16 +536,14 @@ impl PhysicsEngine {
         }
     }
 
-    pub fn cannon_temperature(&self,tank_id: usize) -> f32 {
+    pub fn cannon_temperature(&self, tank_id: usize) -> f32 {
         self.tanks[tank_id].turret.cannon_temperature
     }
 
-    pub fn exit_simulation(&self) -> ! {
+    pub fn exit_simulation(&self) {
         let path = "simulation_output.csv";
-        info!("Exiting simulation and saving result to {}",&path );
+        info!("Exiting simulation and saving result to {}", &path);
         report::save_tank_report(path, &self.tanks).unwrap();
-        std::process::exit(0);
+        signal_exit();
     }
 }
-
-

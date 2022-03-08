@@ -6,10 +6,27 @@ pub mod conf;
 pub mod tank_proto {
     include!(concat!(env!("OUT_DIR"), "/protobuffer.tank.rs"));
 }
-
 use clap::{Parser};
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+use std::sync::atomic::{AtomicBool,Ordering};
 
+// Flag to true to signal to all thread to exit
+static EXIT_SIGNAL: AtomicBool = AtomicBool::new(false);
+
+#[inline]
+/// To signal all thread to exit
+/// used to exit from application
+pub fn signal_exit() {
+  EXIT_SIGNAL.store(true, Ordering::Release);
+
+}
+
+#[inline]
+/// Check if it is time to exit from application
+pub fn is_exit_application() -> bool{
+  EXIT_SIGNAL.load(Ordering::Acquire)
+}
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Run krobots server
 #[derive(Parser)]
 #[clap(version = VERSION, author = "Oreste Bernardi <oreste@oreste.eu>")]
