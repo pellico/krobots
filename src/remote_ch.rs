@@ -13,7 +13,7 @@ use std::{thread, time};
 
 pub struct UISender {
     handler: NodeHandler<UIGameState>,
-    node_task : NodeTask
+    _node_task : NodeTask
 }
 
 impl GameStateSender for UISender {
@@ -41,7 +41,7 @@ impl UISender {
         }
        
             let mut endpoints = HashSet::with_capacity(max_number_connections);
-            let node_task = listener.for_each_async(move |event| match event {
+            let _node_task = listener.for_each_async(move |event| match event {
                 NodeEvent::Network(net_event) => match net_event {
                     NetEvent::Connected(_, _) => (),
                     NetEvent::Accepted(endpoint, _listener) => {
@@ -80,7 +80,7 @@ impl UISender {
             });
         UISender {
             handler: handler_copy,
-            node_task
+            _node_task
         }
     }
 }

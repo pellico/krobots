@@ -61,7 +61,7 @@ struct GameUI {
     zoom : f32,
 }
 
-const BULLET_IMAGE : &[u8] = include_bytes!("icons\\bullet_64x64.data");
+const BULLET_IMAGE : &[u8] = include_bytes!("icons\\flower_64x64.data");
 const TANK_BODY_IMAGE : &[u8] = include_bytes!("icons\\body_36x38.data");
 const TURRET_IMAGE : &[u8] = include_bytes!("icons\\turret_20x54.data");
 const RADAR_IMAGE : &[u8] = include_bytes!("icons\\radar_22x16.data");

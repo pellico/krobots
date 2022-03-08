@@ -81,23 +81,18 @@ def run_my_robot(name):
     tank.move_to_angle(status.power_source.p,0.01)
     tank.set_power_engine(0.05)
     while True :
+        tank.set_power_engine(0.05)
         radar_result = tank.comm.get_radar_result(0.1,0.1)
         if radar_result.tanks:
             tank.set_power_engine(0.01)
             generator = tank.track_and_fire(0.01)
             while next(generator):
                 pass
-        
-            
-    tank.set_power_engine(0.01)
-    tank.comm.set_cannon_position(radar_result.angle)
-    while True:
-        tank.comm.fire_cannon()
-    sleep(1)
+
 
             
 if __name__ == '__main__':
-    for tank_id in range(0,2):
-        name = 'oreste_%d' % (tank_id)
+    for tank_id in range(0,10):
+        name = 'tank_%d' % (tank_id)
         t2 = Process(name=name,target=run_my_robot, args=(name,))
         t2.start()

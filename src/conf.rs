@@ -94,12 +94,12 @@ impl Default for Conf {
             linear_damping : 1.0, 
             angular_damping :  1.0,
             tank_engine_power_max :  100000.0, //Max power
-            start_distance :  300.0,//700.0, //Distance from power source used deploy tank at game start
+            start_distance :  500.0,//700.0, //Distance from power source used deploy tank at game start
             radar_angle_increment_max :  std::f32::consts::PI / 180.0 * 20.0,
             radar_width_max : std::f32::consts::PI / 180.0 * 10.0,
-            radar_max_detection_distance :  400.0,
+            radar_max_detection_distance :  300.0,
             radar_operation_energy :  1000.0, // Energy consumed to operate radar.
-            bullet_max_range :  300.0,
+            bullet_max_range :  200.0,
             bullet_speed :  800.0, //  m/sec
             bullet_damage : 10.0,
             bullet_energy :  100000.0, //This energy is subtracted from tank energy
@@ -107,7 +107,7 @@ impl Default for Conf {
             power_energy_source_step :  TANK_ENERGY_MAX / 60.0 / 60.0, 
             /// When tank distance from center is >= ZERO_POWER_LIMIT no charging is possible.
             /// When tank distance from center is < ZERO_POWER_LIMIT charging power is POWER_ENERGY_SOURCE_STEP *(1-distance/ZERO_POWER_LIMIT)
-            zero_power_limit :  400.0,
+            zero_power_limit :  300.0,
             /// Minimum temperature of cannon.
             cannon_min_temp :  20.0,
             /// Max temperature of cannon. When cannon temperature is higher than this value
