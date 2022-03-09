@@ -35,6 +35,10 @@ OPTIONS:
     -d, --debug-mode
             Simulator stop waiting for command from tank client
 
+        --graphics-scaling-factor <GRAPHICS_SCALING_FACTOR>
+            Scaling factor of ui graphics compared to physical simulation dimension. Increment teh
+            value to see bigger graphics compared to physical collider [default: 0.15]
+
     -h, --help
             Print help information
 
@@ -43,6 +47,9 @@ OPTIONS:
 
     -m, --max-steps <MAX_STEPS>
             Max number of simulation step. If 0 no end until only one survived [default: 0]
+
+        --max-num-remote-gui <MAX_NUM_REMOTE_GUI>
+            Maximum number supported of remote GUI Effective only if --no_gui is used [default: 1]
 
         --no-gui
             Headless server When specified server will not show any ui but it expect a connection
@@ -63,7 +70,6 @@ OPTIONS:
 
     -V, --version
             Print version information
-
 ```
 
 After the launch server wait the connection of client until reaching the defined number of registered client.

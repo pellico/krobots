@@ -29,7 +29,7 @@ pub fn is_exit_application() -> bool{
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Run krobots server
 #[derive(Parser)]
-#[clap(version = VERSION, author = "Oreste Bernardi <oreste@oreste.eu>")]
+#[clap(version = VERSION, author = "Oreste Bernardi")]
 pub struct Opts {
     /// How many tanks in this game
     pub (crate) num_tanks: usize,
