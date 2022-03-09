@@ -245,7 +245,7 @@ impl GameUI {
                     };
                     let dead_label;
                     let final_label: &str = if p_tank.is_dead() {
-                        dead_label = "DEAD ".to_owned() + label;
+                        dead_label = "DISABLED ".to_owned() + label;
                         &dead_label
                     } else {
                         label

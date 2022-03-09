@@ -19,8 +19,8 @@ def angle_wrapping(angle:float) -> float :
 
 
 
-def main_loop(name,ip,port):
-    tank=ktanks.Tank(name,ip,port) # Create the proxy object to communicate with server
+def main_loop(ip,port):
+    tank=ktanks.Tank("dumb_tank",ip,port,use_tcp=True) # Create the proxy object to communicate with server
     turn_back_distance=150.0 # At this distance from power source turn back to power source
     status = tank.get_status()
     forward_power = 0.9   # Initial tank body forward movement power
@@ -76,7 +76,6 @@ def main_loop(name,ip,port):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Dumb tank")
-    parser.add_argument("name", type=str, help="Name of tank max 20 chars")
     parser.add_argument(
         "--ip",
         required=False,
@@ -93,4 +92,4 @@ if __name__ == '__main__':
         default = 55230
     )
     args = parser.parse_args()
-    main_loop(args.name,args.ip,args.port)
+    main_loop(args.ip,args.port)

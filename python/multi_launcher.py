@@ -3,7 +3,7 @@
 '''
 multi_launcher -- Easier launch multi instance of tank
 
-multi_launcher is a convenience tool to launch multiple isntance of same tank
+multi_launcher is a convenience tool to launch multiple tanks
 
 @author:     Oreste Bernardi
 
@@ -14,28 +14,15 @@ multi_launcher is a convenience tool to launch multiple isntance of same tank
 @contact:    
 @deffield    updated: Updated
 '''
-import argparse, pathlib,time,os
+import argparse, pathlib, time, os, random
 from subprocess import PIPE, Popen
-from pickle import TRUE
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Tank launcher")
+    parser = argparse.ArgumentParser(description="Launch all tank clients available in a folder")
     parser.add_argument(
-        "tank_script",
+        "tanks_folder",
         type=pathlib.Path,
-        help="Path to tank python script"
-        )
-    parser.add_argument(
-        "num_tanks",
-        type=int,
-        help="Num anks to launch"
-        )
-    parser.add_argument(
-        "--name",
-        type=str,
-        required=False,
-        help="Base name of tank max 20 chars",
-        default="tank"
+        help="Path to tank python script folder"
         )
     parser.add_argument(
         "--ip",
@@ -52,11 +39,21 @@ if __name__ == '__main__':
         help="server port number",
         default=55230
     )
+    parser.add_argument(
+        "--random_seed",
+        required=False,
+        type=int,
+        help="seed for pseudo randomic tank order selection",
+        default=0
+    )
     args = parser.parse_args()
-    print(args.num_tanks)
+    clients = sorted(map(lambda x: x.path, filter(lambda x: x.is_file(), os.scandir(args.tanks_folder))))
+    random.seed(args.random_seed)
+    random.shuffle(clients)
     procs = []
-    for index in range(args.num_tanks):
-        command = 'python ' + str(args.tank_script) + f" {args.name}_{index} --ip {args.ip} --port {args.port}"
+    for client_path in clients:
+        command = 'python ' + str(client_path) + f" --ip {args.ip} --port {args.port}"
+        print(command)
         if os.name == "nt":
             # I need shell true in order to use the virtualenv
             shell = True
@@ -64,14 +61,11 @@ if __name__ == '__main__':
             # in Linux shell true has issue and it seems that it is not required.
             shell = False
         procs.append(Popen(
-            ["python", str(args.tank_script), args.name + "_" + f"{index}","--ip",str(args.ip),"--port",str(args.port)],
+            ["python", str(client_path), "--ip", str(args.ip), "--port", str(args.port)],
             shell=shell,
-            stdout=PIPE,
-
-            )
-            )
+            stdout=PIPE,))
+        time.sleep(1)
     for x in procs:
         while x.poll() == None:
             time.sleep(1)
-   
         

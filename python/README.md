@@ -15,7 +15,7 @@ ktanks documentation is available at this link:
 
 
 ## How to run example **dumb_robot**
-In `examples` is available `dumb_robot.py`.
+In `examples` is available `dumb_robot.py` and `tower.py`.
 
 This robot move back and forward inside the zero power limit circle while looking for enemy and firing if it found an enemy. This tank try always to pass through the power source.
 In one shell execute the game server waiting for 2 tanks
@@ -24,10 +24,10 @@ In one shell execute the game server waiting for 2 tanks
 krobots 2 
 ```
 
-in another two shells launch  the example with different name
+in another two shells launch  dumb_robot.py
 
 ```bash
-python dumb_robot.py <name>
+python dumb_robot.py
 ```
 
 You can launch dumb robot specifying server port and ip address see the help for detailed option description.
@@ -42,7 +42,7 @@ If you want to launch automatically many tanks it is possible to use the helper 
 
 ### Example
 ```bash
-python multi_launcher.py .\example\dumb_robot 10
+python multi_launcher.py .\examples
 ```
 This script expect tank script is supporting the same command line options as `dumb_robot.py`
 For other options of `multi_launcher.py` look at command line help.
