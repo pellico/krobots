@@ -20,6 +20,7 @@ pylint-protobuf = "^0.20.2"
 mypy-protobuf = "^3.1.0"
 beautifulsoup4 = "^4.10.0"
 rinohtype = "^0.5.3"
+tomli = "^2.0.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

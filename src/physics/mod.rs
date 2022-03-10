@@ -102,6 +102,12 @@ pub struct PhysicsEngine {
     conf: Conf,
 }
 
+/// Create Point2 
+/// Workaround of rust analyzer
+/// https://github.com/rust-analyzer/rust-analyzer/issues/8654
+
+fn new_point2(x:f32,y:f32) -> Point<f32> {[x,y].into()}
+
 impl PhysicsEngine {
     pub fn new(
         conf: Conf,
@@ -359,6 +365,8 @@ impl PhysicsEngine {
             self.exit_simulation();
         }
     }
+    
+
 
     pub fn create_bullet(
         conf: &Conf,
@@ -373,7 +381,7 @@ impl PhysicsEngine {
         //Compute bullet speed and sum cannon edge speed (world speed)
         let velocity = (cannon_position * vector![conf.bullet_speed, 0.0]) + velocity_cannon_edge;
         //bullet shall be created in front of cannon and outside of the tank
-        let bullet_position = cannon_position * Point2::new(1.8, 0.0);
+        let bullet_position = cannon_position * new_point2(1.8, 0.0);
         let bullet_body = RigidBodyBuilder::new_dynamic()
             .translation(bullet_position.coords)
             .linvel(velocity)
