@@ -15,7 +15,7 @@ with open("../Cargo.toml", "rb") as f:
     toml_dict = tomli.load(f)
 version = toml_dict["package"]["version"]
 
-with ZipFile(f'dist/ktanks_{version}.zip', 'w',compression=ZIP_DEFLATED,compresslevel=9) as zipObj2:
+with ZipFile(f'dist/ktanks_server-{version}.zip', 'w',compression=ZIP_DEFLATED,compresslevel=9) as zipObj2:
     #for x in glob("dist/*"):
     #    zipObj2.write(x,arcname=basename(x))
     for x in glob("../target/release/*.exe"):
@@ -24,7 +24,7 @@ with ZipFile(f'dist/ktanks_{version}.zip', 'w',compression=ZIP_DEFLATED,compress
    # zipObj2.write("build/rinoh/ktanks.pdf",arcname="ktanks_python_reference.pdf")
    # zipObj2.write("../README.md",arcname="README.md")
     
-with ZipFile(f'dist/examples_{version}.zip', 'w',compression=ZIP_DEFLATED,compresslevel=9) as zipObj2:
+with ZipFile(f'dist/examples-{version}.zip', 'w',compression=ZIP_DEFLATED,compresslevel=9) as zipObj2:
     zipObj2.write("multi_launcher.py")
     zipObj2.write("README.md")
     for x in glob("examples/*.*"):
