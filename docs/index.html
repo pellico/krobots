@@ -86,7 +86,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
  *
  * Sphinx stylesheet -- classic theme.
  *
- * :copyright: Copyright 2007-2021 by the Sphinx team, see AUTHORS.
+ * :copyright: Copyright 2007-2022 by the Sphinx team, see AUTHORS.
  * :license: BSD, see LICENSE for details.
  *
  */
@@ -547,7 +547,7 @@ depends on simulation speed.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.success">
 <span class="sig-name descname"><span class="pre">success</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.success" title="Permalink to this definition">¶</a></dt>
-<dd><p>Flag to signal when operation is not sucessfull</p>
+<dd><p>Flag to signal when operation is not successful</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>bool</p>
@@ -568,13 +568,23 @@ depends on simulation speed.</p>
 <dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.power_source">
 <span class="sig-name descname"><span class="pre">power_source</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.power_source" title="Permalink to this definition">¶</a></dt>
 <dd><p>Polar coordinates of power source respect to tank. Tank is charged by power source with a speed
-that descrease linearly respect to power source distance. Beyond the zero limit tank energy is decreased
+that decreases linearly respect to power source distance. Beyond the zero limit tank energy is decreased
 always proportionally.</p>
 <p><em>PolarVector.r</em> is in <em>m</em></p>
 <p><em>PolarVector.p</em> is in radians</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p><a class="reference internal" href="#ktanks.tank_pb2.PolarVector" title="ktanks.tank_pb2.PolarVector"><code class="xref py py-class docutils literal notranslate"><span class="pre">PolarVector</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ktanks.tank_pb2.TankStatus.cannon_temp">
+<span class="sig-name descname"><span class="pre">cannon_temp</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankStatus.cannon_temp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Temperature of cannon</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
 </dd>
 </dl>
 </dd></dl>
@@ -599,7 +609,7 @@ always proportionally.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="ktanks.tank_pb2.TankRadar.damage">
 <span class="sig-name descname"><span class="pre">damage</span></span><a class="headerlink" href="#ktanks.tank_pb2.TankRadar.damage" title="Permalink to this definition">¶</a></dt>
-<dd><p>Damage of detected tank. When 100 is dead</p>
+<dd><p>Damage of detected tank. When equal or greater than <cite>SimulationConfig.damage_max</cite> is disabled</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>float</p>
@@ -776,7 +786,7 @@ always proportionally.</p>
 </div>
 <div class="footer" role="contentinfo">
         � Copyright 2021, Oreste Bernardi.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.3.2.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.4.0.
     </div>
 </body>
 </html>
