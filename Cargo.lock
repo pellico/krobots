@@ -588,7 +588,7 @@ checksum = "b71991ff56294aa922b450139ee08b3bfc70982c6b2c7562771375cf73542dd4"
 
 [[package]]
 name = "ktanks_server"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "bincode",
  "clap",
