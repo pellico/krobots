@@ -33,9 +33,9 @@ pub(super) fn new(port: u16, debug_mode: bool) -> ClientInterface {
         },
     };
     ClientInterface {
-        socket: socket,
+        socket,
         connection_port_counter: port,
-        debug_mode: debug_mode,
+        debug_mode,
     }
 }
 

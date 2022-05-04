@@ -83,7 +83,7 @@ impl GameUI {
     fn compute_camera_text(camera:&Camera2D) -> Camera2D {
         // Workaround to draw correct text
         // We need some special settings
-        let mut camera_text = camera.clone();
+        let mut camera_text = *camera;
         camera_text.zoom[1] = -camera.zoom[1];
         camera_text.rotation = -camera.rotation;
         camera_text.target[1] = -camera.target[1];
@@ -118,7 +118,7 @@ impl GameUI {
     async fn new(game_state: &UIGameState,physical_scaling_factor:f32) -> GameUI {
         let default_zoom = 1.0/(game_state.zero_power_limit * physical_scaling_factor);
         let camera_default = Self::get_default_camera(default_zoom);
-        let label_style = root_ui().style_builder().font(ARIAL_TTF.clone()).unwrap()
+        let label_style = root_ui().style_builder().font(ARIAL_TTF).unwrap()
         .text_color(Color::from_rgba(0, 0, 0, 255))
         .color_selected(Color::from_rgba(255, 0, 0, 255))
         .font_size(15)
@@ -133,7 +133,7 @@ impl GameUI {
             tanks: Vec::<GTank>::with_capacity(game_state.tanks.len()),
             ui_visible: true,
             camera_text : Self::compute_camera_text(&camera_default),
-            camera: camera_default.clone(),
+            camera: camera_default,
             default_zoom,
             zoom : default_zoom,
             bullet_texture: Texture2D::from_rgba8(64, 64, BULLET_IMAGE),
@@ -151,9 +151,9 @@ impl GameUI {
             let texture_turret: Texture2D = Texture2D::from_rgba8(20, 54,TURRET_IMAGE);
             let texture_radar: Texture2D = Texture2D::from_rgba8(22, 16,RADAR_IMAGE);
             game_ui.tanks.push(GTank {
-                texture_body: texture_body,
-                texture_turret: texture_turret,
-                texture_radar: texture_radar,
+                texture_body,
+                texture_turret,
+                texture_radar,
                 body_texture_size: Vec2::new(
                     texture_body.width() * 5.0,
                     texture_body.height() * 5.0,
@@ -191,9 +191,8 @@ impl GameUI {
     }
 
 
-    fn draw_tanks<'b>(&mut self, p_tanks: &'b Vec<Tank>) {
-        for index in 0..self.tanks.len() {
-            let g_tank = &mut self.tanks[index];
+    fn draw_tanks(&mut self, p_tanks:&[Tank]) {
+        for (index,g_tank) in self.tanks.iter_mut().enumerate() {
             let p_tank = &p_tanks[index];
             g_tank.draw(p_tank, self.physical_scaling_factor,self.font_name,&self.camera_text);
             g_tank.draw_collider(p_tank, self.physical_scaling_factor);
@@ -201,7 +200,7 @@ impl GameUI {
         }
     }
 
-    fn draw_bullets<'a>(&self, p_bullets: &'a Vec<Bullet>) {
+    fn draw_bullets(&self, p_bullets: &Vec<Bullet>) {
         for p_bullet in p_bullets {
             let bullet_position = p_bullet.position;
             let g_x: f32 =
@@ -226,16 +225,15 @@ impl GameUI {
         }
     }
 
-    fn robot_data_ui(&mut self, p_tanks: &Vec<Tank>) {
-        if self.ui_visible == false {
+    fn robot_data_ui(&mut self, p_tanks: &[Tank]) {
+        if ! self.ui_visible {
             return;
         }
         widgets::Window::new(hash!(), vec2(0., 0.), vec2(300., 400.))
             .label("Tanks")
             .titlebar(true)
             .ui(&mut *root_ui(), |ui| {
-                for index in 0..self.tanks.len() {
-                    let p_tank = &p_tanks[index];
+                for (index,p_tank) in p_tanks.iter().enumerate() {
                     let uppercase_label;
                     let label = if index == self.selected_tank {
                         uppercase_label = p_tank.name.to_uppercase();
@@ -289,7 +287,10 @@ impl GameUI {
             });
     }
 
-    fn process_keyboard_input(&mut self, p_tanks: &Vec<Tank>,tx_ui_command : &Box<dyn UICommandSender>) {
+    /**
+     * Process keyboard input and update UI status and eventually send to simulation server.
+     */
+    fn process_keyboard_input(&mut self, p_tanks: &[Tank],tx_ui_command : &dyn UICommandSender) {
         if is_key_released(KeyCode::Q) && !is_key_down(KeyCode::LeftControl) {
             self.ui_visible ^= true;
         }
@@ -334,16 +335,12 @@ impl GameUI {
          self.camera_text = Self::compute_camera_text(&self.camera);
         
 
-        if is_key_released(KeyCode::PageUp) {
-            if self.selected_tank > 0 {
-                self.selected_tank -= 1;
-            }
+        if is_key_released(KeyCode::PageUp) &&  self.selected_tank > 0 {
+            self.selected_tank -= 1;
         }
     
-        if is_key_released(KeyCode::PageDown) {
-            if self.selected_tank < self.tanks.len() - 1 {
-                self.selected_tank += 1;
-            };
+        if is_key_released(KeyCode::PageDown) && self.selected_tank < self.tanks.len() - 1{
+            self.selected_tank += 1;
         }
 
         if (is_key_released(KeyCode::Q) && is_key_down(KeyCode::LeftControl)) || is_quit_requested()  {
@@ -356,7 +353,7 @@ impl GameUI {
 
 }
 
-fn draw_polyline(polyline: &Vec<Point2<Real>>, scaling_factor: f32) {
+fn draw_polyline(polyline: &[Point2<Real>], scaling_factor: f32) {
     let polyline_size = polyline.len();
     for index in 1..polyline_size {
         let point1 = &polyline[index - 1];
@@ -564,7 +561,7 @@ async fn ui_main(mut rx_data:Box<dyn GameStateReceiver>,tx_ui_command : Box<dyn 
             macroquad_profiler::profiler(Default::default());
         };
 
-        game_ui.process_keyboard_input(&game_state.tanks,&tx_ui_command);
+        game_ui.process_keyboard_input(&game_state.tanks,&*tx_ui_command);
         match rx_data.receiver() {
             Some(state) => {game_state=state},
             None => ()

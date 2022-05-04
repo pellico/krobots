@@ -15,6 +15,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+///! Implements the physical simulation 
+
+
 mod networking;
 mod report;
 mod tank;
@@ -36,6 +39,10 @@ use std::f32::consts::PI;
 use std::thread::{spawn, JoinHandle};
 use std::time;
 
+/** 
+ Tank body collision group used in colliders.
+ Tan
+ */ 
 const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b001, 0b101);
 const TURRET_GROUP: InteractionGroups = InteractionGroups::new(0b010, 0b110);
 const BULLET_GROUP: InteractionGroups = InteractionGroups::new(0b100, 0b011);
@@ -69,7 +76,9 @@ impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum SimulationState {
+    /// Waiting connection from all tanks
     WaitingConnection,
+    /// Simulation running
     Running,
 }
 impl Default for SimulationState {
@@ -79,12 +88,25 @@ impl Default for SimulationState {
 }
 
 pub struct PhysicsEngine {
+    /// Maximum number of tanks 
     max_num_tanks: usize,
+    /// Maximum numbers of tick allowed. If `max_ticks` == 0 simulation
+    /// is stopped only when only one tank is not disabled/dead.
     max_ticks: u32,
+    /// How many tanks are still alive
     tanks_alive: u32,
+    /// All tanks in the game
     tanks: Vec<Tank>,
+    /// All bullets in the simulation
     bullets: Vec<Bullet>,
+    /// Present number of ticks
     tick: u32,
+    /// If true simulation wait for commands from tanks
+    debug_mode: bool,
+    /// Simulation state
+    state: SimulationState,
+    /// Simulation configuration
+    conf: Conf,
     rigid_body_set: RigidBodySet,
     collider_set: ColliderSet,
     integration_parameters: IntegrationParameters,
@@ -97,9 +119,6 @@ pub struct PhysicsEngine {
     physics_hooks: MyPhysicsHooks,
     event_handler: (),
     gravity_vector: Vector2<Real>,
-    debug_mode: bool,
-    state: SimulationState,
-    conf: Conf,
 }
 
 /// Create Point2 
@@ -109,7 +128,15 @@ pub struct PhysicsEngine {
 fn new_point2(x:f32,y:f32) -> Point<f32> {[x,y].into()}
 
 impl PhysicsEngine {
-    pub fn new(
+    /**
+    Create a simulation engine and thread that execute the simulation
+    # Arguments
+    * `conf` - Game configuration
+    * `opts` - Options collected from command line
+    * `state_sender` - Proxy used to send simulation state to ui client
+    * `command_receiver` - Proxy used to check if there is a command from ui client
+    */
+    pub fn new_simulation_thread(
         conf: Conf,
         opts: &Opts,
         mut state_sender: Box<dyn GameStateSender>,
@@ -139,7 +166,7 @@ impl PhysicsEngine {
             gravity_vector: vector![0.0, 0.0], //No gravity
             debug_mode: opts.debug_mode,
             state: SimulationState::WaitingConnection,
-            conf: conf,
+            conf,
         };
 
         let now = time::Instant::now();
@@ -148,7 +175,7 @@ impl PhysicsEngine {
             .every(time::Duration::from_secs(5))
             .start(now);
         //Create thread that perform physics simulation
-        let join_handle = spawn(move || {
+        spawn(move || {
             info!("Start waiting connections");
             let mut server = RobotServer::new(p_engine.debug_mode, use_tcp_tank_client);
             server.wait_connections(&mut p_engine, udp_port, &mut state_sender);
@@ -192,18 +219,25 @@ impl PhysicsEngine {
                     }
                 }
             }
-        });
-
-        return join_handle;
+        })
     }
-    pub fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) {
+    
+    /**
+    Add tank to simulation.
+    This can be used only before calling  `step` function.
+    # Arguments
+    * `tank_position` - Initial position of tank
+    * `name` - Tank name
+    */
+    fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) {
         //This tank index is used to set userdata of all collider to skip detection.
         let tank_index = self.tanks.len();
         let tank = Tank::new(self, tank_position, tank_index, name);
         self.tanks.push(tank);
     }
 
-    pub fn step(&mut self) {
+    /// Execute one simulation step
+    fn step(&mut self) {
         //Execute all command
         for (tank_index, tank) in self.tanks.iter_mut().enumerate() {
             tank.turret.update_cannon_temp();
@@ -240,7 +274,7 @@ impl PhysicsEngine {
                     &mut self.rigid_body_set,
                 );
                 let bullet = Bullet {
-                    collider_handle: collider_handle,
+                    collider_handle,
                     phy_body_handle: rigid_body_handle,
                     tick_counter: std::cmp::max(
                         1,
@@ -367,8 +401,16 @@ impl PhysicsEngine {
     }
     
 
+    /**
+    Create one bullet. When bullet is created the speed of cannon edge
+    is added to the speed of bullet
 
-    pub fn create_bullet(
+    # Arguments
+    * `conf` - Simulation configuration
+    * `cannon_body` - Cannon body required to get edge speed
+    * `tank_index` - index in the [`PhysicsEngine.tanks`]
+     */ 
+    fn create_bullet(
         conf: &Conf,
         cannon_body: &RigidBody,
         tank_index: usize,
@@ -401,6 +443,7 @@ impl PhysicsEngine {
     }
 
     #[inline]
+    /// Get how many simulation steps are executed
     pub fn tick(&self) -> u32 {
         self.tick
     }
@@ -424,7 +467,7 @@ impl PhysicsEngine {
 
     pub fn get_position(&self, tank: &Tank) -> &Isometry<Real> {
         let p = &self.rigid_body_set[tank.phy_body_handle];
-        return p.position();
+        p.position()
     }
     pub fn get_tank_position(&self, tank_id: usize) -> &Isometry<Real> {
         self.get_position(&self.tanks[tank_id])
@@ -484,7 +527,7 @@ impl PhysicsEngine {
         for v in &mut vertexs {
             *v = position * *v;
         }
-        return vertexs;
+        vertexs
     }
 
     /// Move radar and return detected tanks

@@ -1,7 +1,8 @@
 {
     "cSpell.words": [
         "angvel",
-        "nalgebra"
+        "nalgebra",
+        "rigidbody"
     ],
     "files.watcherExclude": {
         "**/target/**": true

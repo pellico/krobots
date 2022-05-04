@@ -32,8 +32,8 @@ pub (super) fn new(port:u16,debug_mode:bool)->ClientInterface {
         },
     };
     ClientInterface {
-        listener : listener,
-        debug_mode : debug_mode
+        listener,
+        debug_mode
     }
 }
 
@@ -56,7 +56,7 @@ impl NetInterface for ClientInterface {
         }
 
         (Box::new(TankClientConnection {
-            stream : stream,
+            stream,
         }),msg_size)
 
     }

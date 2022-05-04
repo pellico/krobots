@@ -103,10 +103,10 @@ impl UIReceiver {
             .connect(TRANSPORT, (remote_ip, remote_port))
             .unwrap();
         UIReceiver {
-            handler: handler,
-            server_id: server_id,
-            local_addr: local_addr,
-            receiver: receiver,
+            handler,
+            server_id,
+            local_addr,
+            receiver,
             remote_addr: remote_ip.to_string(),
             _task: task,
         }
@@ -120,9 +120,8 @@ impl GameStateReceiver for UIReceiver {
             self.handler.stop();
         }
         let mut result = None;
-        loop {
-            match self.receiver.try_receive() {
-                Some(event) => match event.network() {
+        while let Some(event) = self.receiver.try_receive() {
+                match event.network() {
                     StoredNetEvent::Connected(endpoint, established) => {
                         if established {
                             info!(
@@ -152,9 +151,7 @@ impl GameStateReceiver for UIReceiver {
                         self.handler.stop();
                         std::process::exit(0);
                     }
-                },
-                None => break,
-            }
+                }
         }
         result
     }
@@ -204,5 +201,11 @@ impl CommandReceiver {
         CommandReceiver {
             rx_command: rx_data,
         }
+    }
+}
+
+impl Default for CommandReceiver {
+    fn default() -> Self {
+        CommandReceiver::new()
     }
 }

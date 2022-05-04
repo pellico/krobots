@@ -126,10 +126,10 @@ impl Tank {
                 .insert(rigid_body_handle, rigid_body_turret_handle, joint);
 
         Tank {
-            name: name,
+            name,
             phy_body_handle: rigid_body_handle,
-            collider_handle: collider_handle,
-            cannon_joint_handle: cannon_joint_handle,
+            collider_handle,
+            cannon_joint_handle,
             energy: p_engine.conf.tank_energy_max,
             damage: 0.0,
             turret: Turret {
@@ -188,17 +188,19 @@ impl Tank {
         self.energy
     }
 
+    /**
+     * Set cannon position
+     */
     pub (super) fn set_cannon_position(&mut self, joint_set: &mut JointSet,conf:&Conf) {
         match self.turret.new_angle {
             Some(angle) => {
                 let joint = joint_set.get_mut(self.cannon_joint_handle).unwrap();
-                match &mut joint.params {
-                    JointParams::BallJoint(ball_joint) => ball_joint.configure_motor_position(
+                if let JointParams::BallJoint(ball_joint) = &mut joint.params {
+                    ball_joint.configure_motor_position(
                         Rotation::new(angle),
                         conf.turret_stiffness,
                         conf.turret_damping,
-                    ),
-                    _ => (),
+                    )
                 };
                 self.turret.new_angle = None;
             }
