@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 use super::GameStateSender;
-use crate::physics::{Isometry2, PhysicsEngine, Real, Rotation2, Vector2};
+use crate::physics::{PhysicsEngine, Real, Rotation2, Vector2};
 use crate::tank_proto::*;
 use log::{debug, error, info};
 use prost::Message;
@@ -68,9 +68,7 @@ impl RobotServer {
 
         let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
         let mut names = Vec::<String>::new();
-        //Position of first tank. Other tank positions are computed by rotating it.
-        let position_vector = Vector2::new(p_engine.conf.start_distance, 0.0);
-        for tank_index in 0..p_engine.max_num_tanks {
+        for _ in 0..p_engine.max_num_tanks {
             let (mut client_connection, amt) = client_interface.wait_new_tank(&mut buffer);
             let tank_id = match RegisterTank::decode(&buffer[..amt]) {
                 Ok(tank_id) => tank_id,
@@ -79,15 +77,7 @@ impl RobotServer {
                     continue;
                 }
             };
-
-            //info!("IP:{} is registering tank {} server port {}",src,tank_id.name,self.connection_port_counter);
-            //Compute position of new tank
-            let tank_pos_angle = (2.0 * std::f32::consts::PI / p_engine.max_num_tanks as f32)
-                * (tank_index + 1) as f32;
-            let tank_vector_position = Isometry2::rotation(tank_pos_angle) * position_vector;
-            //Angle to compute starting position of tank
-            let tank_position = Isometry2::new(tank_vector_position, tank_pos_angle);
-            p_engine.add_tank(tank_position, tank_id.name.clone());
+            p_engine.add_tank_in_circle(tank_id.name.clone());
             names.push(tank_id.name.clone());
 
             //Send answer

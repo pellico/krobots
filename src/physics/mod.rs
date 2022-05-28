@@ -49,10 +49,10 @@ const BULLET_GROUP: InteractionGroups = InteractionGroups::new(0b100, 0b011);
 
 struct MyPhysicsHooks;
 
-impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
+impl PhysicsHooks for MyPhysicsHooks {
     fn filter_contact_pair(
         &self,
-        context: &PairFilterContext<RigidBodySet, ColliderSet>,
+        context: &PairFilterContext,
     ) -> Option<SolverFlags> {
         // This is a silly example of contact pair filter that:
         // - Enables contact and force computation if both colliders have same user-data.
@@ -68,7 +68,7 @@ impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
         }
     }
 
-    fn filter_intersection_pair(&self, _: &PairFilterContext<RigidBodySet, ColliderSet>) -> bool {
+    fn filter_intersection_pair(&self, _: &PairFilterContext) -> bool {
         error!("Not here");
         true //This function is not used
     }
@@ -114,9 +114,10 @@ pub struct PhysicsEngine {
     island_manager: IslandManager,
     broad_phase: BroadPhase,
     narrow_phase: NarrowPhase,
-    joint_set: JointSet,
+    joint_set: ImpulseJointSet,
+    multibody_joints: MultibodyJointSet,
     ccd_solver: CCDSolver,
-    physics_hooks: MyPhysicsHooks,
+    physics_hooks: (),
     event_handler: (),
     gravity_vector: Vector2<Real>,
 }
@@ -128,6 +129,32 @@ pub struct PhysicsEngine {
 fn new_point2(x:f32,y:f32) -> Point<f32> {[x,y].into()}
 
 impl PhysicsEngine {
+    fn new ( conf: Conf,opts: &Opts) -> PhysicsEngine {
+        PhysicsEngine {
+            max_num_tanks: opts.num_tanks,
+            max_ticks: opts.max_steps,
+            tanks_alive: 0,
+            tanks: vec![],
+            bullets: vec![],
+            tick: 0,
+            rigid_body_set: RigidBodySet::new(),
+            collider_set: ColliderSet::new(),
+            integration_parameters: IntegrationParameters::default(),
+            physics_pipeline: PhysicsPipeline::new(),
+            island_manager: IslandManager::new(),
+            broad_phase: BroadPhase::new(),
+            narrow_phase: NarrowPhase::new(),
+            joint_set: ImpulseJointSet::new(),
+            multibody_joints: MultibodyJointSet::new(),
+            ccd_solver: CCDSolver::new(),
+            physics_hooks: (),
+            event_handler: (),
+            gravity_vector: vector![0.0, 0.0], //No gravity
+            debug_mode: opts.debug_mode,
+            state: SimulationState::WaitingConnection,
+            conf,
+        }
+    }
     /**
     Create a simulation engine and thread that execute the simulation
     # Arguments
@@ -145,29 +172,7 @@ impl PhysicsEngine {
         let udp_port = opts.port;
         let simulation_rate = opts.sim_step_rate;
         let use_tcp_tank_client = opts.tank_client_protocol == "tcp";
-        let mut p_engine = PhysicsEngine {
-            max_num_tanks: opts.num_tanks,
-            max_ticks: opts.max_steps,
-            tanks_alive: 0,
-            tanks: vec![],
-            bullets: vec![],
-            tick: 0,
-            rigid_body_set: RigidBodySet::new(),
-            collider_set: ColliderSet::new(),
-            integration_parameters: IntegrationParameters::default(),
-            physics_pipeline: PhysicsPipeline::new(),
-            island_manager: IslandManager::new(),
-            broad_phase: BroadPhase::new(),
-            narrow_phase: NarrowPhase::new(),
-            joint_set: JointSet::new(),
-            ccd_solver: CCDSolver::new(),
-            physics_hooks: MyPhysicsHooks {},
-            event_handler: (),
-            gravity_vector: vector![0.0, 0.0], //No gravity
-            debug_mode: opts.debug_mode,
-            state: SimulationState::WaitingConnection,
-            conf,
-        };
+        let mut p_engine = Self::new(conf,opts);
 
         let now = time::Instant::now();
         // show some fps measurements every 5 seconds
@@ -297,6 +302,7 @@ impl PhysicsEngine {
             &mut self.rigid_body_set,
             &mut self.collider_set,
             &mut self.joint_set,
+            &mut self.multibody_joints,
             &mut self.ccd_solver,
             &self.physics_hooks,
             &self.event_handler,
@@ -360,6 +366,8 @@ impl PhysicsEngine {
                     &mut self.island_manager,
                     &mut self.collider_set,
                     &mut self.joint_set,
+                    &mut self.multibody_joints,
+                    true
                 );
             }
         }
@@ -424,7 +432,7 @@ impl PhysicsEngine {
         let velocity = (cannon_position * vector![conf.bullet_speed, 0.0]) + velocity_cannon_edge;
         //bullet shall be created in front of cannon and outside of the tank
         let bullet_position = cannon_position * new_point2(1.8, 0.0);
-        let bullet_body = RigidBodyBuilder::new_dynamic()
+        let bullet_body = RigidBodyBuilder::dynamic()
             .translation(bullet_position.coords)
             .linvel(velocity)
             .rotation(angle)
@@ -440,6 +448,23 @@ impl PhysicsEngine {
             .user_data(tank_index as u128) //Will be used by physics hook to avoid collision with tank that fired bullet
             .build();
         (bullet_body, bullet_collider)
+    }
+
+    /**
+     * Add tank in a circle at distance as specified in the conf store in p_engine
+     * 
+     * # Arguments
+     * `name` - Tank name
+     */
+    fn add_tank_in_circle(&mut self,name:String) {
+        let position_vector = Vector2::new(self.conf.start_distance, 0.0);
+        //Compute position of new tank
+        let tank_pos_angle = (2.0 * std::f32::consts::PI / self.max_num_tanks as f32)
+        * (self.tanks.len() + 1) as f32;
+        let tank_vector_position = Isometry2::rotation(tank_pos_angle) * position_vector;
+        //Angle to compute starting position of tank
+        let tank_position = Isometry2::new(tank_vector_position, tank_pos_angle);
+        self.add_tank(tank_position,name);
     }
 
     #[inline]
@@ -499,7 +524,7 @@ impl PhysicsEngine {
         //We don't have infinite force at 0 speed.
         let force = tank.engine_power / (tank.forward_velocity().abs() + 0.5);
         let force_forward_vector = tank_rigid_body.position() * vector![force, 0.0];
-        tank_rigid_body.apply_force(force_forward_vector, true);
+        tank_rigid_body.add_force(force_forward_vector, true);
     }
     /// Get turning power.
     #[inline]
@@ -596,5 +621,37 @@ impl PhysicsEngine {
         info!("Exiting simulation and saving result to {}", &path);
         report::save_tank_report(path, &self.tanks).unwrap();
         signal_exit();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::conf::Conf;
+    use super::PhysicsEngine;
+    use clap::Parser;
+
+    fn setup_engine()->PhysicsEngine {
+        let conf = Conf::default();
+        let opts= crate::Opts::try_parse_from(["Application","2"]).expect("Failed parse string");
+        let mut engine = PhysicsEngine::new(conf,&opts);
+        engine.add_tank_in_circle("tank1".to_string());
+        engine.add_tank_in_circle("tank2".to_string());
+        engine
+
+    }
+    #[test]
+    fn test_setup_initialization_values() {
+        let engine = setup_engine();
+        let tank0 =  &engine.tanks[0];
+        let tank1 = &engine.tanks[1];
+        // First tank at -180 degrees
+        assert_eq!(engine.get_position(tank0).rotation.angle(),-3.1415925);
+        // First tank at almost 0 degrees
+        assert_eq!(engine.get_position(tank1).rotation.angle(),0.00000017484555);
+        // Check distance from center
+        assert_eq!(engine.get_position(tank0).translation.x,-500.0);
+        assert_eq!(engine.get_position(tank1).translation.x,500.0);
+
+
     }
 }

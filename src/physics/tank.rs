@@ -33,7 +33,7 @@ pub struct Bullet {
 pub struct Tank {
     pub(super) phy_body_handle: RigidBodyHandle,
     pub(super) collider_handle: ColliderHandle,
-    pub(super) cannon_joint_handle: JointHandle,
+    pub(super) cannon_joint_handle: ImpulseJointHandle,
     pub name: String,
     pub turret: Turret,
     pub damage: f32,
@@ -61,7 +61,7 @@ pub struct Tank {
 
 impl Tank {
     pub fn new(p_engine:&mut PhysicsEngine,tank_position:Isometry<Real>,tank_index:usize,name:String) -> Tank {
-        let body = RigidBodyBuilder::new_dynamic()
+        let body = RigidBodyBuilder::dynamic()
             .position(tank_position)
             .linear_damping(p_engine.conf.linear_damping)
             .angular_damping(p_engine.conf.angular_damping)
@@ -87,7 +87,7 @@ impl Tank {
         /*
         Setup turret
         */
-        let turret_body = RigidBodyBuilder::new_dynamic()
+        let turret_body = RigidBodyBuilder::dynamic()
             .translation(tank_position.translation.vector)
             .rotation(0.0)
             .build();
@@ -111,13 +111,12 @@ impl Tank {
             &mut p_engine.rigid_body_set,
         );
         // Create joint to move turret together with tank.
-        let mut joint = BallJoint::new(
-            point![0.0, 0.0],
-            point![-p_engine.conf.turret_width_m / 2.0, 0.0],
-        );
-        joint.configure_motor_model(SpringModel::VelocityBased);
-        joint.configure_motor_position(
-            Rotation::new(0.0),
+        let joint = RevoluteJointBuilder::new()
+        .local_anchor1(point![0.0, 0.0])
+        .local_anchor2(point![-p_engine.conf.turret_width_m / 2.0, 0.0])
+        .motor_model(MotorModel::AccelerationBased)
+        .motor_position(
+            0.0,
             p_engine.conf.turret_stiffness,
             p_engine.conf.turret_damping,
         );
@@ -191,16 +190,16 @@ impl Tank {
     /**
      * Set cannon position
      */
-    pub (super) fn set_cannon_position(&mut self, joint_set: &mut JointSet,conf:&Conf) {
+    pub (super) fn set_cannon_position(&mut self, joint_set: &mut ImpulseJointSet,conf:&Conf) {
         match self.turret.new_angle {
             Some(angle) => {
                 let joint = joint_set.get_mut(self.cannon_joint_handle).unwrap();
-                if let JointParams::BallJoint(ball_joint) = &mut joint.params {
-                    ball_joint.configure_motor_position(
-                        Rotation::new(angle),
+                if let Some(ball_joint) = joint.data.as_revolute_mut() {
+                    ball_joint.set_motor_position(
+                        angle,
                         conf.turret_stiffness,
                         conf.turret_damping,
-                    )
+                    );
                 };
                 self.turret.new_angle = None;
             }
