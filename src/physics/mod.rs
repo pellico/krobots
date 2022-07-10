@@ -245,6 +245,13 @@ impl PhysicsEngine {
     fn step(&mut self) {
         //Execute all command
         for (tank_index, tank) in self.tanks.iter_mut().enumerate() {
+            let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
+            /* In new version of Rapier forces are not reset after simulation step.
+            So I have to reset them
+             */
+            tank_rigid_body.reset_forces(false);
+            tank_rigid_body.reset_torques(false);
+
             tank.turret.update_cannon_temp();
 
             if !tank.update_energy(&self.conf) {
@@ -255,7 +262,7 @@ impl PhysicsEngine {
                 continue;
             }
 
-            let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
+           
             // Power = F . v. Here we consider the speed along the direction of tank
             Self::apply_engine_power(tank_rigid_body, tank);
             tank_rigid_body.apply_torque_impulse(

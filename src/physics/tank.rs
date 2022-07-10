@@ -119,10 +119,10 @@ impl Tank {
             0.0,
             p_engine.conf.turret_stiffness,
             p_engine.conf.turret_damping,
-        );
+        ).build();
         let cannon_joint_handle =
             p_engine.joint_set
-                .insert(rigid_body_handle, rigid_body_turret_handle, joint);
+                .insert(rigid_body_handle, rigid_body_turret_handle, joint,true);
 
         Tank {
             name,

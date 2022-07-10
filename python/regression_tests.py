@@ -126,8 +126,9 @@ def run_tank(name, mode):
                     status = next(stepper)
                     data = pickle.load(data_file)
                     if status2Tuple(status) != data:
-                        print ((name,data))
-                        print((name,status2Tuple(status)))
+                        pass
+                        #print ((name,data))
+                        #print((name,status2Tuple(status)))
                         raise Exception(f"Failed test @tick {status.tick}")
     except ConnectionResetError:
     # This is OK becasue server shutdown if some client close TCP connection.

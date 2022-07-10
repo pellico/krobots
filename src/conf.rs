@@ -84,8 +84,8 @@ impl Default for Conf {
             tank_depth_m: 3.0,
             turret_width_m: 2.5,
             turret_depth_m: 0.1,
-            turret_stiffness :  0.1,
-            turret_damping :  0.8,
+            turret_stiffness :  100.0,
+            turret_damping :  40.0,
             turret_collider_density : 5.0,
             tank_collider_density : 7.0,
             tank_energy_max:  TANK_ENERGY_MAX, //Maximum energy of battery
