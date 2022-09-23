@@ -8,7 +8,7 @@ include = ["ktanks/py.typed"]
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
-protobuf = "^3.19.1"
+protobuf = "^3.19.5"
 
 
 [tool.poetry.dev-dependencies]
