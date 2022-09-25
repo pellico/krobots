@@ -202,7 +202,7 @@ impl GameUI {
 
     fn draw_bullets(&self, p_bullets: &Vec<Bullet>) {
         for p_bullet in p_bullets {
-            let bullet_position = p_bullet.position;
+            let bullet_position = p_bullet.position();
             let g_x: f32 =
                 bullet_position.translation.x * self.physical_scaling_factor - self.bullet_texture.width() / 2.;
             let g_y: f32 =
@@ -221,7 +221,7 @@ impl GameUI {
                     ..Default::default()
                 },
             );
-            draw_polyline(&p_bullet.shape_polyline, self.physical_scaling_factor);
+            draw_polyline(p_bullet.shape_polyline(), self.physical_scaling_factor);
         }
     }
 
@@ -255,30 +255,30 @@ impl GameUI {
                             None,
                             &format!(
                                 "Speed vector (r:{:.5},p:{:.5})",
-                                p_tank.linvel.norm(),
-                                p_tank.linvel.y.atan2(p_tank.linvel.x),
+                                p_tank.linvel().norm(),
+                                p_tank.linvel().y.atan2(p_tank.linvel().x),
                             ),
                         );
                         ui.label(
                             None,
                             &format!(
                                 "Speed vector (x:{:.5} y:{:.5})",
-                                p_tank.linvel.x,
-                                p_tank.linvel.y
+                                p_tank.linvel().x,
+                                p_tank.linvel().y
                             ),
                         );
-                        ui.label(None, &format!("Engine power {:.3}", p_tank.engine_power));
+                        ui.label(None, &format!("Engine power {:.3}", p_tank.engine_power()));
                         ui.label(
                             None,
-                            &format!("Angle {:.3}", p_tank.position.rotation.angle()),
+                            &format!("Angle {:.3}", p_tank.position().rotation.angle()),
                         );
                         ui.label(
                             None,
-                            &format!("Angular velocity {:.3}", p_tank.angular_velocity),
+                            &format!("Angular velocity {:.3}", p_tank.angular_velocity()),
                         );
-                        ui.label(None, &format!("Turning_power {:.3}", p_tank.turning_power));
-                        ui.label(None, &format!("Radar angle {:.3}", p_tank.radar_position));
-                        ui.label(None, &format!("Turret angle {:.3}", p_tank.turret.angle));
+                        ui.label(None, &format!("Turning_power {:.3}", p_tank.turning_power()));
+                        ui.label(None, &format!("Radar angle {:.3}", p_tank.radar_position()));
+                        ui.label(None, &format!("Turret angle {:.3}", p_tank.turret().angle()));
                         ui.label(None, &format!("Energy {:.3}", p_tank.energy()));
                         ui.label(None, &format!("Damage {:.3}", p_tank.damage));
                     });
@@ -327,7 +327,7 @@ impl GameUI {
         //Reset camera to selected tank
         if is_key_down(KeyCode::Kp0) {
             let tank_screen_position =
-                p_tanks[self.selected_tank].position.translation.vector * self.physical_scaling_factor;
+                p_tanks[self.selected_tank].position().translation.vector * self.physical_scaling_factor;
             self.camera.target = tank_screen_position.into();
         }
 
@@ -382,14 +382,14 @@ fn draw_polyline(polyline: &[Point2<Real>], scaling_factor: f32) {
 
 impl GTank {
     fn draw(&mut self, p_tank: &Tank, scaling_factor: f32,font_name:Font,camera_text:&Camera2D) {
-        let p_tank_position = p_tank.position;
+        let p_tank_position = p_tank.position();
         let t_x = p_tank_position.translation.x * scaling_factor;
         let t_y = p_tank_position.translation.y * scaling_factor;
         let g_x: f32 = t_x - self.body_texture_size.x / 2.;
         let g_y: f32 = t_y - self.body_texture_size.y / 2.;
         let tank_angle: f32 = p_tank_position.rotation.angle() + std::f32::consts::FRAC_PI_2;
-        let turret_angle: f32 = p_tank.turret.angle;
-        let radar_angle: f32 = p_tank.radar_position + p_tank_position.rotation.angle();
+        let turret_angle: f32 = p_tank.turret().angle();
+        let radar_angle: f32 = p_tank.radar_position() + p_tank_position.rotation.angle();
         let color = if p_tank.is_dead() { GRAY } else { self.color };
         draw_texture_ex(
             self.texture_body,
@@ -452,13 +452,13 @@ impl GTank {
     }
 
     fn draw_collider(&self, p_tank: &Tank, scaling_factor: f32) {
-        draw_polyline(&p_tank.shape_polyline, scaling_factor);
-        draw_polyline(&p_tank.turret.shape_polyline, scaling_factor);
+        draw_polyline(p_tank.shape_polyline(), scaling_factor);
+        draw_polyline(p_tank.turret().shape_polyline(), scaling_factor);
     }
 
     fn draw_radar_range(&self, p_tank: &Tank, scaling_factor: f32) {
         //:TODO: optimize speed . use glam
-        let v1 = p_tank.position.translation.vector * scaling_factor;
+        let v1 = p_tank.position().translation.vector * scaling_factor;
         let (min_angle, max_angle) = p_tank.min_max_radar_angle();
         let scaled_distance = p_tank.radar_range() * scaling_factor;
         let v2 = (nalgebra::Isometry2::rotation(min_angle)

@@ -126,8 +126,10 @@ impl RobotServer {
     }
 
     fn get_status(p_engine: &PhysicsEngine, tank_index: usize) -> TankStatus {
-        let tank_position = p_engine.get_tank_position(tank_index);
-        let (vel, angvel) = p_engine.tank_velocity(tank_index);
+        let tank = p_engine.tank(tank_index);
+        let tank_position = tank.position();
+        let vel = tank.linvel();
+        let angvel = tank.angular_velocity();
         TankStatus {
             tick: p_engine.tick(),
             velocity: Some(PolarVector {
@@ -137,9 +139,9 @@ impl RobotServer {
 
             angle: tank_position.rotation.angle(),
             angvel,
-            energy: p_engine.tank_energy(tank_index),
-            damage: p_engine.tank_damage(tank_index),
-            cannon_angle: p_engine.tank_cannon_angle(tank_index),
+            energy: p_engine.tank(tank_index).energy(),
+            damage: p_engine.tank(tank_index).energy(),
+            cannon_angle: tank.cannon_angle(),
             power_source: Some(PolarVector {
                 r: tank_position.translation.vector.norm(),
                 p: Rotation2::rotation_between(
@@ -160,8 +162,9 @@ impl RobotServer {
         turning_power_fraction: f32,
     ) -> TankStatus {
         let command_result = Self::get_status(p_engine, tank_index);
-        p_engine.set_tank_engine_power(power_fraction, tank_index);
-        p_engine.set_tank_turning_power(turning_power_fraction, tank_index);
+        let tank = p_engine.tank_mut(tank_index);
+        tank.set_engine_power(power_fraction);
+        tank.set_turning_power(turning_power_fraction);
         command_result
     }
 

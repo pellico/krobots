@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 pub struct Turret {
     pub(super) phy_body_handle: RigidBodyHandle,
     pub(super) collider_handle: ColliderHandle,
-    pub angle: f32, //Updated during step
-    pub shape_polyline: Vec<Point2<Real>>,
-    pub fire: bool,
-    pub new_angle: Option<f32>, // New position None if no command change
+    pub(super) angle: f32, //Updated during step
+    pub(super) shape_polyline: Vec<Point2<Real>>,
+    pub(super) fire: bool,
+    pub(super) new_angle: Option<f32>, // New position None if no command change
     pub(super) cannon_temperature: f32,
     cannon_max_temp: f32,
     cannon_min_temp: f32,
@@ -25,8 +25,8 @@ pub struct Bullet {
     pub(super) phy_body_handle: RigidBodyHandle,
     pub(super) collider_handle: ColliderHandle,
     pub(super) tick_counter: u32, //tick count down when zero the bullet will be destroyed
-    pub shape_polyline: Vec<Point2<Real>>,
-    pub position: Isometry2<Real>,
+    pub(super) shape_polyline: Vec<Point2<Real>>,
+    pub(super) position: Isometry2<Real>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -35,20 +35,20 @@ pub struct Tank {
     pub(super) collider_handle: ColliderHandle,
     pub(super) cannon_joint_handle: ImpulseJointHandle,
     pub name: String,
-    pub turret: Turret,
+    pub(super) turret: Turret,
     pub damage: f32,
     pub(super) energy: f32,
-    pub engine_power: f32,
-    pub max_engine_power: f32,
-    pub turning_power_max: f32,
-    pub turning_power: f32,
-    pub shape_polyline: Vec<Point2<Real>>,
-    pub position: Isometry<Real>,
-    pub linvel: Vector<Real>,
-    pub angular_velocity: Real, //Present angular velocity
-    pub radar_position: f32,
-    pub radar_width: f32,
-    pub detected_tank: Vec<Tank>,
+    pub(super) engine_power: f32,
+    pub(super) max_engine_power: f32,
+    pub(super) turning_power_max: f32,
+    pub(super) turning_power: f32,
+    pub(super) shape_polyline: Vec<Point2<Real>>,
+    pub(super) position: Isometry<Real>,
+    pub(super) linvel: Vector<Real>,
+    pub(super) angular_velocity: Real, //Present angular velocity
+    pub(super) radar_position: f32,
+    pub(super) radar_width: f32,
+    detected_tank: Vec<Tank>,
     tank_energy_max: f32,
     damage_max: f32,
     radar_angle_increment_max: f32,
@@ -124,6 +124,7 @@ impl Tank {
             p_engine.joint_set
                 .insert(rigid_body_handle, rigid_body_turret_handle, joint,true);
 
+        let rigid_body = &p_engine.rigid_body_set[rigid_body_handle];
         Tank {
             name,
             phy_body_handle: rigid_body_handle,
@@ -148,8 +149,8 @@ impl Tank {
             turning_power: 0.0,
             turning_power_max: p_engine.conf.turning_power_max,
             shape_polyline: shape_polyline_tank,
-            position: Isometry2::identity(),
-            linvel: Vector2::identity(),
+            position: *rigid_body.position(),
+            linvel: *rigid_body.linvel(),
             angular_velocity: 0.0,
             radar_position: 0.0,
             radar_width: p_engine.conf.radar_width_max,
@@ -186,6 +187,93 @@ impl Tank {
     pub fn energy(&self) -> f32 {
         self.energy
     }
+
+    #[inline]
+    pub fn turret(&self) -> &Turret {
+        &self.turret
+    }
+
+    #[inline]
+    pub fn linvel(&self) -> Vector<Real> {
+        self.linvel
+    }
+
+    #[inline]
+    pub fn engine_power(&self) -> f32 {
+        self.engine_power
+    }
+
+    #[inline]
+    pub fn position(&self) -> Isometry<Real> {
+        self.position
+    }
+
+    #[inline]
+    pub fn angular_velocity(&self) -> Real {
+        self.angular_velocity
+    }
+
+    #[inline]
+    pub fn turning_power(&self) -> f32 {
+        self.turning_power
+    }
+
+    #[inline]
+    pub fn radar_position(&self) -> f32 {
+        self.radar_position
+    }
+
+    #[inline]
+    pub fn shape_polyline(&self) -> &Vec<Point2<Real>> {
+        &self.shape_polyline
+    }
+
+    /// Get tank angle world coordinates
+    #[inline]
+    pub fn cannon_angle(&self) -> f32 {
+        self.turret.angle()
+    }
+
+    /// Get engine power normalized
+    /// Result range [-1.0,1.0]
+    #[inline]
+    pub fn engine_power_fraction(&self) -> f32 {
+        self.engine_power / self.max_engine_power
+    }
+
+    /// Get turning power.
+    #[inline]
+    pub fn turning_power_fraction(&self) -> f32 {
+        self.turning_power / self.turning_power_max
+    }
+
+    /// Set engine power fraction
+    /// power_fraction: range [-1.0,1.0]
+    /// tank_id: tank number
+    pub fn set_engine_power(&mut self, power_fraction: f32) {
+        let energy = if power_fraction > 1.0 {
+            1.0
+        } else if power_fraction < -1.0 {
+            -1.0
+        } else {
+            power_fraction
+        };
+        self.engine_power = energy * self.max_engine_power;
+    }
+
+
+    pub fn set_turning_power(&mut self, power_fraction: f32) {
+        let power_fraction_wrapped = if power_fraction > 1.0 {
+            1.0
+        } else if power_fraction < -1.0 {
+            -1.0
+        } else {
+            power_fraction
+        };
+        self.turning_power = self.turning_power_max * power_fraction_wrapped;
+    }
+
+
 
     /**
      * Set cannon position
@@ -303,14 +391,38 @@ impl Tank {
         self.radar_width = radar_w;
         true
     }
+
+
 }
 
 impl Turret {
     /// Update the temperature cannon.
     /// executed at every simulation step
     #[inline]
-    pub fn update_cannon_temp(&mut self) {
+    pub(super) fn update_cannon_temp(&mut self) {
         let new_temp = self.cannon_temperature - self.cannon_temp_decrease_step;
         self.cannon_temperature = self.cannon_min_temp.max(new_temp);
+    }
+
+    #[inline]
+    /// Get turrent angle world coordinates
+    pub fn angle(&self) -> f32 {
+        self.angle
+    }
+
+    #[inline]
+    pub fn shape_polyline(&self) -> &Vec<Point2<Real>> {
+        &self.shape_polyline
+    }
+}
+
+impl Bullet {
+    #[inline]
+    pub fn position(&self) -> Isometry2<Real> {
+        self.position
+    }
+    #[inline]
+    pub fn shape_polyline(&self) ->  &Vec<Point2<Real>> {
+        &self.shape_polyline
     }
 }
