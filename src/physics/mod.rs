@@ -265,7 +265,7 @@ impl PhysicsEngine {
                 tank.turning_power / (tank.angular_velocity.abs() + 1.0),
                 true,
             );
-            tank.set_cannon_position(&mut self.joint_set, &self.conf);
+            tank.set_cannon_position_physics(&mut self.joint_set, &self.conf);
             let turret = &mut tank.turret;
             if turret.fire {
                 let (bullet_body, collider) = Self::create_bullet(
@@ -461,7 +461,7 @@ impl PhysicsEngine {
     fn add_tank_in_circle(&mut self, name: String) {
         let position_vector = Vector2::new(self.conf.start_distance, 0.0);
         //Compute position of new tank
-        let tank_pos_angle = (2.0 * std::f32::consts::PI / self.max_num_tanks as f32)
+        let tank_pos_angle = (2.0 * PI / self.max_num_tanks as f32)
             * (self.tanks.len() + 1) as f32;
         let tank_vector_position = Isometry2::rotation(tank_pos_angle) * position_vector;
         //Angle to compute starting position of tank
@@ -546,24 +546,6 @@ impl PhysicsEngine {
         (tank.radar_position, result)
     }
 
-    pub fn set_cannon_position(&mut self, tank_id: usize, angle: f32) {
-        self.tanks[tank_id].turret.new_angle = Some(angle);
-    }
-
-    pub fn fire_cannon(&mut self, tank_id: usize) -> bool {
-        let tank = &mut self.tanks[tank_id];
-        if tank.ready_to_fire() {
-            tank.turret.fire = true;
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn cannon_temperature(&self, tank_id: usize) -> f32 {
-        self.tanks[tank_id].turret.cannon_temperature
-    }
-
     pub fn exit_simulation(&self) {
         let path = "simulation_output.csv";
         info!("Exiting simulation and saving result to {}", &path);
@@ -575,9 +557,13 @@ impl PhysicsEngine {
 #[cfg(test)]
 mod tests {
     use super::PhysicsEngine;
+    use float_eq::{assert_float_eq};
     use crate::conf::Conf;
     use clap::Parser;
     pub use rapier2d::na::Vector2;
+    use std::f32::consts::PI;
+    use super::util::*;
+    
 
     fn setup_engine(num: u32) -> PhysicsEngine {
         let conf = Conf::default();
@@ -656,61 +642,95 @@ mod tests {
         assert_eq!(tank0.turning_power_fraction(), 1.0);
     }
 
-    /* 
     #[test]
     fn test_linear_speed() {
         // 3 to avoid collision
         let mut engine = setup_engine(3);
+        let tank0 = engine.tank_mut(0);
         // Set maximum forward and check that value is wrapped
-        engine.set_tank_engine_power(0.1, 0);
-        assert_eq!(engine.tank_engine_power(0), 0.1);
-        assert_eq!(engine.tank_velocity(0).0.norm(), 0.0);
+        tank0.set_engine_power(0.1);
+        assert_eq!(tank0.engine_power_fraction(), 0.1);
+        assert_eq!(tank0.linvel().norm(), 0.0);
         assert_eq!(engine.tick, 0, "Wrong tick number");
         for _ in 0..400 {
             engine.step()
         }
         assert_eq!(engine.tick, 400, "Wrong tick number");
-
+        let tank0 = engine.tank_mut(0);
         {
             // Tank angle and velocity angle shall be almost the same
-            let velocity_vector = engine.tank_velocity(0).0;
+            let velocity_vector = tank0.linvel();
             assert_eq!(velocity_vector.norm(), 8.001642, "Wrong speed");
             let velocity_angle = velocity_vector.y.atan2(velocity_vector.x);
-            assert_eq!(velocity_angle, 2.0795183);
-            let tank_angle = engine.get_tank_position(0).rotation.angle();
-            assert_eq!(tank_angle, 2.0794663);
+            assert_eq!(velocity_angle, 2.0795524);
+            let tank_angle = tank0.position().rotation.angle();
+            assert_eq!(tank_angle, 2.079504);
             assert!((velocity_angle - tank_angle).abs() < 0.001);
         }
 
         // Check position api by computing the distance traveled by tank in 60 min.
-        let pos1 = engine.get_tank_position(0).translation.vector;
+        let pos1 = tank0.position().translation.vector;
         for _ in 0..60 {
             engine.step()
         }
-        let pos2 = engine.get_tank_position(0).translation.vector;
+        let tank0 = engine.tank_mut(0);
+        let pos2 = tank0.position().translation.vector;
         let distance = (pos1 - pos2).norm();
         assert_eq!(distance, 8.002805, "Wrong distance");
 
         // Stop tank
-        engine.set_tank_engine_power(0.0, 0);
+        tank0.set_engine_power(0.0);
         for _ in 0..400 {
             engine.step()
         }
-        assert_eq!(engine.tank_velocity(0).0.norm(), 0.0, "Wrong speed");
 
+        let tank0 = engine.tank_mut(0);
+        assert_eq!(tank0.linvel().norm(), 0.0, "Wrong speed");
         //Invert direction
-        engine.set_tank_engine_power(-0.1, 0);
+        tank0.set_engine_power(-0.1);
         for _ in 0..400 {
             engine.step()
         }
-        let velocity_vector = engine.tank_velocity(0).0;
-        assert_eq!(velocity_vector.norm(), 8.001642, "Wrong speed");
+
+        let tank0 = engine.tank_mut(0);
+        let velocity_vector = tank0.linvel();
+        assert_eq!(velocity_vector.norm(), 8.001644, "Wrong speed");
         let velocity_angle = velocity_vector.y.atan2(velocity_vector.x);
-        assert_eq!(velocity_angle, -1.062126);
+        assert_eq!(velocity_angle, -1.0620875);
     }
-    */
+
     #[test]
     fn test_turret_move() {
         let mut engine = setup_engine(2);
+
+        let tank1 = engine.tank_mut(1);
+        tank1.turret_mut().set_cannon_position(-1.5);
+        tank1.set_turning_power(0.5);
+        
+        let tank0 = engine.tank_mut(0);
+        tank0.turret_mut().set_cannon_position(PI);
+        for _ in 0..600 {
+            //engine.tank_mut(1).turret_mut().set_cannon_position(-1.5);
+            engine.step();
+        }
+        
+        let tank1 = engine.tank_mut(1);
+        assert_float_eq!(angle_wrapping(tank1.turret().angle()-tank1.position().rotation.angle()),-1.5, abs <= 0.06);
+        
+        let tank0 = engine.tank_mut(0);
+        assert_float_eq!(angle_wrapping(tank0.turret().angle()-tank0.position().rotation.angle()),PI,abs <=0.05);
+
+        for _ in 0..600 {
+            //engine.tank_mut(1).turret_mut().set_cannon_position(-1.5);
+            engine.step();
+        }
+
+        // Check that position is stable.
+        let tank1 = engine.tank_mut(1);
+        assert_float_eq!(angle_wrapping(tank1.turret().angle()-tank1.position().rotation.angle()),-1.5, abs <= 0.06);
+        
+        let tank0 = engine.tank_mut(0);
+        assert_float_eq!(angle_wrapping(tank0.turret().angle()-tank0.position().rotation.angle()),PI,abs <=0.05);
+
     } 
 }

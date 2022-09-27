@@ -48,3 +48,6 @@ opt-level = 3
 [profile.dev.package.macroquad]
 opt-level = 3
 
+[dev-dependencies]
+float_eq = "1"
+

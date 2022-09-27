@@ -125,6 +125,7 @@ impl Tank {
                 .insert(rigid_body_handle, rigid_body_turret_handle, joint,true);
 
         let rigid_body = &p_engine.rigid_body_set[rigid_body_handle];
+        let turret_rigid_body = &p_engine.rigid_body_set[rigid_body_turret_handle];
         Tank {
             name,
             phy_body_handle: rigid_body_handle,
@@ -135,7 +136,7 @@ impl Tank {
             turret: Turret {
                 phy_body_handle: rigid_body_turret_handle,
                 collider_handle: collider_turret_handle,
-                angle: 0.0,
+                angle: turret_rigid_body.position().rotation.angle(),
                 shape_polyline: shape_polyline_turret,
                 fire: false,
                 new_angle: None,
@@ -194,6 +195,11 @@ impl Tank {
     }
 
     #[inline]
+    pub fn turret_mut(&mut self) -> &mut Turret {
+        &mut self.turret
+    }
+
+    #[inline]
     pub fn linvel(&self) -> Vector<Real> {
         self.linvel
     }
@@ -226,12 +232,6 @@ impl Tank {
     #[inline]
     pub fn shape_polyline(&self) -> &Vec<Point2<Real>> {
         &self.shape_polyline
-    }
-
-    /// Get tank angle world coordinates
-    #[inline]
-    pub fn cannon_angle(&self) -> f32 {
-        self.turret.angle()
     }
 
     /// Get engine power normalized
@@ -278,7 +278,7 @@ impl Tank {
     /**
      * Set cannon position
      */
-    pub (super) fn set_cannon_position(&mut self, joint_set: &mut ImpulseJointSet,conf:&Conf) {
+    pub (super) fn set_cannon_position_physics(&mut self, joint_set: &mut ImpulseJointSet,conf:&Conf) {
         match self.turret.new_angle {
             Some(angle) => {
                 let joint = joint_set.get_mut(self.cannon_joint_handle).unwrap();
@@ -334,10 +334,6 @@ impl Tank {
             self.delta_energy(delta_energy);
             true
         }
-    }
-
-    pub fn ready_to_fire(&self) -> bool {
-        self.turret.cannon_temperature <= self.turret.cannon_max_temp
     }
 
     /*
@@ -396,6 +392,7 @@ impl Tank {
 }
 
 impl Turret {
+
     /// Update the temperature cannon.
     /// executed at every simulation step
     #[inline]
@@ -414,6 +411,30 @@ impl Turret {
     pub fn shape_polyline(&self) -> &Vec<Point2<Real>> {
         &self.shape_polyline
     }
+
+    #[inline]
+    pub fn set_cannon_position(&mut self, angle: f32) {
+        self.new_angle = Some(angle);
+    }
+
+    pub fn cannon_temperature(&self) -> f32 {
+        self.cannon_temperature
+    }
+
+    
+    pub fn ready_to_fire(&self) -> bool {
+        self.cannon_temperature <= self.cannon_max_temp
+    }
+
+    pub fn fire_cannon(&mut self) -> bool {
+        if self.ready_to_fire() {
+            self.fire = true;
+            true
+        } else {
+            false
+        }
+    }
+
 }
 
 impl Bullet {

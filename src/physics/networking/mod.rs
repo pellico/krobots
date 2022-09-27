@@ -141,7 +141,7 @@ impl RobotServer {
             angvel,
             energy: p_engine.tank(tank_index).energy(),
             damage: p_engine.tank(tank_index).energy(),
-            cannon_angle: tank.cannon_angle(),
+            cannon_angle: tank.turret().angle(),
             power_source: Some(PolarVector {
                 r: tank_position.translation.vector.norm(),
                 p: Rotation2::rotation_between(
@@ -151,7 +151,7 @@ impl RobotServer {
                 .angle(),
             }),
             success: true,
-            cannon_temp: p_engine.cannon_temperature(tank_index),
+            cannon_temp: tank.turret().cannon_temperature(),
         }
     }
 
@@ -201,14 +201,16 @@ impl RobotServer {
         angle: f32,
     ) -> TankStatus {
         let command_result = Self::get_status(p_engine, tank_index);
-        p_engine.set_cannon_position(tank_index, angle);
+        let tank = p_engine.tank_mut(tank_index);
+        tank.turret_mut().set_cannon_position(angle);
         command_result
     }
 
     #[inline]
     fn fire_cannon(p_engine: &mut PhysicsEngine, tank_index: usize) -> TankStatus {
         let mut command_result = Self::get_status(p_engine, tank_index);
-        command_result.success = p_engine.fire_cannon(tank_index);
+        let tank = p_engine.tank_mut(tank_index);
+        command_result.success = tank.turret_mut().fire_cannon();
         command_result
     }
 
