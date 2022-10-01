@@ -102,6 +102,7 @@ pub struct PhysicsEngine {
     state: SimulationState,
     /// Simulation configuration
     conf: Conf,
+    // Parameters required bu Rapier2D
     rigid_body_set: RigidBodySet,
     collider_set: ColliderSet,
     integration_parameters: IntegrationParameters,
@@ -286,7 +287,7 @@ impl PhysicsEngine {
                     phy_body_handle: rigid_body_handle,
                     tick_counter: std::cmp::max(
                         1,
-                        (self.conf.bullet_max_range / self.conf.bullet_speed * 60.0) as u32,
+                        (self.conf.bullet_max_range / self.conf.bullet_speed * 60.0).ceil() as u32 +1, //+1 because later all bullet will be evaluated and tick will be decreased.
                     ), //remember that step is 1/60 simulation sec.
                     shape_polyline: collider_polyline,
                     position: bullet_position,
@@ -562,11 +563,18 @@ mod tests {
     use clap::Parser;
     pub use rapier2d::na::Vector2;
     use std::f32::consts::PI;
+    use nalgebra::{vector};
     use super::util::*;
     
 
-    fn setup_engine(num: u32) -> PhysicsEngine {
-        let conf = Conf::default();
+    fn setup_engine(num: u32,distance: Option<f32>) -> PhysicsEngine {
+        let mut conf = Conf::default();
+        match distance {
+            Some(dist) => {
+                conf.start_distance = dist;
+            }
+            None => ()
+        };
         let opts = crate::Opts::try_parse_from(["Application", &num.to_string()])
             .expect("Failed parse string");
         let mut engine = PhysicsEngine::new(conf, &opts);
@@ -581,7 +589,7 @@ mod tests {
      */
     #[test]
     fn test_setup_initialization_values() {
-        let engine = setup_engine(2);
+        let engine = setup_engine(2,None);
         let tank0 = &engine.tanks[0];
         let tank1 = &engine.tanks[1];
         // First tank at -180 degrees
@@ -602,7 +610,7 @@ mod tests {
     }
     #[test]
     fn test_angular_speed() {
-        let mut engine = setup_engine(2);
+        let mut engine = setup_engine(2,None);
         let tank0 = engine.tank_mut(0);
         // Set maximum counterclock and check velocity
         tank0.set_turning_power(1.0);
@@ -645,7 +653,7 @@ mod tests {
     #[test]
     fn test_linear_speed() {
         // 3 to avoid collision
-        let mut engine = setup_engine(3);
+        let mut engine = setup_engine(3,None);
         let tank0 = engine.tank_mut(0);
         // Set maximum forward and check that value is wrapped
         tank0.set_engine_power(0.1);
@@ -701,8 +709,8 @@ mod tests {
 
     #[test]
     fn test_turret_move() {
-        let mut engine = setup_engine(2);
-
+        let mut engine = setup_engine(2,None);
+        engine.step();
         let tank1 = engine.tank_mut(1);
         tank1.turret_mut().set_cannon_position(-1.5);
         tank1.set_turning_power(0.5);
@@ -726,11 +734,63 @@ mod tests {
         }
 
         // Check that position is stable.
-        let tank1 = engine.tank_mut(1);
+        let tank1 = engine.tank(1);
         assert_float_eq!(angle_wrapping(tank1.turret().angle()-tank1.position().rotation.angle()),-1.5, abs <= 0.06);
         
-        let tank0 = engine.tank_mut(0);
+        let tank0 = engine.tank(0);
         assert_float_eq!(angle_wrapping(tank0.turret().angle()-tank0.position().rotation.angle()),PI,abs <=0.05);
 
     } 
+
+    #[test]
+    fn test_bullet() {
+        let mut engine = setup_engine(2,Some(50.0));
+        for _ in 0..1 {
+            //engine.tank_mut(1).turret_mut().set_cannon_position(-1.5);
+            engine.step();
+        }
+        let tank1 = engine.tank_mut(1);
+        let turret1 = tank1.turret_mut();
+        turret1.fire();
+        let turret_angle_at_file = turret1.angle();
+        let tank_position_at_fire = tank1.position().translation.vector;
+        for _ in 0..1 {
+            //engine.tank_mut(1).turret_mut().set_cannon_position(-1.5);
+            engine.step();
+        }
+        // Compare angle of bullet with angle of cannon
+        let bullet1 =  &engine.bullets[0];
+        assert_float_eq!(bullet1.position.rotation.angle(),turret_angle_at_file,abs <=0.00001);
+        
+        // Compute velocity vector and angle
+        let bullet_position0 = bullet1.position().translation.vector;
+        engine.step();
+        let bullet_position1 = (&engine.bullets[0]).position().translation.vector;
+        let velocity_vector = (bullet_position1 - bullet_position0) * 60.0;
+        let velocity_abs= velocity_vector.norm();
+        let angle = velocity_vector.angle(&vector![1.0,0.0]);
+        // Speed as defined in conf
+        assert_float_eq!(velocity_abs,&engine.conf.bullet_speed,abs <=0.001);
+        // angle the same as the turret when fired.
+        assert_float_eq!(angle,turret_angle_at_file,abs <=0.001);
+
+        // Check that hit and damage other tank
+        let mut last_position=bullet_position1;
+        while !engine.bullets.is_empty() {
+            last_position=(&engine.bullets[0]).position().translation.vector;
+            engine.step();
+        }
+        assert!((last_position-tank_position_at_fire).norm() <= engine.conf.bullet_max_range + engine.conf.bullet_speed/60.0);
+        println!("{}",last_position-tank_position_at_fire);
+
+    }
+
+    #[test]
+    fn test_get_tick(){
+        let mut engine = setup_engine(2,None);
+        assert!(engine.tick()==0);
+        engine.step();
+        assert!(engine.tick()==1);
+    }
+
 }

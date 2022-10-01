@@ -426,7 +426,7 @@ impl Turret {
         self.cannon_temperature <= self.cannon_max_temp
     }
 
-    pub fn fire_cannon(&mut self) -> bool {
+    pub fn fire(&mut self) -> bool {
         if self.ready_to_fire() {
             self.fire = true;
             true

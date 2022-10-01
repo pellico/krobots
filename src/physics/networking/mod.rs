@@ -210,7 +210,7 @@ impl RobotServer {
     fn fire_cannon(p_engine: &mut PhysicsEngine, tank_index: usize) -> TankStatus {
         let mut command_result = Self::get_status(p_engine, tank_index);
         let tank = p_engine.tank_mut(tank_index);
-        command_result.success = tank.turret_mut().fire_cannon();
+        command_result.success = tank.turret_mut().fire();
         command_result
     }
 
