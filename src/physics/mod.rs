@@ -2,7 +2,7 @@
 krobots
 Copyright (C) 2021  Oreste Bernardi
 
-This program is free software: you can redistribute it and/or modify
+This program is& free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+///! Implements the physical simulation
 mod networking;
 mod report;
 mod tank;
@@ -36,17 +37,17 @@ use std::f32::consts::PI;
 use std::thread::{spawn, JoinHandle};
 use std::time;
 
-const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b001, 0b101);
-const TURRET_GROUP: InteractionGroups = InteractionGroups::new(0b010, 0b110);
-const BULLET_GROUP: InteractionGroups = InteractionGroups::new(0b100, 0b011);
+/**
+Tank body collision group used in colliders.
+*/
+const TANK_GROUP: InteractionGroups = InteractionGroups::new(Group::GROUP_1, Group::GROUP_1.union(Group::GROUP_3));
+const TURRET_GROUP: InteractionGroups = InteractionGroups::new(Group::GROUP_2, Group::GROUP_2.union(Group::GROUP_3));
+const BULLET_GROUP: InteractionGroups = InteractionGroups::new(Group::GROUP_3, Group::GROUP_1.union(Group::GROUP_2));
 
 struct MyPhysicsHooks;
 
-impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
-    fn filter_contact_pair(
-        &self,
-        context: &PairFilterContext<RigidBodySet, ColliderSet>,
-    ) -> Option<SolverFlags> {
+impl PhysicsHooks for MyPhysicsHooks {
+    fn filter_contact_pair(&self, context: &PairFilterContext) -> Option<SolverFlags> {
         // This is a silly example of contact pair filter that:
         // - Enables contact and force computation if both colliders have same user-data.
         // - Disables contact computation otherwise.
@@ -61,7 +62,7 @@ impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
         }
     }
 
-    fn filter_intersection_pair(&self, _: &PairFilterContext<RigidBodySet, ColliderSet>) -> bool {
+    fn filter_intersection_pair(&self, _: &PairFilterContext) -> bool {
         error!("Not here");
         true //This function is not used
     }
@@ -69,7 +70,9 @@ impl PhysicsHooks<RigidBodySet, ColliderSet> for MyPhysicsHooks {
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum SimulationState {
+    /// Waiting connection from all tanks
     WaitingConnection,
+    /// Simulation running
     Running,
 }
 impl Default for SimulationState {
@@ -79,12 +82,26 @@ impl Default for SimulationState {
 }
 
 pub struct PhysicsEngine {
+    /// Maximum number of tanks
     max_num_tanks: usize,
+    /// Maximum numbers of tick allowed. If `max_ticks` == 0 simulation
+    /// is stopped only when only one tank is not disabled/dead.
     max_ticks: u32,
+    /// How many tanks are still alive
     tanks_alive: u32,
+    /// All tanks in the game
     tanks: Vec<Tank>,
+    /// All bullets in the simulation
     bullets: Vec<Bullet>,
+    /// Present number of ticks
     tick: u32,
+    /// If true simulation wait for commands from tanks
+    debug_mode: bool,
+    /// Simulation state
+    state: SimulationState,
+    /// Simulation configuration
+    conf: Conf,
+    // Parameters required bu Rapier2D
     rigid_body_set: RigidBodySet,
     collider_set: ColliderSet,
     integration_parameters: IntegrationParameters,
@@ -92,33 +109,25 @@ pub struct PhysicsEngine {
     island_manager: IslandManager,
     broad_phase: BroadPhase,
     narrow_phase: NarrowPhase,
-    joint_set: JointSet,
+    joint_set: ImpulseJointSet,
+    multibody_joints: MultibodyJointSet,
     ccd_solver: CCDSolver,
-    physics_hooks: MyPhysicsHooks,
+    physics_hooks: (),
     event_handler: (),
     gravity_vector: Vector2<Real>,
-    debug_mode: bool,
-    state: SimulationState,
-    conf: Conf,
 }
 
-/// Create Point2 
+/// Create Point2
 /// Workaround of rust analyzer
 /// https://github.com/rust-analyzer/rust-analyzer/issues/8654
 
-fn new_point2(x:f32,y:f32) -> Point<f32> {[x,y].into()}
+fn new_point2(x: f32, y: f32) -> Point<f32> {
+    [x, y].into()
+}
 
 impl PhysicsEngine {
-    pub fn new(
-        conf: Conf,
-        opts: &Opts,
-        mut state_sender: Box<dyn GameStateSender>,
-        command_receiver: Box<dyn UICommandReceiver>,
-    ) -> JoinHandle<()> {
-        let udp_port = opts.port;
-        let simulation_rate = opts.sim_step_rate;
-        let use_tcp_tank_client = opts.tank_client_protocol == "tcp";
-        let mut p_engine = PhysicsEngine {
+    fn new(conf: Conf, opts: &Opts) -> PhysicsEngine {
+        PhysicsEngine {
             max_num_tanks: opts.num_tanks,
             max_ticks: opts.max_steps,
             tanks_alive: 0,
@@ -132,15 +141,35 @@ impl PhysicsEngine {
             island_manager: IslandManager::new(),
             broad_phase: BroadPhase::new(),
             narrow_phase: NarrowPhase::new(),
-            joint_set: JointSet::new(),
+            joint_set: ImpulseJointSet::new(),
+            multibody_joints: MultibodyJointSet::new(),
             ccd_solver: CCDSolver::new(),
-            physics_hooks: MyPhysicsHooks {},
+            physics_hooks: (),
             event_handler: (),
             gravity_vector: vector![0.0, 0.0], //No gravity
             debug_mode: opts.debug_mode,
             state: SimulationState::WaitingConnection,
-            conf: conf,
-        };
+            conf,
+        }
+    }
+    /**
+    Create a simulation engine and thread that execute the simulation
+    # Arguments
+    * `conf` - Game configuration
+    * `opts` - Options collected from command line
+    * `state_sender` - Proxy used to send simulation state to ui client
+    * `command_receiver` - Proxy used to check if there is a command from ui client
+    */
+    pub fn new_simulation_thread(
+        conf: Conf,
+        opts: &Opts,
+        mut state_sender: Box<dyn GameStateSender>,
+        command_receiver: Box<dyn UICommandReceiver>,
+    ) -> JoinHandle<()> {
+        let udp_port = opts.port;
+        let simulation_rate = opts.sim_step_rate;
+        let use_tcp_tank_client = opts.tank_client_protocol == "tcp";
+        let mut p_engine = Self::new(conf, opts);
 
         let now = time::Instant::now();
         // show some fps measurements every 5 seconds
@@ -148,7 +177,7 @@ impl PhysicsEngine {
             .every(time::Duration::from_secs(5))
             .start(now);
         //Create thread that perform physics simulation
-        let join_handle = spawn(move || {
+        spawn(move || {
             info!("Start waiting connections");
             let mut server = RobotServer::new(p_engine.debug_mode, use_tcp_tank_client);
             server.wait_connections(&mut p_engine, udp_port, &mut state_sender);
@@ -164,15 +193,15 @@ impl PhysicsEngine {
                     // Process all request coming from client
                     server.process_request(&mut p_engine);
                     p_engine.step();
-                    
-                    // Try to lazly send game state to UI 
+
+                    // Try to lazily send game state to UI
                     // If failing teh send ignore it.
                     match state_sender.send(&p_engine) {
                         Ok(_) => (),
                         Err(_) => debug!("Failed sending state to UI ignore it"),
-
                     }
 
+                    // Compute fps and show message if it is too low.
                     if let Some((delta_t, prev_tick)) = fps_counter.update(now) {
                         fps_counter.set_value(tick);
                         let fps = (tick - prev_tick) as f64 / delta_t.as_secs_f64();
@@ -185,27 +214,41 @@ impl PhysicsEngine {
                         }
                     }
                     // The position of exit is very important for --no-gui option.
-                    // When exiting the application we allows to send a message to UI sender thread  (state_sender) so it can wakeup and exit. 
+                    // When exiting the application we allows to send a message to UI sender thread  (state_sender) so it can wakeup and exit.
                     if is_exit_application() {
                         debug!("Exiting physical simulation thread");
                         break;
                     }
                 }
             }
-        });
-
-        return join_handle;
+        })
     }
-    pub fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) {
+
+    /**
+    Add tank to simulation.
+    This can be used only before calling  `step` function.
+    # Arguments
+    * `tank_position` - Initial position of tank
+    * `name` - Tank name
+    */
+    fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) {
         //This tank index is used to set userdata of all collider to skip detection.
         let tank_index = self.tanks.len();
         let tank = Tank::new(self, tank_position, tank_index, name);
         self.tanks.push(tank);
     }
 
-    pub fn step(&mut self) {
+    /// Execute one simulation step
+    fn step(&mut self) {
         //Execute all command
         for (tank_index, tank) in self.tanks.iter_mut().enumerate() {
+            let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
+            /* In new version of Rapier forces are not reset after simulation step.
+            So I have to reset them
+             */
+            tank_rigid_body.reset_forces(false);
+            tank_rigid_body.reset_torques(false);
+
             tank.turret.update_cannon_temp();
 
             if !tank.update_energy(&self.conf) {
@@ -216,14 +259,13 @@ impl PhysicsEngine {
                 continue;
             }
 
-            let tank_rigid_body = &mut self.rigid_body_set[tank.phy_body_handle];
             // Power = F . v. Here we consider the speed along the direction of tank
             Self::apply_engine_power(tank_rigid_body, tank);
             tank_rigid_body.apply_torque_impulse(
                 tank.turning_power / (tank.angular_velocity.abs() + 1.0),
                 true,
             );
-            tank.set_cannon_position(&mut self.joint_set, &self.conf);
+            tank.set_cannon_position_physics(&mut self.joint_set, &self.conf);
             let turret = &mut tank.turret;
             if turret.fire {
                 let (bullet_body, collider) = Self::create_bullet(
@@ -240,11 +282,11 @@ impl PhysicsEngine {
                     &mut self.rigid_body_set,
                 );
                 let bullet = Bullet {
-                    collider_handle: collider_handle,
+                    collider_handle,
                     phy_body_handle: rigid_body_handle,
                     tick_counter: std::cmp::max(
                         1,
-                        (self.conf.bullet_max_range / self.conf.bullet_speed * 60.0) as u32,
+                        (self.conf.bullet_max_range / self.conf.bullet_speed * 60.0).ceil() as u32 +1, //+1 because later all bullet will be evaluated and tick will be decreased.
                     ), //remember that step is 1/60 simulation sec.
                     shape_polyline: collider_polyline,
                     position: bullet_position,
@@ -263,7 +305,9 @@ impl PhysicsEngine {
             &mut self.rigid_body_set,
             &mut self.collider_set,
             &mut self.joint_set,
+            &mut self.multibody_joints,
             &mut self.ccd_solver,
+            None,
             &self.physics_hooks,
             &self.event_handler,
         );
@@ -326,6 +370,8 @@ impl PhysicsEngine {
                     &mut self.island_manager,
                     &mut self.collider_set,
                     &mut self.joint_set,
+                    &mut self.multibody_joints,
+                    true,
                 );
             }
         }
@@ -365,10 +411,17 @@ impl PhysicsEngine {
             self.exit_simulation();
         }
     }
-    
 
+    /**
+    Create one bullet. When bullet is created the speed of cannon edge
+    is added to the speed of bullet
 
-    pub fn create_bullet(
+    # Arguments
+    * `conf` - Simulation configuration
+    * `cannon_body` - Cannon body required to get edge speed
+    * `tank_index` - index in the [`PhysicsEngine.tanks`]
+     */
+    fn create_bullet(
         conf: &Conf,
         cannon_body: &RigidBody,
         tank_index: usize,
@@ -382,7 +435,7 @@ impl PhysicsEngine {
         let velocity = (cannon_position * vector![conf.bullet_speed, 0.0]) + velocity_cannon_edge;
         //bullet shall be created in front of cannon and outside of the tank
         let bullet_position = cannon_position * new_point2(1.8, 0.0);
-        let bullet_body = RigidBodyBuilder::new_dynamic()
+        let bullet_body = RigidBodyBuilder::dynamic()
             .translation(bullet_position.coords)
             .linvel(velocity)
             .rotation(angle)
@@ -400,81 +453,45 @@ impl PhysicsEngine {
         (bullet_body, bullet_collider)
     }
 
+    /**
+     * Add tank in a circle at distance as specified in the conf store in p_engine
+     *
+     * # Arguments
+     * `name` - Tank name
+     */
+    fn add_tank_in_circle(&mut self, name: String) {
+        let position_vector = Vector2::new(self.conf.start_distance, 0.0);
+        //Compute position of new tank
+        let tank_pos_angle = (2.0 * PI / self.max_num_tanks as f32)
+            * (self.tanks.len() + 1) as f32;
+        let tank_vector_position = Isometry2::rotation(tank_pos_angle) * position_vector;
+        //Angle to compute starting position of tank
+        let tank_position = Isometry2::new(tank_vector_position, tank_pos_angle);
+        self.add_tank(tank_position, name);
+    }
+
+    /// Get how many simulation steps are executed
     #[inline]
     pub fn tick(&self) -> u32 {
         self.tick
     }
 
     #[inline]
-    pub fn tank_engine_power_percentage(&self, tank_id: usize) -> f32 {
-        let tank = &self.tanks[tank_id];
-        tank.engine_power / tank.max_engine_power
-    }
-    pub fn set_tank_engine_power(&mut self, power_fraction: f32, tank_id: usize) {
-        let tank = &mut self.tanks[tank_id];
-        let energy = if power_fraction > 1.0 {
-            1.0
-        } else if power_fraction < -1.0 {
-            -1.0
-        } else {
-            power_fraction
-        };
-        tank.engine_power = energy * tank.max_engine_power;
-    }
-
-    pub fn get_position(&self, tank: &Tank) -> &Isometry<Real> {
-        let p = &self.rigid_body_set[tank.phy_body_handle];
-        return p.position();
-    }
-    pub fn get_tank_position(&self, tank_id: usize) -> &Isometry<Real> {
-        self.get_position(&self.tanks[tank_id])
-    }
-
-    pub fn tank_velocity(&self, tank_id: usize) -> (Vector<Real>, Real) {
-        let tank = &self.tanks[tank_id];
-        let rigid_body = &self.rigid_body_set[tank.phy_body_handle];
-        (*rigid_body.linvel(), rigid_body.angvel())
-    }
+    pub fn tank(&self, tank_id: usize) -> &Tank {
+        &self.tanks[tank_id]
+    }    
 
     #[inline]
-    pub fn tank_energy(&self, tank_id: usize) -> f32 {
-        self.tanks[tank_id].energy
-    }
-
-    #[inline]
-    pub fn tank_damage(&self, tank_id: usize) -> f32 {
-        self.tanks[tank_id].damage
-    }
-
-    pub fn tank_cannon_angle(&self, tank_id: usize) -> f32 {
-        let rigid_body = &self.rigid_body_set[self.tanks[tank_id].turret.phy_body_handle];
-        rigid_body.position().rotation.angle()
-    }
+    pub fn tank_mut(&mut self, tank_id: usize) -> &mut Tank {
+        &mut self.tanks[tank_id]
+    }   
 
     #[inline]
     fn apply_engine_power(tank_rigid_body: &mut RigidBody, tank: &Tank) {
         //We don't have infinite force at 0 speed.
         let force = tank.engine_power / (tank.forward_velocity().abs() + 0.5);
         let force_forward_vector = tank_rigid_body.position() * vector![force, 0.0];
-        tank_rigid_body.apply_force(force_forward_vector, true);
-    }
-    /// Get turning power.
-    #[inline]
-    pub fn tank_turning_power(&self, tank_id: usize) -> f32 {
-        let tank = &self.tanks[tank_id];
-        tank.turning_power / tank.turning_power_max
-    }
-
-    pub fn set_tank_turning_power(&mut self, power_fraction: f32, tank_id: usize) {
-        let tank = &mut self.tanks[tank_id];
-        let power_fraction_wrapped = if power_fraction > 1.0 {
-            1.0
-        } else if power_fraction < -1.0 {
-            -1.0
-        } else {
-            power_fraction
-        };
-        tank.turning_power = tank.turning_power_max * power_fraction_wrapped;
+        tank_rigid_body.add_force(force_forward_vector, true);
     }
 
     fn get_collider_polyline_cuboid(collider: &Collider) -> Vec<Point2<Real>> {
@@ -484,7 +501,7 @@ impl PhysicsEngine {
         for v in &mut vertexs {
             *v = position * *v;
         }
-        return vertexs;
+        vertexs
     }
 
     /// Move radar and return detected tanks
@@ -530,28 +547,250 @@ impl PhysicsEngine {
         (tank.radar_position, result)
     }
 
-    pub fn set_cannon_position(&mut self, tank_id: usize, angle: f32) {
-        self.tanks[tank_id].turret.new_angle = Some(angle);
-    }
-
-    pub fn fire_cannon(&mut self, tank_id: usize) -> bool {
-        let tank = &mut self.tanks[tank_id];
-        if tank.ready_to_fire() {
-            tank.turret.fire = true;
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn cannon_temperature(&self, tank_id: usize) -> f32 {
-        self.tanks[tank_id].turret.cannon_temperature
-    }
-
     pub fn exit_simulation(&self) {
         let path = "simulation_output.csv";
         info!("Exiting simulation and saving result to {}", &path);
         report::save_tank_report(path, &self.tanks).unwrap();
         signal_exit();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PhysicsEngine;
+    use float_eq::{assert_float_eq};
+    use crate::conf::Conf;
+    use clap::Parser;
+    pub use rapier2d::na::Vector2;
+    use std::f32::consts::PI;
+    use nalgebra::{vector};
+    use super::util::*;
+    
+
+    fn setup_engine(num: u32,distance: Option<f32>) -> PhysicsEngine {
+        let mut conf = Conf::default();
+        match distance {
+            Some(dist) => {
+                conf.start_distance = dist;
+            }
+            None => ()
+        };
+        let opts = crate::Opts::try_parse_from(["Application", &num.to_string()])
+            .expect("Failed parse string");
+        let mut engine = PhysicsEngine::new(conf, &opts);
+        for _ in 0..num {
+            engine.add_tank_in_circle(format!("tank{}", num));
+        }
+        engine
+    }
+
+    /*
+    Test initialization values.
+     */
+    #[test]
+    fn test_setup_initialization_values() {
+        let engine = setup_engine(2,None);
+        let tank0 = &engine.tanks[0];
+        let tank1 = &engine.tanks[1];
+        // First tank at -180 degrees
+        assert_eq!(tank0.position().rotation.angle(), -3.1415925);
+        // First tank at almost 0 degrees
+        assert_eq!(
+            tank1.position().rotation.angle(),
+            0.00000017484555
+        );
+        // Check distance from center
+        assert_eq!(tank0.position().translation.x, -500.0);
+        assert_eq!(tank1.position().translation.x, 500.0);
+        // Check velocity
+        let vel_lin = tank0.linvel();
+        let vel_ang = tank0.angular_velocity();
+        assert_eq!(vel_lin, Vector2::new(0.0, 0.0));
+        assert_eq!(vel_ang, 0.0);
+    }
+    #[test]
+    fn test_angular_speed() {
+        let mut engine = setup_engine(2,None);
+        let tank0 = engine.tank_mut(0);
+        // Set maximum counterclock and check velocity
+        tank0.set_turning_power(1.0);
+        assert_eq!(tank0.turning_power_fraction(), 1.0);
+        assert_eq!(tank0.angular_velocity(), 0.0);
+        for _ in 0..500 {
+            engine.step()
+        }
+
+        let tank0 = engine.tank_mut(0);
+        assert_eq!(tank0.angular_velocity(), 1.0365888);
+        // Set to 0 and verify it is stopping
+        tank0.set_turning_power(0.0);
+        assert_eq!(tank0.turning_power_fraction(), 0.0);
+        for _ in 0..500 {
+            engine.step()
+        }
+
+        let tank0 = engine.tank_mut(0);
+        assert_eq!(tank0.angular_velocity(), 0.0);
+        let tank0 = engine.tank_mut(0);
+        // Set clockwise and check velocity
+        tank0.set_turning_power(-1.0);
+        assert_eq!(tank0.turning_power_fraction(), -1.0);
+        assert_eq!(tank0.angular_velocity(), 0.0);
+        for _ in 0..500 {
+            engine.step()
+        }
+
+        let tank0 = engine.tank_mut(0);
+        assert_eq!(tank0.angular_velocity(), -1.0365883);
+        // check wrapping set of angular speed
+        tank0.set_turning_power(-2.0);
+        assert_eq!(tank0.turning_power_fraction(), -1.0);
+        let tank0 = engine.tank_mut(0);
+        tank0.set_turning_power(2.0);
+        assert_eq!(tank0.turning_power_fraction(), 1.0);
+    }
+
+    #[test]
+    fn test_linear_speed() {
+        // 3 to avoid collision
+        let mut engine = setup_engine(3,None);
+        let tank0 = engine.tank_mut(0);
+        // Set maximum forward and check that value is wrapped
+        tank0.set_engine_power(0.1);
+        assert_eq!(tank0.engine_power_fraction(), 0.1);
+        assert_eq!(tank0.linvel().norm(), 0.0);
+        assert_eq!(engine.tick, 0, "Wrong tick number");
+        for _ in 0..400 {
+            engine.step()
+        }
+        assert_eq!(engine.tick, 400, "Wrong tick number");
+        let tank0 = engine.tank_mut(0);
+        {
+            // Tank angle and velocity angle shall be almost the same
+            let velocity_vector = tank0.linvel();
+            assert_eq!(velocity_vector.norm(), 8.001642, "Wrong speed");
+            let velocity_angle = velocity_vector.y.atan2(velocity_vector.x);
+            assert_eq!(velocity_angle, 2.0795524);
+            let tank_angle = tank0.position().rotation.angle();
+            assert_eq!(tank_angle, 2.079504);
+            assert!((velocity_angle - tank_angle).abs() < 0.001);
+        }
+
+        // Check position api by computing the distance traveled by tank in 60 min.
+        let pos1 = tank0.position().translation.vector;
+        for _ in 0..60 {
+            engine.step()
+        }
+        let tank0 = engine.tank_mut(0);
+        let pos2 = tank0.position().translation.vector;
+        let distance = (pos1 - pos2).norm();
+        assert_eq!(distance, 8.002805, "Wrong distance");
+
+        // Stop tank
+        tank0.set_engine_power(0.0);
+        for _ in 0..400 {
+            engine.step()
+        }
+
+        let tank0 = engine.tank_mut(0);
+        assert_eq!(tank0.linvel().norm(), 0.0, "Wrong speed");
+        //Invert direction
+        tank0.set_engine_power(-0.1);
+        for _ in 0..400 {
+            engine.step()
+        }
+
+        let tank0 = engine.tank_mut(0);
+        let velocity_vector = tank0.linvel();
+        assert_eq!(velocity_vector.norm(), 8.001644, "Wrong speed");
+        let velocity_angle = velocity_vector.y.atan2(velocity_vector.x);
+        assert_eq!(velocity_angle, -1.0620875);
+    }
+
+    #[test]
+    fn test_turret_move() {
+        let mut engine = setup_engine(2,None);
+        engine.step();
+        let tank1 = engine.tank_mut(1);
+        tank1.turret_mut().set_cannon_position(-1.5);
+        tank1.set_turning_power(0.5);
+        
+        let tank0 = engine.tank_mut(0);
+        tank0.turret_mut().set_cannon_position(PI);
+        for _ in 0..600 {
+            //engine.tank_mut(1).turret_mut().set_cannon_position(-1.5);
+            engine.step();
+        }
+        
+        let tank1 = engine.tank_mut(1);
+        assert_float_eq!(angle_wrapping(tank1.turret().angle()-tank1.position().rotation.angle()),-1.5, abs <= 0.06);
+        
+        let tank0 = engine.tank_mut(0);
+        assert_float_eq!(angle_wrapping(tank0.turret().angle()-tank0.position().rotation.angle()),PI,abs <=0.05);
+
+        for _ in 0..600 {
+            //engine.tank_mut(1).turret_mut().set_cannon_position(-1.5);
+            engine.step();
+        }
+
+        // Check that position is stable.
+        let tank1 = engine.tank(1);
+        assert_float_eq!(angle_wrapping(tank1.turret().angle()-tank1.position().rotation.angle()),-1.5, abs <= 0.06);
+        
+        let tank0 = engine.tank(0);
+        assert_float_eq!(angle_wrapping(tank0.turret().angle()-tank0.position().rotation.angle()),PI,abs <=0.05);
+
+    } 
+
+    #[test]
+    fn test_bullet() {
+        let mut engine = setup_engine(2,Some(50.0));
+        for _ in 0..1 {
+            //engine.tank_mut(1).turret_mut().set_cannon_position(-1.5);
+            engine.step();
+        }
+        let tank1 = engine.tank_mut(1);
+        let turret1 = tank1.turret_mut();
+        turret1.fire();
+        let turret_angle_at_file = turret1.angle();
+        let tank_position_at_fire = tank1.position().translation.vector;
+        for _ in 0..1 {
+            //engine.tank_mut(1).turret_mut().set_cannon_position(-1.5);
+            engine.step();
+        }
+        // Compare angle of bullet with angle of cannon
+        let bullet1 =  &engine.bullets[0];
+        assert_float_eq!(bullet1.position.rotation.angle(),turret_angle_at_file,abs <=0.00001);
+        
+        // Compute velocity vector and angle
+        let bullet_position0 = bullet1.position().translation.vector;
+        engine.step();
+        let bullet_position1 = (&engine.bullets[0]).position().translation.vector;
+        let velocity_vector = (bullet_position1 - bullet_position0) * 60.0;
+        let velocity_abs= velocity_vector.norm();
+        let angle = velocity_vector.angle(&vector![1.0,0.0]);
+        // Speed as defined in conf
+        assert_float_eq!(velocity_abs,&engine.conf.bullet_speed,abs <=0.001);
+        // angle the same as the turret when fired.
+        assert_float_eq!(angle,turret_angle_at_file,abs <=0.001);
+
+        // Check that hit and damage other tank
+        let mut last_position=bullet_position1;
+        while !engine.bullets.is_empty() {
+            last_position=(&engine.bullets[0]).position().translation.vector;
+            engine.step();
+        }
+        assert!((last_position-tank_position_at_fire).norm() <= engine.conf.bullet_max_range + engine.conf.bullet_speed/60.0);
+        println!("{}",last_position-tank_position_at_fire);
+
+    }
+
+    #[test]
+    fn test_get_tick(){
+        let mut engine = setup_engine(2,None);
+        assert!(engine.tick()==0);
+        engine.step();
+        assert!(engine.tick()==1);
+    }
+
 }

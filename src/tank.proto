@@ -25,7 +25,7 @@ message PolarVector {
 }
 
 message TankStatus {
-    uint32 tick =1; // Simualtion tick counter
+    uint32 tick =1; // Simulation tick counter
     PolarVector velocity =2; //Velocity in (m/sec,rad) world reference
     float angle = 3; // The rotation angle in ]-pi; pi] .
     float cannon_angle = 4; // The rotation angle in ]-pi; pi] 

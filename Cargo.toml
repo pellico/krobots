@@ -1,7 +1,7 @@
 [package]
 name = "ktanks_server"
-version = "1.0.1"
-edition = "2018"
+version = "1.0.2"
+edition = "2021"
 build = "build.rs"
 
 [[bin]]
@@ -15,33 +15,33 @@ prost-build = "0.9"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rapier2d = { version = "*", features = [ "simd-stable","serde-serialize" ] }
-macroquad = { version = "*"}
-macroquad-profiler = {version = "*"}
-macroquad-particles = {version = "*"}
+rapier2d = { git="https://github.com/dimforge/rapier.git",rev ="refs/pull/493/head", features = [ "simd-stable","serde-serialize"] }
+macroquad = { version = "0.4.2"}
+cargo  = {version = "*"}
+macroquad-particles = {version = "0.2.0"}
+macroquad-profiler = {version = "0.2.0"}
 # Logging  libraries
 env_logger = {version = "*"}
 log = {version = "*", features = ["max_level_debug"]}
 # protobuf library
-prost = "0.9"
+prost = "0.10.3"
 # command line parser
 clap = { version = "3.0.10", features = ["derive"] }
 csv = "1.1.6"
 # To control physics simulation time frame
 ticktock = "0.8.0" 
 serde = "1.0.135"
-message-io = {version = "0.14.3",default-features = false, features = ["tcp", "udp"]} 
+message-io = {version = "0.14.5",default-features = false, features = ["tcp", "udp"]} 
 bincode = "*"
 ctrlc = "3.2.1"
 human-panic = "1.0.3"
 confy = "0.4.0"
 
 [dependencies.nalgebra]
-version = " 0.29.0"
-features =[ "convert-glam014" ,"serde-serialize"]
+features =[ "convert-glam021" ,"serde-serialize"]
 
 [dependencies.glam]
-version ="0.14.0"
+version ="0.21.0"
 
 [profile.dev.package.rapier2d]
 opt-level = 3
@@ -49,9 +49,6 @@ opt-level = 3
 [profile.dev.package.macroquad]
 opt-level = 3
 
-# Local version with patch to fix ICON issue in release mode.
-# see https://github.com/not-fl3/miniquad/pull/265/commits/726c20df575165b063dcd4e3d57b1024e0c3b3c0
-# and https://github.com/not-fl3/miniquad/issues/264
-# :TODO: remove it when bug will be fixed.
-[patch.crates-io]
-miniquad = { path = "miniquad-0.3.0-alpha.45_patch" }
+[dev-dependencies]
+float_eq = "1"
+

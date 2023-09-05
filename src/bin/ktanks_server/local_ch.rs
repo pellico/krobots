@@ -65,8 +65,8 @@ impl UICommandReceiver for CommandLocalReceiver {
 
 pub fn create_state_channels() -> (UILocalSender,UILocalReceiver) {
     let (tx_data, rx_data) = mpsc::channel::<UIGameState>();
-    let sender = UILocalSender {tx_data : tx_data};
-    let receiver = UILocalReceiver {rx_data : rx_data};
+    let sender = UILocalSender {tx_data};
+    let receiver = UILocalReceiver {rx_data};
     (sender,receiver)
 }
 
@@ -84,7 +84,7 @@ pub fn create_command_channels() -> (CommandLocalSender,CommandLocalReceiver) {
 
     }).expect("Error setting Ctrl-C handler");
 
-    let sender = CommandLocalSender {tx_data : tx_data};
-    let receiver = CommandLocalReceiver {rx_data : rx_data};
+    let sender = CommandLocalSender {tx_data};
+    let receiver = CommandLocalReceiver {rx_data};
     (sender,receiver)
 }
