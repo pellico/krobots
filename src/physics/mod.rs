@@ -39,11 +39,10 @@ use std::time;
 
 /**
 Tank body collision group used in colliders.
-Tan
 */
-const TANK_GROUP: InteractionGroups = InteractionGroups::new(0b001, 0b101);
-const TURRET_GROUP: InteractionGroups = InteractionGroups::new(0b010, 0b110);
-const BULLET_GROUP: InteractionGroups = InteractionGroups::new(0b100, 0b011);
+const TANK_GROUP: InteractionGroups = InteractionGroups::new(Group::GROUP_1, Group::GROUP_1.union(Group::GROUP_3));
+const TURRET_GROUP: InteractionGroups = InteractionGroups::new(Group::GROUP_2, Group::GROUP_2.union(Group::GROUP_3));
+const BULLET_GROUP: InteractionGroups = InteractionGroups::new(Group::GROUP_3, Group::GROUP_1.union(Group::GROUP_2));
 
 struct MyPhysicsHooks;
 
@@ -308,6 +307,7 @@ impl PhysicsEngine {
             &mut self.joint_set,
             &mut self.multibody_joints,
             &mut self.ccd_solver,
+            None,
             &self.physics_hooks,
             &self.event_handler,
         );

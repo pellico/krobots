@@ -15,10 +15,11 @@ prost-build = "0.9"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rapier2d = { version = "0.14.0", features = [ "simd-stable","serde-serialize"] }
-macroquad = { version = "0.3.20"}
-macroquad-profiler = {version = "*"}
-macroquad-particles = {version = "*"}
+rapier2d = { git="https://github.com/dimforge/rapier.git",rev ="refs/pull/493/head", features = [ "simd-stable","serde-serialize"] }
+macroquad = { version = "0.4.2"}
+cargo  = {version = "*"}
+macroquad-particles = {version = "0.2.0"}
+macroquad-profiler = {version = "0.2.0"}
 # Logging  libraries
 env_logger = {version = "*"}
 log = {version = "*", features = ["max_level_debug"]}
@@ -37,10 +38,10 @@ human-panic = "1.0.3"
 confy = "0.4.0"
 
 [dependencies.nalgebra]
-features =[ "convert-glam014" ,"serde-serialize"]
+features =[ "convert-glam021" ,"serde-serialize"]
 
 [dependencies.glam]
-version ="0.14.0"
+version ="0.21.0"
 
 [profile.dev.package.rapier2d]
 opt-level = 3

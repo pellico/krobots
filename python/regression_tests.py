@@ -22,7 +22,7 @@ from ktanks.tank_pb2 import TankStatus
 
 
 def angle_wrapping(angle:float) -> float:
-    angle_res = angle;
+    angle_res = angle
     while True: 
         if angle_res > pi:
             angle_res = angle_res - 2.0 * pi

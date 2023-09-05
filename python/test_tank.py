@@ -94,7 +94,7 @@ def run_my_robot(name):
 
             
 if __name__ == '__main__':
-    for tank_id in range(0,10):
+    for tank_id in range(0,50):
         name = 'tank_%d' % (tank_id)
         t2 = Process(name=name,target=run_my_robot, args=(name,))
         t2.start()
