@@ -6,6 +6,12 @@ use rapier2d::na::{Point2, Vector2};
 use rapier2d::prelude::*;
 use serde::{Deserialize, Serialize};
 
+
+#[repr(transparent)]
+#[derive(Hash,Eq,PartialEq,Clone,Copy)]
+pub struct EntityId(u64);
+
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Turret {
     pub(super) phy_body_handle: RigidBodyHandle,
@@ -164,6 +170,14 @@ impl Tank {
             radar_max_detection_distance : p_engine.conf.radar_max_detection_distance,
             bullet_damage : p_engine.conf.bullet_damage
         }
+    }
+
+    #[inline]
+    /// Get unique id of Tank
+    /// It is derived from RigidBodyHandle
+    pub fn get_id(&self)->EntityId {
+        let (a,b) =  self.phy_body_handle.into_raw_parts();
+        EntityId((a as u64) << 32 | b as u64)
     }
 
     #[inline]
@@ -445,5 +459,12 @@ impl Bullet {
     #[inline]
     pub fn shape_polyline(&self) ->  &Vec<Point2<Real>> {
         &self.shape_polyline
+    }
+    #[inline]
+    /// Get unique id of Bullet
+    /// It is derived from RigidBodyHandle so it is unique globally
+    pub fn get_id(&self)->EntityId {
+        let (a,b) =  self.phy_body_handle.into_raw_parts();
+        EntityId((a as u64) << 32 | b as u64)
     }
 }

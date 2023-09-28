@@ -16,10 +16,10 @@ prost-build = "0.9"
 
 [dependencies]
 rapier2d = { git="https://github.com/dimforge/rapier.git",rev ="refs/pull/493/head", features = [ "simd-stable","serde-serialize"] }
-macroquad = { version = "0.4.2"}
 cargo  = {version = "*"}
-macroquad-particles = {version = "0.2.0"}
-macroquad-profiler = {version = "0.2.0"}
+macroquad-particles = {version = "0.2.0",optional=true}
+macroquad-profiler = {version = "0.2.0",optional=true}
+macroquad = { version = "0.4.2",optional=true}
 # Logging  libraries
 env_logger = {version = "*"}
 log = {version = "*", features = ["max_level_debug"]}
@@ -36,19 +36,20 @@ bincode = "*"
 ctrlc = "3.2.1"
 human-panic = "1.0.3"
 confy = "0.4.0"
+bevy = {version = "0.11.2",optional=true}
 
 [dependencies.nalgebra]
-features =[ "convert-glam021" ,"serde-serialize"]
+version = "*"
+features =["serde-serialize"]
 
-[dependencies.glam]
-version ="0.21.0"
-
-[profile.dev.package.rapier2d]
-opt-level = 3
-
-[profile.dev.package.macroquad]
+[profile.dev.package."*"]
 opt-level = 3
 
 [dev-dependencies]
 float_eq = "1"
+
+[features]
+macroquad = ["dep:macroquad-particles","dep:macroquad-profiler","dep:macroquad","nalgebra/convert-glam021"]
+bevy = ["dep:bevy","nalgebra/convert-glam024"]
+default = ["bevy"]
 
