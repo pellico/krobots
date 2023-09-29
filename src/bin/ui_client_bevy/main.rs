@@ -15,7 +15,7 @@ pub struct Opts {
     #[clap(default_value = "3042")]
     port: u16,
     //Log level to be used if environmental variable RUST_LOG is not set.
-    #[clap(short, long, default_value = "info",possible_values=["error","warn","info","debug","trace"])]
+    #[clap(short, long, default_value = "info",value_parser=["error","warn","info","debug","trace"])]
     log_level: String,
     /// Scaling factor of ui graphics compared to physical simulation dimension.
     /// Increment teh value to see bigger graphics compared to physical collider

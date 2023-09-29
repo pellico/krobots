@@ -40,7 +40,7 @@ pub struct Opts {
     #[clap(short, long, default_value = "55230")]
     pub (crate) port: u16,
     //Log level to be used if environmental variable RUST_LOG is not set.
-    #[clap(short, long, default_value = "warn",possible_values=["error","warn","info","debug","trace"])]
+    #[clap(short, long, default_value = "warn",value_parser=["error","warn","info","debug","trace"])]
     pub log_level: String,
     /// Max number of simulation step. If 0 no end until only one survived.
     #[clap(short, long, default_value = "0")]
@@ -61,13 +61,13 @@ pub struct Opts {
     #[clap(long)]
     pub no_gui: bool,
     /// Tank client communication protocol. udp is faster but it has issue with NAT and firewall.
-    #[clap(long, default_value = "tcp",possible_values=["tcp","udp"])]
+    #[clap(long, default_value = "tcp",value_parser=["tcp","udp"])]
     pub (crate) tank_client_protocol: String,
     /// Tank client communication protocol. udp is faster but it has issue with NAT and firewall.
     #[clap(long)]
     pub configuration_file: Option<String>,
     /// Scaling factor of ui graphics compared to physical simulation dimension.
-    /// Increment teh value to see bigger graphics compared to physical collider
+    /// Increment the value to see bigger graphics compared to physical collider
     #[clap(long, default_value = "0.15")]
     pub graphics_scaling_factor: f32,
 
