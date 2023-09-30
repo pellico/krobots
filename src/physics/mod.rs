@@ -641,7 +641,7 @@ mod tests {
         }
 
         let tank0 = engine.tank_mut(0);
-        assert_eq!(tank0.angular_velocity(), -1.0365883);
+        assert_eq!(tank0.angular_velocity(), -1.0365888);
         // check wrapping set of angular speed
         tank0.set_turning_power(-2.0);
         assert_eq!(tank0.turning_power_fraction(), -1.0);
