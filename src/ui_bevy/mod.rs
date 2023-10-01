@@ -1,8 +1,10 @@
 use crate::physics::{EntityId, GameStateReceiver, Point2, Real, SimulationState, UICommandSender};
-use bevy::{math::Vec3Swizzles, prelude::*};
+use bevy::{math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
+use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiSettings};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 mod camera_controller_plugin;
+use bevy_embedded_assets::EmbeddedAssetPlugin;
 use camera_controller_plugin::{CameraController, CameraControllerPlugin};
 
 const TIME_STEP: f32 = 1.0 / 60.0;
@@ -13,7 +15,15 @@ pub fn start_gui(
     physical_scaling_factor: f32,
 ) {
     App::new()
-        .add_plugins((DefaultPlugins, CameraControllerPlugin))
+        .add_plugins(
+            DefaultPlugins
+                .build()
+                .add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin),
+        )
+        .add_plugins((CameraControllerPlugin, EguiPlugin))
+        .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
+        .insert_resource(Msaa::Sample4)
+        .init_resource::<UiState>()
         .insert_resource(FixedTime::new_from_secs(TIME_STEP))
         .insert_resource(CommunicationChannels {
             rx_data: Mutex::new(rx_data),
@@ -33,8 +43,12 @@ pub fn start_gui(
         .add_systems(Startup, setup)
         .add_systems(Update, get_physical_state)
         .add_systems(Update, gizmos.after(get_physical_state))
-        //.add_systems(Update, spawn_spawn_tanks.after(get_physical_state))
+        .add_systems(Update, spawn_spawn_tanks.after(get_physical_state))
         .add_systems(Update, bevy::window::close_on_esc)
+        .add_systems(Startup, configure_visuals_system)
+        .add_systems(Startup, configure_ui_state_system)
+        .add_systems(Update, update_ui_scale_factor_system)
+        .add_systems(Update, ui_example_system)
         .run();
 }
 
@@ -43,6 +57,9 @@ struct TankBody {}
 
 #[derive(Component)]
 struct TankTurret {}
+
+#[derive(Component)]
+struct TankRadar {}
 
 #[derive(Component)]
 struct Bullet {}
@@ -72,13 +89,23 @@ struct PhysicsState {
     debug_mode: bool,
     state: SimulationState,
     zero_power_limit: f32,
-    physical_scaling_factor:f32,
+    physical_scaling_factor: f32,
 }
 
 #[derive(Resource)]
 struct Sprites {
     tank_body_sprite: Handle<Image>,
     tank_turret_sprite: Handle<Image>,
+    tank_radar_sprite: Handle<Image>,
+}
+
+#[derive(Default, Resource)]
+struct UiState {
+    label: String,
+    value: f32,
+    inverted: bool,
+    egui_texture_handle: Option<egui::TextureHandle>,
+    is_window_open: bool,
 }
 
 fn get_physical_state(
@@ -107,9 +134,11 @@ fn get_physical_state(
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let tank_body_sprite = asset_server.load("body.png");
     let tank_turret_sprite = asset_server.load("turret.png");
+    let tank_radar_sprite = asset_server.load("radar.png");
     commands.insert_resource(Sprites {
         tank_body_sprite,
         tank_turret_sprite,
+        tank_radar_sprite,
     });
 
     // 2D orthographic camera
@@ -124,12 +153,17 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn spawn_spawn_tanks(
     mut commands: Commands,
-    mut query: Query<(&mut Transform, &RigidBodyID, Entity), With<TankBody>>,
+    mut query: Query<
+        (&mut Transform, &RigidBodyID, Entity, &Children),
+        (With<TankBody>, Without<TankTurret>, Without<TankRadar>),
+    >,
+    mut turrets: Query<&mut Transform, (With<TankTurret>, Without<TankBody>, Without<TankRadar>)>,
+    mut radar: Query<&mut Transform, (With<TankRadar>, Without<TankBody>, Without<TankTurret>)>,
     physics_state: Res<PhysicsState>,
     sprites: Res<Sprites>,
 ) {
     let mut tank_id_in_ui: HashSet<EntityId> = HashSet::new();
-    for (mut tank_transform, id_tank, entity) in query.iter_mut() {
+    for (mut tank_transform, id_tank, entity, children) in query.iter_mut() {
         tank_id_in_ui.insert(id_tank.phy_id);
 
         match physics_state.tanks.get(&id_tank.phy_id) {
@@ -137,8 +171,17 @@ fn spawn_spawn_tanks(
             Some(phy_tank) => {
                 tank_transform.translation.x = phy_tank.position().translation.x;
                 tank_transform.translation.y = phy_tank.position().translation.y;
-                tank_transform.rotation =
-                    Quat::from_rotation_z(phy_tank.position().rotation.angle());
+                tank_transform.rotation= Quat::from_rotation_z(phy_tank.position().rotation.angle());
+                for child in children.iter() {
+                    if let Ok(mut trans_radar) = radar.get_component_mut::<Transform>(*child) {
+                        trans_radar.rotation=Quat::from_rotation_z(phy_tank.radar_position());
+                    }
+                    if let Ok(mut trans_turret) = turrets.get_component_mut::<Transform>(*child) {
+                        trans_turret.rotation=Quat::from_rotation_z(
+                            phy_tank.turret().angle() - phy_tank.position().rotation.angle(),
+                        )
+                    }
+                }
             }
         }
     }
@@ -150,6 +193,7 @@ fn spawn_spawn_tanks(
                 .spawn((
                     SpriteBundle {
                         texture: sprites.tank_body_sprite.clone(),
+                        transform: Transform::IDENTITY.with_translation(Vec3 { x: 0.0, y: 0.0, z: 1.0 }),
                         ..default()
                     },
                     TankBody {},
@@ -161,14 +205,24 @@ fn spawn_spawn_tanks(
                 .spawn((
                     SpriteBundle {
                         texture: sprites.tank_turret_sprite.clone(),
-                        transform: Transform::IDENTITY,
+                        transform: Transform::IDENTITY.with_translation(Vec3 { x: 0.0, y: 0.0, z: 2.0 }),
                         ..default()
                     },
                     TankTurret {},
                 ))
                 .id();
+            let radar = commands
+                .spawn((
+                    SpriteBundle {
+                        texture: sprites.tank_radar_sprite.clone(),
+                        transform: Transform::IDENTITY.with_translation(Vec3 { x: 0.0, y: 0.0, z: 3.0 }),
+                        ..default()
+                    },
+                    TankRadar {},
+                ))
+                .id();
             // add the child to the parent
-            commands.entity(tank_body).push_children(&[turret]);
+            commands.entity(tank_body).push_children(&[turret, radar]);
         }
     }
 }
@@ -193,7 +247,11 @@ fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
     // Draw tank and turret
     for tank in physics_state.tanks.values() {
         draw_polyline(&mut gizmos, tank.shape_polyline(), physical_scaling_factor);
-        draw_polyline(&mut gizmos, tank.turret().shape_polyline(), physical_scaling_factor);
+        draw_polyline(
+            &mut gizmos,
+            tank.turret().shape_polyline(),
+            physical_scaling_factor,
+        );
     }
 
     // Draw bullets
@@ -203,5 +261,116 @@ fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
     }
 
     // Draw zero power limit
-    gizmos.circle_2d(Vec2::ZERO, physics_state.zero_power_limit*physical_scaling_factor, Color::GREEN);
+    gizmos.circle_2d(
+        Vec2::ZERO,
+        physics_state.zero_power_limit * physical_scaling_factor,
+        Color::GREEN,
+    );
+}
+
+fn configure_visuals_system(mut contexts: EguiContexts) {
+    contexts.ctx_mut().set_visuals(egui::Visuals {
+        window_rounding: 0.0.into(),
+        ..Default::default()
+    });
+}
+
+fn configure_ui_state_system(mut ui_state: ResMut<UiState>) {
+    ui_state.is_window_open = true;
+}
+
+fn update_ui_scale_factor_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut toggle_scale_factor: Local<Option<bool>>,
+    mut egui_settings: ResMut<EguiSettings>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Slash) || toggle_scale_factor.is_none() {
+        *toggle_scale_factor = Some(!toggle_scale_factor.unwrap_or(true));
+
+        if let Ok(window) = windows.get_single() {
+            let scale_factor = if toggle_scale_factor.unwrap() {
+                1.0
+            } else {
+                1.0 / window.scale_factor()
+            };
+            egui_settings.scale_factor = scale_factor;
+        }
+    }
+}
+
+fn ui_example_system(
+    mut ui_state: ResMut<UiState>,
+    mut is_initialized: Local<bool>,
+    mut contexts: EguiContexts,
+) {
+    let egui_texture_handle = ui_state
+        .egui_texture_handle
+        .get_or_insert_with(|| {
+            contexts.ctx_mut().load_texture(
+                "example-image",
+                egui::ColorImage::example(),
+                Default::default(),
+            )
+        })
+        .clone();
+
+    let mut load = false;
+    let mut remove = false;
+    let mut invert = false;
+
+    if !*is_initialized {
+        *is_initialized = true;
+    }
+
+    let ctx = contexts.ctx_mut();
+
+    egui::SidePanel::left("side_panel")
+        .default_width(200.0)
+        .show(ctx, |ui| {
+            ui.heading("Side Panel");
+
+            ui.horizontal(|ui| {
+                ui.label("Write something: ");
+                ui.text_edit_singleline(&mut ui_state.label);
+            });
+
+            ui.add(egui::widgets::Image::new(
+                egui_texture_handle.id(),
+                egui_texture_handle.size_vec2(),
+            ));
+
+            ui.add(egui::Slider::new(&mut ui_state.value, 0.0..=10.0).text("value"));
+            if ui.button("Increment").clicked() {
+                ui_state.value += 1.0;
+            }
+
+            ui.allocate_space(egui::Vec2::new(1.0, 100.0));
+            ui.horizontal(|ui| {
+                load = ui.button("Load").clicked();
+                invert = ui.button("Invert").clicked();
+                remove = ui.button("Remove").clicked();
+            });
+
+            ui.allocate_space(egui::Vec2::new(1.0, 10.0));
+            ui.checkbox(&mut ui_state.is_window_open, "Window Is Open");
+
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+                ui.add(egui::Hyperlink::from_label_and_url(
+                    "powered by egui",
+                    "https://github.com/emilk/egui/",
+                ));
+            });
+        });
+
+    egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+        // The top panel is often a good place for a menu bar:
+        egui::menu::bar(ui, |ui| {
+            egui::menu::menu_button(ui, "File", |ui| {
+                if ui.button("Quit").clicked() {
+                    std::process::exit(0);
+                }
+            });
+        });
+    });
 }

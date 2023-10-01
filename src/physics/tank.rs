@@ -6,11 +6,9 @@ use rapier2d::na::{Point2, Vector2};
 use rapier2d::prelude::*;
 use serde::{Deserialize, Serialize};
 
-
 #[repr(transparent)]
-#[derive(Hash,Eq,PartialEq,Clone,Copy)]
+#[derive(Hash, Eq, PartialEq, Clone, Copy)]
 pub struct EntityId(u64);
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Turret {
@@ -19,7 +17,7 @@ pub struct Turret {
     pub(super) angle: f32, //Updated during step
     pub(super) shape_polyline: Vec<Point2<Real>>,
     pub(super) fire: bool,
-    pub(super) new_angle: Option<f32>, // New position None if no command change
+    pub(super) new_angle: Option<f32>, // New position. None if there is no command change
     pub(super) cannon_temperature: f32,
     cannon_max_temp: f32,
     cannon_min_temp: f32,
@@ -52,21 +50,25 @@ pub struct Tank {
     pub(super) position: Isometry<Real>,
     pub(super) linvel: Vector<Real>,
     pub(super) angular_velocity: Real, //Present angular velocity
-    pub(super) radar_position: f32,
+    pub(super) radar_position: f32,    // Angle relative to the tank
     pub(super) radar_width: f32,
     detected_tank: Vec<Tank>,
     tank_energy_max: f32,
     damage_max: f32,
     radar_angle_increment_max: f32,
-    radar_operation_energy : f32,
-    radar_width_max : f32,
-    pub(super) radar_max_detection_distance : f32,
-    bullet_damage : f32,
-
+    radar_operation_energy: f32,
+    radar_width_max: f32,
+    pub(super) radar_max_detection_distance: f32,
+    bullet_damage: f32,
 }
 
 impl Tank {
-    pub fn new(p_engine:&mut PhysicsEngine,tank_position:Isometry<Real>,tank_index:usize,name:String) -> Tank {
+    pub fn new(
+        p_engine: &mut PhysicsEngine,
+        tank_position: Isometry<Real>,
+        tank_index: usize,
+        name: String,
+    ) -> Tank {
         let body = RigidBodyBuilder::dynamic()
             .position(tank_position)
             .linear_damping(p_engine.conf.linear_damping)
@@ -75,14 +77,16 @@ impl Tank {
 
         let rigid_body_handle = p_engine.rigid_body_set.insert(body);
 
-        let collider =
-            ColliderBuilder::cuboid(p_engine.conf.tank_width_m / 2.0, p_engine.conf.tank_depth_m / 2.0)
-                .restitution(0.7)
-                .density(p_engine.conf.tank_collider_density)
-                .collision_groups(super::TANK_GROUP)
-                .active_hooks(ActiveHooks::FILTER_CONTACT_PAIRS)
-                .user_data(tank_index as u128)
-                .build();
+        let collider = ColliderBuilder::cuboid(
+            p_engine.conf.tank_width_m / 2.0,
+            p_engine.conf.tank_depth_m / 2.0,
+        )
+        .restitution(0.7)
+        .density(p_engine.conf.tank_collider_density)
+        .collision_groups(super::TANK_GROUP)
+        .active_hooks(ActiveHooks::FILTER_CONTACT_PAIRS)
+        .user_data(tank_index as u128)
+        .build();
         let shape_polyline_tank = PhysicsEngine::get_collider_polyline_cuboid(&collider);
         let collider_handle = p_engine.collider_set.insert_with_parent(
             collider,
@@ -118,17 +122,19 @@ impl Tank {
         );
         // Create joint to move turret together with tank.
         let joint = RevoluteJointBuilder::new()
-        .local_anchor1(point![0.0, 0.0])
-        .local_anchor2(point![-p_engine.conf.turret_width_m / 2.0, 0.0])
-        .motor_model(MotorModel::AccelerationBased)
-        .motor_position(
-            0.0,
-            p_engine.conf.turret_stiffness,
-            p_engine.conf.turret_damping,
-        ).build();
+            .local_anchor1(point![0.0, 0.0])
+            .local_anchor2(point![-p_engine.conf.turret_width_m / 2.0, 0.0])
+            .motor_model(MotorModel::AccelerationBased)
+            .motor_position(
+                0.0,
+                p_engine.conf.turret_stiffness,
+                p_engine.conf.turret_damping,
+            )
+            .build();
         let cannon_joint_handle =
-            p_engine.joint_set
-                .insert(rigid_body_handle, rigid_body_turret_handle, joint,true);
+            p_engine
+                .joint_set
+                .insert(rigid_body_handle, rigid_body_turret_handle, joint, true);
 
         let rigid_body = &p_engine.rigid_body_set[rigid_body_handle];
         let turret_rigid_body = &p_engine.rigid_body_set[rigid_body_turret_handle];
@@ -147,9 +153,9 @@ impl Tank {
                 fire: false,
                 new_angle: None,
                 cannon_temperature: p_engine.conf.cannon_min_temp,
-                cannon_max_temp : p_engine.conf.cannon_max_temp,
-                cannon_min_temp : p_engine.conf.cannon_min_temp,
-                cannon_temp_decrease_step : p_engine.conf.cannon_temp_decrease_step,
+                cannon_max_temp: p_engine.conf.cannon_max_temp,
+                cannon_min_temp: p_engine.conf.cannon_min_temp,
+                cannon_temp_decrease_step: p_engine.conf.cannon_temp_decrease_step,
             },
             engine_power: 0.0,
             max_engine_power: p_engine.conf.tank_engine_power_max,
@@ -162,21 +168,21 @@ impl Tank {
             radar_position: 0.0,
             radar_width: p_engine.conf.radar_width_max,
             detected_tank: Vec::new(),
-            tank_energy_max : p_engine.conf.tank_energy_max,
-            damage_max : p_engine.conf.damage_max,
-            radar_angle_increment_max : p_engine.conf.radar_angle_increment_max,
-            radar_operation_energy : p_engine.conf.radar_operation_energy,
-            radar_width_max : p_engine.conf.radar_width_max,
-            radar_max_detection_distance : p_engine.conf.radar_max_detection_distance,
-            bullet_damage : p_engine.conf.bullet_damage
+            tank_energy_max: p_engine.conf.tank_energy_max,
+            damage_max: p_engine.conf.damage_max,
+            radar_angle_increment_max: p_engine.conf.radar_angle_increment_max,
+            radar_operation_energy: p_engine.conf.radar_operation_energy,
+            radar_width_max: p_engine.conf.radar_width_max,
+            radar_max_detection_distance: p_engine.conf.radar_max_detection_distance,
+            bullet_damage: p_engine.conf.bullet_damage,
         }
     }
 
     #[inline]
     /// Get unique id of Tank
     /// It is derived from RigidBodyHandle
-    pub fn get_id(&self)->EntityId {
-        let (a,b) =  self.phy_body_handle.into_raw_parts();
+    pub fn get_id(&self) -> EntityId {
+        let (a, b) = self.phy_body_handle.into_raw_parts();
         EntityId((a as u64) << 32 | b as u64)
     }
 
@@ -275,7 +281,6 @@ impl Tank {
         self.engine_power = energy * self.max_engine_power;
     }
 
-
     pub fn set_turning_power(&mut self, power_fraction: f32) {
         let power_fraction_wrapped = if power_fraction > 1.0 {
             1.0
@@ -287,25 +292,25 @@ impl Tank {
         self.turning_power = self.turning_power_max * power_fraction_wrapped;
     }
 
-
-
     /**
      * Set cannon position
      */
-    pub (super) fn set_cannon_position_physics(&mut self, joint_set: &mut ImpulseJointSet,conf:&Conf) {
-        match self.turret.new_angle {
-            Some(angle) => {
-                let joint = joint_set.get_mut(self.cannon_joint_handle).unwrap();
-                if let Some(ball_joint) = joint.data.as_revolute_mut() {
-                    ball_joint.set_motor_position(
-                        angle,
-                        conf.turret_stiffness,
-                        conf.turret_damping,
-                    );
-                };
-                self.turret.new_angle = None;
-            }
-            None => (),
+    pub(super) fn set_cannon_position_physics(
+        &mut self,
+        joint_set: &mut ImpulseJointSet,
+        conf: &Conf,
+    ) {
+        if let Some(angle) = self.turret.new_angle {
+            let joint = joint_set
+                .get_mut(self.cannon_joint_handle)
+                .expect("Unable to get cannon joint");
+            let ball_joint = joint
+                .data
+                .as_revolute_mut()
+                .expect("Unable to convert joint to ball joint");
+            ball_joint.set_motor_position(angle, conf.turret_stiffness, conf.turret_damping);
+
+            self.turret.new_angle = None;
         };
     }
 
@@ -329,9 +334,13 @@ impl Tank {
     return true if there is enough energy for the operation
     :TODO: Bad design split in two function ?
     */
-    pub fn update_energy(&mut self,conf:&Conf) -> bool {
+    pub fn update_energy(&mut self, conf: &Conf) -> bool {
         // Decrease if a bullet is fired
-        let bullet_energy = if self.turret.fire { conf.bullet_energy } else { 0.0 };
+        let bullet_energy = if self.turret.fire {
+            conf.bullet_energy
+        } else {
+            0.0
+        };
         // Energy transmission decrease linearly and go to zero at distance ZERO_POWER_LIMIT
         let distance_from_center = self.position.translation.vector.norm();
         // Beyond ZERO_POWER_LIMIT energy will be drained from the tank.
@@ -401,12 +410,9 @@ impl Tank {
         self.radar_width = radar_w;
         true
     }
-
-
 }
 
 impl Turret {
-
     /// Update the temperature cannon.
     /// executed at every simulation step
     #[inline]
@@ -435,7 +441,6 @@ impl Turret {
         self.cannon_temperature
     }
 
-    
     pub fn ready_to_fire(&self) -> bool {
         self.cannon_temperature <= self.cannon_max_temp
     }
@@ -448,7 +453,6 @@ impl Turret {
             false
         }
     }
-
 }
 
 impl Bullet {
@@ -457,14 +461,14 @@ impl Bullet {
         self.position
     }
     #[inline]
-    pub fn shape_polyline(&self) ->  &Vec<Point2<Real>> {
+    pub fn shape_polyline(&self) -> &Vec<Point2<Real>> {
         &self.shape_polyline
     }
     #[inline]
     /// Get unique id of Bullet
     /// It is derived from RigidBodyHandle so it is unique globally
-    pub fn get_id(&self)->EntityId {
-        let (a,b) =  self.phy_body_handle.into_raw_parts();
+    pub fn get_id(&self) -> EntityId {
+        let (a, b) = self.phy_body_handle.into_raw_parts();
         EntityId((a as u64) << 32 | b as u64)
     }
 }
