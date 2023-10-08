@@ -1,14 +1,28 @@
-use crate::physics::{EntityId, GameStateReceiver, Point2, Real, SimulationState, UICommandSender};
-use bevy::{math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
-use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiSettings};
+use crate::physics::{GameStateReceiver, ObjUID, Point2, Real, SimulationState, UICommandSender};
+use bevy::app::AppExit;
+use bevy::{prelude::*, window::PrimaryWindow};
+use bevy_egui::EguiPlugin;
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
+use std::f32::consts::PI;
+use std::sync::Mutex;
 mod camera_controller_plugin;
 use bevy_embedded_assets::EmbeddedAssetPlugin;
 use camera_controller_plugin::{CameraController, CameraControllerPlugin};
+mod gizmos;
+use gizmos::gizmos;
+mod ui;
+use ui::*;
 
 const TIME_STEP: f32 = 1.0 / 60.0;
 const BOUNDS: Vec2 = Vec2::new(1200.0, 640.0);
+const TANK_BODY_Z: f32 = 1.0;
+const TANK_TURRET_Z: f32 = 2.0;
+const TANK_RADAR_Z: f32 = 3.0;
+const BULLET_Z: f32 = 4.0;
+const TANK_TEXT_Z: f32 = 5.0;
+// Offset (x,y) of tank name 
+const TANK_TEXT_OFFSET:(f32,f32) = (0.0,3.0); 
+
 pub fn start_gui(
     rx_data: Box<dyn GameStateReceiver>,
     tx_ui_command: Box<dyn UICommandSender>,
@@ -43,12 +57,14 @@ pub fn start_gui(
         .add_systems(Startup, setup)
         .add_systems(Update, get_physical_state)
         .add_systems(Update, gizmos.after(get_physical_state))
-        .add_systems(Update, spawn_spawn_tanks.after(get_physical_state))
+        .add_systems(Update, bullet_spawn_update.after(get_physical_state))
+        .add_systems(Update, tank_spawn_update.after(get_physical_state))
         .add_systems(Update, bevy::window::close_on_esc)
         .add_systems(Startup, configure_visuals_system)
         .add_systems(Startup, configure_ui_state_system)
-        .add_systems(Update, update_ui_scale_factor_system)
-        .add_systems(Update, ui_example_system)
+        .add_systems(Update, ui_update)
+        .add_systems(Update,tank_label)
+        .add_systems(Update, exit_system)
         .run();
 }
 
@@ -68,9 +84,29 @@ struct Bullet {}
 struct EnergyCircle {}
 
 #[derive(Component)]
-struct RigidBodyID {
+struct PhysicalObjUID {
     // Used as unique ID
-    phy_id: EntityId,
+    phy_id: ObjUID,
+}
+
+#[derive(Bundle)]
+struct BulletBundle {
+    sprite_bundle: SpriteBundle,
+    phy_id: PhysicalObjUID,
+    marker: Bullet,
+}
+
+#[derive(Bundle)]
+struct TankBodyBundle {
+    sprite_bundle: SpriteBundle,
+    phy_id: PhysicalObjUID,
+    marker: TankBody,
+}
+
+#[derive(Bundle)]
+struct TankTextBundle {
+    text_bundle: Text2dBundle,
+    phy_id: PhysicalObjUID,
 }
 
 #[derive(Resource)]
@@ -81,8 +117,8 @@ struct CommunicationChannels {
 
 #[derive(Resource)]
 struct PhysicsState {
-    tanks: HashMap<EntityId, super::physics::Tank>,
-    bullets: HashMap<EntityId, super::physics::Bullet>,
+    tanks: HashMap<ObjUID, super::physics::Tank>,
+    bullets: HashMap<ObjUID, super::physics::Bullet>,
     max_num_tanks: usize,
     tick: u32,
     max_ticks: u32,
@@ -93,19 +129,18 @@ struct PhysicsState {
 }
 
 #[derive(Resource)]
-struct Sprites {
+struct TankAssets {
     tank_body_sprite: Handle<Image>,
     tank_turret_sprite: Handle<Image>,
     tank_radar_sprite: Handle<Image>,
+    bullet_sprite: Handle<Image>,
+    tank_font:Handle<Font>
 }
 
-#[derive(Default, Resource)]
-struct UiState {
-    label: String,
-    value: f32,
-    inverted: bool,
-    egui_texture_handle: Option<egui::TextureHandle>,
-    is_window_open: bool,
+fn exit_system(mut exit: EventWriter<AppExit>) {
+    if crate::is_exit_application() {
+        exit.send(AppExit);
+    }
 }
 
 fn get_physical_state(
@@ -135,10 +170,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let tank_body_sprite = asset_server.load("body.png");
     let tank_turret_sprite = asset_server.load("turret.png");
     let tank_radar_sprite = asset_server.load("radar.png");
-    commands.insert_resource(Sprites {
+    let bullet_sprite = asset_server.load("bullet.png");
+    let tank_font= asset_server.load("arial.ttf");
+    commands.insert_resource(TankAssets {
         tank_body_sprite,
         tank_turret_sprite,
         tank_radar_sprite,
+        bullet_sprite,
+        tank_font
     });
 
     // 2D orthographic camera
@@ -151,18 +190,67 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // spawn the parent and get its Entity id
 }
 
-fn spawn_spawn_tanks(
+fn bullet_spawn_update(
+    mut commands: Commands,
+    mut query: Query<(&mut Transform, &PhysicalObjUID, Entity), With<Bullet>>,
+    physics_state: Res<PhysicsState>,
+    sprites: Res<TankAssets>,
+) {
+    let mut bullets_id_in_ui: HashSet<ObjUID> = HashSet::new(); // Bullets in UI
+
+    // Update existing position of bullets in UI and remove UI bullets no longer present in physical model.
+    for (mut bullet_transform, bullet_obj_id, entity_id) in query.iter_mut() {
+        bullets_id_in_ui.insert(bullet_obj_id.phy_id);
+        match physics_state.bullets.get(&bullet_obj_id.phy_id) {
+            None => commands.entity(entity_id).despawn(),
+            Some(phy_bullet) => {
+                bullet_transform.translation.x = phy_bullet.position().translation.x;
+                bullet_transform.translation.y = phy_bullet.position().translation.y;
+                bullet_transform.rotation =
+                    Quat::from_rotation_z(phy_bullet.position().rotation.angle());
+            }
+        }
+    }
+
+    // Spawn bullets in physical simulation but not in UI
+    for (phy_obj_id, phy_bullet) in physics_state.bullets.iter() {
+        // For physical bulletes that are not in the UI spawn related entity
+        if !bullets_id_in_ui.contains(phy_obj_id) {
+            commands.spawn(BulletBundle {
+                sprite_bundle: SpriteBundle {
+                    texture: sprites.bullet_sprite.clone(),
+                    transform: Transform {
+                        translation: Vec3 {
+                            x: phy_bullet.position().translation.x,
+                            y: phy_bullet.position().translation.y,
+                            z: BULLET_Z,
+                        },
+                        rotation: Quat::from_rotation_z(phy_bullet.position().rotation.angle()),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                phy_id: PhysicalObjUID {
+                    phy_id: *phy_obj_id,
+                },
+                marker: Bullet {},
+            });
+        }
+    }
+}
+
+fn tank_spawn_update(
     mut commands: Commands,
     mut query: Query<
-        (&mut Transform, &RigidBodyID, Entity, &Children),
+        (&mut Transform, &PhysicalObjUID, Entity, &Children),
         (With<TankBody>, Without<TankTurret>, Without<TankRadar>),
     >,
     mut turrets: Query<&mut Transform, (With<TankTurret>, Without<TankBody>, Without<TankRadar>)>,
     mut radar: Query<&mut Transform, (With<TankRadar>, Without<TankBody>, Without<TankTurret>)>,
     physics_state: Res<PhysicsState>,
-    sprites: Res<Sprites>,
+    sprites: Res<TankAssets>,
 ) {
-    let mut tank_id_in_ui: HashSet<EntityId> = HashSet::new();
+    let mut tank_id_in_ui: HashSet<ObjUID> = HashSet::new();
     for (mut tank_transform, id_tank, entity, children) in query.iter_mut() {
         tank_id_in_ui.insert(id_tank.phy_id);
 
@@ -171,13 +259,14 @@ fn spawn_spawn_tanks(
             Some(phy_tank) => {
                 tank_transform.translation.x = phy_tank.position().translation.x;
                 tank_transform.translation.y = phy_tank.position().translation.y;
-                tank_transform.rotation= Quat::from_rotation_z(phy_tank.position().rotation.angle());
+                tank_transform.rotation =
+                    Quat::from_rotation_z(phy_tank.position().rotation.angle());
                 for child in children.iter() {
                     if let Ok(mut trans_radar) = radar.get_component_mut::<Transform>(*child) {
-                        trans_radar.rotation=Quat::from_rotation_z(phy_tank.radar_position());
+                        trans_radar.rotation = Quat::from_rotation_z(phy_tank.radar_position());
                     }
                     if let Ok(mut trans_turret) = turrets.get_component_mut::<Transform>(*child) {
-                        trans_turret.rotation=Quat::from_rotation_z(
+                        trans_turret.rotation = Quat::from_rotation_z(
                             phy_tank.turret().angle() - phy_tank.position().rotation.angle(),
                         )
                     }
@@ -190,22 +279,30 @@ fn spawn_spawn_tanks(
     for (&phy_id, tank) in phy_tanks.iter() {
         if !tank_id_in_ui.contains(&phy_id) {
             let tank_body = commands
-                .spawn((
-                    SpriteBundle {
+                .spawn(TankBodyBundle {
+                    sprite_bundle: SpriteBundle {
                         texture: sprites.tank_body_sprite.clone(),
-                        transform: Transform::IDENTITY.with_translation(Vec3 { x: 0.0, y: 0.0, z: 1.0 }),
+                        transform: Transform::IDENTITY.with_translation(Vec3 {
+                            x: 0.0,
+                            y: 0.0,
+                            z: TANK_BODY_Z,
+                        }),
                         ..default()
                     },
-                    TankBody {},
-                    RigidBodyID { phy_id },
-                ))
+                    phy_id: PhysicalObjUID { phy_id },
+                    marker: TankBody {},
+                })
                 .id();
 
             let turret = commands
                 .spawn((
                     SpriteBundle {
                         texture: sprites.tank_turret_sprite.clone(),
-                        transform: Transform::IDENTITY.with_translation(Vec3 { x: 0.0, y: 0.0, z: 2.0 }),
+                        transform: Transform::IDENTITY.with_translation(Vec3 {
+                            x: 0.0,
+                            y: 0.0,
+                            z: TANK_TURRET_Z,
+                        }),
                         ..default()
                     },
                     TankTurret {},
@@ -215,7 +312,11 @@ fn spawn_spawn_tanks(
                 .spawn((
                     SpriteBundle {
                         texture: sprites.tank_radar_sprite.clone(),
-                        transform: Transform::IDENTITY.with_translation(Vec3 { x: 0.0, y: 0.0, z: 3.0 }),
+                        transform: Transform::IDENTITY.with_translation(Vec3 {
+                            x: 0.0,
+                            y: 0.0,
+                            z: TANK_RADAR_Z,
+                        }),
                         ..default()
                     },
                     TankRadar {},
@@ -227,150 +328,50 @@ fn spawn_spawn_tanks(
     }
 }
 
-fn draw_polyline(gizmos: &mut Gizmos, polyline: &[Point2<Real>], scaling_factor: f32) {
-    let polyline_size = polyline.len();
-    let poly_vec: Vec<Vec2> = polyline
-        .iter()
-        .map(|&x| <Point2<Real> as Into<Vec2>>::into(x) * scaling_factor)
-        .collect();
-    gizmos.linestrip_2d(poly_vec, Color::RED);
-    //Close shape
-    gizmos.line_2d(
-        <Point2<Real> as Into<Vec2>>::into(polyline[polyline_size - 1]) * scaling_factor,
-        <Point2<Real> as Into<Vec2>>::into(polyline[0]) * scaling_factor,
-        Color::RED,
-    );
-}
-
-fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
-    let physical_scaling_factor = 1.0;
-    // Draw tank and turret
-    for tank in physics_state.tanks.values() {
-        draw_polyline(&mut gizmos, tank.shape_polyline(), physical_scaling_factor);
-        draw_polyline(
-            &mut gizmos,
-            tank.turret().shape_polyline(),
-            physical_scaling_factor,
-        );
-    }
-
-    // Draw bullets
-    for tank in physics_state.bullets.values() {
-        let a = tank.shape_polyline();
-        draw_polyline(&mut gizmos, a, physical_scaling_factor);
-    }
-
-    // Draw zero power limit
-    gizmos.circle_2d(
-        Vec2::ZERO,
-        physics_state.zero_power_limit * physical_scaling_factor,
-        Color::GREEN,
-    );
-}
-
-fn configure_visuals_system(mut contexts: EguiContexts) {
-    contexts.ctx_mut().set_visuals(egui::Visuals {
-        window_rounding: 0.0.into(),
-        ..Default::default()
-    });
-}
-
-fn configure_ui_state_system(mut ui_state: ResMut<UiState>) {
-    ui_state.is_window_open = true;
-}
-
-fn update_ui_scale_factor_system(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut toggle_scale_factor: Local<Option<bool>>,
-    mut egui_settings: ResMut<EguiSettings>,
-    windows: Query<&Window, With<PrimaryWindow>>,
+fn tank_label(
+    mut commands: Commands,
+    mut text_query: Query<(&mut Transform, &PhysicalObjUID, Entity), With<Text>>,
+    physics_state: Res<PhysicsState>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::Slash) || toggle_scale_factor.is_none() {
-        *toggle_scale_factor = Some(!toggle_scale_factor.unwrap_or(true));
-
-        if let Ok(window) = windows.get_single() {
-            let scale_factor = if toggle_scale_factor.unwrap() {
-                1.0
-            } else {
-                1.0 / window.scale_factor()
-            };
-            egui_settings.scale_factor = scale_factor;
+    let mut text_in_ui = HashSet::new();
+    // Update existing text and remove if tank is no longer present.
+    for (mut transform, phy_uid, entity) in text_query.iter_mut() {
+        text_in_ui.insert(phy_uid.phy_id);
+        match physics_state.tanks.get(&phy_uid.phy_id) {
+            None => commands.entity(entity).despawn_recursive(),
+            Some(phy_tank) => {
+                transform.translation.x = phy_tank.position().translation.x ;
+                transform.translation.y = phy_tank.position().translation.y ;
+            }
         }
     }
-}
 
-fn ui_example_system(
-    mut ui_state: ResMut<UiState>,
-    mut is_initialized: Local<bool>,
-    mut contexts: EguiContexts,
-) {
-    let egui_texture_handle = ui_state
-        .egui_texture_handle
-        .get_or_insert_with(|| {
-            contexts.ctx_mut().load_texture(
-                "example-image",
-                egui::ColorImage::example(),
-                Default::default(),
-            )
-        })
-        .clone();
+    // Add text for all tanks that doesn't have it
+    for (&phy_id, tank) in physics_state.tanks.iter() {
+        if !text_in_ui.contains(&phy_id) {
+            commands.spawn(TankTextBundle {
+                text_bundle: Text2dBundle {
+                    transform: Transform::IDENTITY.with_translation(Vec3 {
+                        x: tank.position().translation.x,
+                        y: tank.position().translation.y,
+                        z: TANK_TEXT_Z,
+                    }),
+                    text_anchor:bevy::sprite::Anchor::Custom(Vec2{x:TANK_TEXT_OFFSET.0,y:TANK_TEXT_OFFSET.1}),
 
-    let mut load = false;
-    let mut remove = false;
-    let mut invert = false;
+                    text: Text::from_section(
+                        tank.name.clone(),
+                        TextStyle {
+                            font_size: 10.0,
+                            color: Color::GOLD,
+                            // If no font is specified, it will use the default font.
+                            ..default()
+                        },
+                    ),
 
-    if !*is_initialized {
-        *is_initialized = true;
+                    ..default()
+                },
+                phy_id: PhysicalObjUID { phy_id },
+            });
+        }
     }
-
-    let ctx = contexts.ctx_mut();
-
-    egui::SidePanel::left("side_panel")
-        .default_width(200.0)
-        .show(ctx, |ui| {
-            ui.heading("Side Panel");
-
-            ui.horizontal(|ui| {
-                ui.label("Write something: ");
-                ui.text_edit_singleline(&mut ui_state.label);
-            });
-
-            ui.add(egui::widgets::Image::new(
-                egui_texture_handle.id(),
-                egui_texture_handle.size_vec2(),
-            ));
-
-            ui.add(egui::Slider::new(&mut ui_state.value, 0.0..=10.0).text("value"));
-            if ui.button("Increment").clicked() {
-                ui_state.value += 1.0;
-            }
-
-            ui.allocate_space(egui::Vec2::new(1.0, 100.0));
-            ui.horizontal(|ui| {
-                load = ui.button("Load").clicked();
-                invert = ui.button("Invert").clicked();
-                remove = ui.button("Remove").clicked();
-            });
-
-            ui.allocate_space(egui::Vec2::new(1.0, 10.0));
-            ui.checkbox(&mut ui_state.is_window_open, "Window Is Open");
-
-            ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-                ui.add(egui::Hyperlink::from_label_and_url(
-                    "powered by egui",
-                    "https://github.com/emilk/egui/",
-                ));
-            });
-        });
-
-    egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-        // The top panel is often a good place for a menu bar:
-        egui::menu::bar(ui, |ui| {
-            egui::menu::menu_button(ui, "File", |ui| {
-                if ui.button("Quit").clicked() {
-                    std::process::exit(0);
-                }
-            });
-        });
-    });
 }

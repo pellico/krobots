@@ -233,7 +233,7 @@ impl GameUI {
         widgets::Window::new(hash!(), vec2(0., 0.), vec2(300., 400.))
             .label("Tanks")
             .titlebar(true)
-            .ui(&mut *root_ui(), |ui| {
+            .ui(&mut root_ui(), |ui| {
                 for (index, p_tank) in p_tanks.iter().enumerate() {
                     let uppercase_label;
                     let label = if index == self.selected_tank {

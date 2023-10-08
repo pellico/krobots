@@ -7,8 +7,8 @@ use rapier2d::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[repr(transparent)]
-#[derive(Hash, Eq, PartialEq, Clone, Copy)]
-pub struct EntityId(u64);
+#[derive(Hash, Eq, PartialEq, Clone, Copy,Default)]
+pub struct ObjUID(u64);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Turret {
@@ -40,7 +40,7 @@ pub struct Tank {
     pub(super) cannon_joint_handle: ImpulseJointHandle,
     pub name: String,
     pub(super) turret: Turret,
-    pub damage: f32,
+    pub(super) damage: f32,
     pub(super) energy: f32,
     pub(super) engine_power: f32,
     pub(super) max_engine_power: f32,
@@ -51,7 +51,7 @@ pub struct Tank {
     pub(super) linvel: Vector<Real>,
     pub(super) angular_velocity: Real, //Present angular velocity
     pub(super) radar_position: f32,    // Angle relative to the tank
-    pub(super) radar_width: f32,
+    radar_width: f32,
     detected_tank: Vec<Tank>,
     tank_energy_max: f32,
     damage_max: f32,
@@ -181,9 +181,9 @@ impl Tank {
     #[inline]
     /// Get unique id of Tank
     /// It is derived from RigidBodyHandle
-    pub fn get_id(&self) -> EntityId {
+    pub fn get_id(&self) -> ObjUID {
         let (a, b) = self.phy_body_handle.into_raw_parts();
-        EntityId((a as u64) << 32 | b as u64)
+        ObjUID((a as u64) << 32 | b as u64)
     }
 
     #[inline]
@@ -245,8 +245,14 @@ impl Tank {
     }
 
     #[inline]
+    /// Angle relative to the tank
     pub fn radar_position(&self) -> f32 {
         self.radar_position
+    }
+
+    #[inline]
+    pub fn radar_width(&self) -> f32 {
+        self.radar_width
     }
 
     #[inline]
@@ -290,6 +296,16 @@ impl Tank {
             power_fraction
         };
         self.turning_power = self.turning_power_max * power_fraction_wrapped;
+    }
+
+    #[inline]
+    pub fn damage_max(&self) -> f32 {
+        self.damage_max
+    }
+
+    #[inline]
+    pub fn damage(&self) -> f32 {
+        self.damage
     }
 
     /**
@@ -467,8 +483,8 @@ impl Bullet {
     #[inline]
     /// Get unique id of Bullet
     /// It is derived from RigidBodyHandle so it is unique globally
-    pub fn get_id(&self) -> EntityId {
+    pub fn get_id(&self) -> ObjUID {
         let (a, b) = self.phy_body_handle.into_raw_parts();
-        EntityId((a as u64) << 32 | b as u64)
+        ObjUID((a as u64) << 32 | b as u64)
     }
 }

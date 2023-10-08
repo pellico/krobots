@@ -15,13 +15,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-///! Implements the physical simulation
+
 mod networking;
 mod report;
 mod tank;
 mod ui_interface;
 mod util;
-pub use self::tank::{Bullet, Tank,EntityId};
+pub use self::tank::{Bullet, Tank,ObjUID};
 pub use self::ui_interface::*;
 use self::util::*;
 use crate::conf::*;
@@ -539,7 +539,7 @@ impl PhysicsEngine {
                         * Vector2::<Real>::x();
                 //angle from radar vector to target_tank vector
                 let angle = Rotation2::rotation_between(&radar_vector, &relative_vector).angle();
-                if angle.abs() < tank.radar_width / 2.0 {
+                if angle.abs() < tank.radar_width() / 2.0 {
                     result.push((target_tank, distance));
                 }
             }

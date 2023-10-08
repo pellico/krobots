@@ -1,4 +1,4 @@
-use clap::{Parser};
+use clap::Parser;
 use ktanks_server::remote_ch::*;
 use ktanks_server::enable_human_panic;
 
