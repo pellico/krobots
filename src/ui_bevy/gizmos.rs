@@ -36,7 +36,7 @@ pub(super) fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
                 -tank.position().rotation.angle() - tank.radar_position() + PI / 2.0,
                 tank.radar_width(),
                 scaled_radar_range,
-                Color::YELLOW,
+                Color::GREEN,
             )
             .segments(10);
 

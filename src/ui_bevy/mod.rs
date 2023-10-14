@@ -1,4 +1,6 @@
-use crate::physics::{GameStateReceiver, ObjUID, Point2, Real, SimulationState, UICommandSender};
+use crate::physics::{
+    GameStateReceiver, ObjUID, Point2, Real, SimulationState, UICommand, UICommandSender,
+};
 use bevy::app::AppExit;
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::EguiPlugin;
@@ -21,7 +23,7 @@ const TANK_RADAR_Z: f32 = 3.0;
 const BULLET_Z: f32 = 4.0;
 const TANK_TEXT_Z: f32 = 5.0;
 // Offset (x,y) of tank name
-const TANK_TEXT_OFFSET: Vec2 = Vec2::from_array([0.0,3.0]);
+const TANK_TEXT_OFFSET: Vec2 = Vec2::from_array([0.0, 3.0]);
 
 pub fn start_gui(
     rx_data: Box<dyn GameStateReceiver>,
@@ -39,8 +41,10 @@ pub fn start_gui(
         .insert_resource(Msaa::Sample4)
         .init_resource::<UiState>()
         .insert_resource(FixedTime::new_from_secs(TIME_STEP))
-        .insert_resource(CommunicationChannels {
+        .insert_resource(SimulatorRx {
             rx_data: Mutex::new(rx_data),
+        })
+        .insert_resource(SimulatorTx {
             tx_ui_command: Mutex::new(tx_ui_command),
         })
         .insert_resource(PhysicsState {
@@ -53,20 +57,20 @@ pub fn start_gui(
             state: SimulationState::WaitingConnection,
             zero_power_limit: 0.0,
         })
-        .insert_resource(TankUISpaceState{
-            tank_scaling_factor:physical_scaling_factor
+        .insert_resource(TankUISpaceState {
+            tank_scaling_factor: physical_scaling_factor,
         })
         .add_systems(Startup, setup)
         .add_systems(Update, get_physical_state)
         .add_systems(Update, gizmos.after(get_physical_state))
         .add_systems(Update, bullet_spawn_update.after(get_physical_state))
         .add_systems(Update, tank_spawn_update.after(get_physical_state))
-        .add_systems(Update, bevy::window::close_on_esc)
         .add_systems(Startup, configure_visuals_system)
         .add_systems(Startup, configure_ui_state_system)
         .add_systems(Update, ui_update)
         .add_systems(Update, tank_label)
         .add_systems(Update, exit_system)
+        .add_systems(Update, check_exit_button)
         .run();
 }
 
@@ -112,8 +116,12 @@ struct TankTextBundle {
 }
 
 #[derive(Resource)]
-struct CommunicationChannels {
+struct SimulatorRx {
     rx_data: Mutex<Box<dyn GameStateReceiver>>,
+}
+
+#[derive(Resource)]
+struct SimulatorTx {
     tx_ui_command: Mutex<Box<dyn UICommandSender>>,
 }
 
@@ -129,11 +137,10 @@ struct PhysicsState {
     zero_power_limit: f32,
 }
 
-
 #[derive(Resource)]
 /// Settings of tank space rendering
 struct TankUISpaceState {
-    tank_scaling_factor:f32
+    tank_scaling_factor: f32,
 }
 
 #[derive(Resource)]
@@ -151,9 +158,20 @@ fn exit_system(mut exit: EventWriter<AppExit>) {
     }
 }
 
+fn check_exit_button(key_input: Res<Input<KeyCode>>, simulator_tx: Res<SimulatorTx>) {
+    if key_input.just_pressed(KeyCode::Escape) {
+        simulator_tx
+            .tx_ui_command
+            .lock()
+            .unwrap()
+            .send(UICommand::QUIT)
+            .unwrap();
+    }
+}
+
 fn get_physical_state(
     // these will panic if the resources don't exist
-    mut comm_channels: ResMut<CommunicationChannels>,
+    mut comm_channels: ResMut<SimulatorRx>,
     mut physics_state: ResMut<PhysicsState>,
 ) {
     let rx_data = comm_channels.rx_data.get_mut().unwrap();
@@ -257,7 +275,7 @@ fn tank_spawn_update(
     mut radar: Query<&mut Transform, (With<TankRadar>, Without<TankBody>, Without<TankTurret>)>,
     physics_state: Res<PhysicsState>,
     sprites: Res<TankAssets>,
-    tank_ui_space_state:Res<TankUISpaceState>
+    tank_ui_space_state: Res<TankUISpaceState>,
 ) {
     let mut tank_id_in_ui: HashSet<ObjUID> = HashSet::new();
     for (mut tank_transform, id_tank, entity, children) in query.iter_mut() {
@@ -291,11 +309,13 @@ fn tank_spawn_update(
                 .spawn(TankBodyBundle {
                     sprite_bundle: SpriteBundle {
                         texture: sprites.tank_body_sprite.clone(),
-                        transform: Transform::IDENTITY.with_translation(Vec3 {
-                            x: 0.0,
-                            y: 0.0,
-                            z: TANK_BODY_Z,
-                        }).with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
+                        transform: Transform::IDENTITY
+                            .with_translation(Vec3 {
+                                x: 0.0,
+                                y: 0.0,
+                                z: TANK_BODY_Z,
+                            })
+                            .with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
                         ..default()
                     },
                     phy_id: PhysicalObjUID { phy_id },
@@ -307,11 +327,13 @@ fn tank_spawn_update(
                 .spawn((
                     SpriteBundle {
                         texture: sprites.tank_turret_sprite.clone(),
-                        transform: Transform::IDENTITY.with_translation(Vec3 {
-                            x: 0.0,
-                            y: 0.0,
-                            z: TANK_TURRET_Z,
-                        }).with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
+                        transform: Transform::IDENTITY
+                            .with_translation(Vec3 {
+                                x: 0.0,
+                                y: 0.0,
+                                z: TANK_TURRET_Z,
+                            })
+                            .with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
                         ..default()
                     },
                     TankTurret {},
@@ -321,11 +343,13 @@ fn tank_spawn_update(
                 .spawn((
                     SpriteBundle {
                         texture: sprites.tank_radar_sprite.clone(),
-                        transform: Transform::IDENTITY.with_translation(Vec3 {
-                            x: 0.0,
-                            y: 0.0,
-                            z: TANK_RADAR_Z,
-                        }).with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
+                        transform: Transform::IDENTITY
+                            .with_translation(Vec3 {
+                                x: 0.0,
+                                y: 0.0,
+                                z: TANK_RADAR_Z,
+                            })
+                            .with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
                         ..default()
                     },
                     TankRadar {},
@@ -341,7 +365,7 @@ fn tank_label(
     mut commands: Commands,
     mut text_query: Query<(&mut Transform, &PhysicalObjUID, Entity), With<Text>>,
     physics_state: Res<PhysicsState>,
-    tank_ui_space_state:Res<TankUISpaceState>
+    tank_ui_space_state: Res<TankUISpaceState>,
 ) {
     let mut text_in_ui = HashSet::new();
     // Update existing text and remove if tank is no longer present.

@@ -86,15 +86,11 @@ UI is mainly intended to support debugging of tank controlling software.
 
 ### UI controlling keys
 
-* **Ctrl-q**: exit
-* **q**: hide/show tank data 
-* **F1**: rendering stats
-* **keypad 2,4,6,8**: move camera
-* **keypad +**: zoom in
-* **keypad -**: zoom out
-* **PageUp / PageDown**: Select tank: Selected tank has uppercase name in tank list.
-* **keypad 5**: reset to coordinates (0,0) or position of energy source
-* **keypad 0**: to move camera to selected tank 
+* **Esc**: exit
+* **w,a,s,d**: move camera
+* **e**: zoom in
+* **q**: zoom out
+* **t**: Camera tracks selected tank
 
 ## Server graphics element description.
 

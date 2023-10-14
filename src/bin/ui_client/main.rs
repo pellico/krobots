@@ -29,19 +29,12 @@ fn main() {
     let rx_state = UIReceiver::new(&opts.ip, opts.port);
     let tx_ui_command = CommandSender;
     env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or(opts.log_level.clone()),
+        env_logger::Env::default().default_filter_or("ui_client=".to_string() + &opts.log_level),
     )
     .init();
-    #[cfg(feature = "bevy")]
     ktanks_server::ui_bevy::start_gui(
         Box::new(rx_state),
         Box::new(tx_ui_command),
         opts.graphics_scaling_factor,
-    );
-    #[cfg(feature = "macroquad")]
-    ktanks_server::ui::start_gui(
-        Box::new(rx_state),
-        Box::new(tx_ui_command),
-        1.0 / opts.graphics_scaling_factor,
     );
 }

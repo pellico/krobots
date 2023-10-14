@@ -1,5 +1,5 @@
-use super::{ObjUID, PhysicsState};
-use crate::physics::Tank;
+use super::{ObjUID, PhysicsState, SimulatorTx};
+use crate::physics::{Tank, UICommand};
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiSettings};
 
@@ -29,6 +29,7 @@ pub(super) fn ui_update(
     mut is_initialized: Local<bool>,
     mut contexts: EguiContexts,
     physics_state: Res<PhysicsState>,
+    mut simulator_tx: Res<SimulatorTx>,
 ) {
     let mut load = false;
     let mut remove = false;
@@ -66,11 +67,13 @@ pub(super) fn ui_update(
                 .selected_text(selected_tank_name)
                 .show_ui(ui, |ui| {
                     for tank in sorted_tanks {
-                        ui.selectable_value(
-                            &mut ui_state.selected_tank_id,
-                            Some(tank.get_id()),
-                            tank.name.clone(),
-                        );
+                        ui.selectable_value(&mut ui_state.selected_tank_id, Some(tank.get_id()), {
+                            if tank.is_dead() {
+                                tank.name.clone().to_uppercase()
+                            } else {
+                                tank.name.clone()
+                            }
+                        });
                     }
                 });
             if let Some(tank) = selected_tank {
@@ -208,7 +211,12 @@ pub(super) fn ui_update(
         egui::menu::bar(ui, |ui| {
             egui::menu::menu_button(ui, "File", |ui| {
                 if ui.button("Quit").clicked() {
-                    std::process::exit(0);
+                    simulator_tx
+                        .tx_ui_command
+                        .lock()
+                        .unwrap()
+                        .send(UICommand::QUIT)
+                        .expect("Failed to send quit command to simulator");
                 }
             });
         });

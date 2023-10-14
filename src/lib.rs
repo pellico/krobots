@@ -1,9 +1,6 @@
 pub mod conf;
 pub mod physics;
 pub mod remote_ch;
-#[cfg(feature = "macroquad")]
-pub mod ui;
-#[cfg(feature = "bevy")]
 pub mod ui_bevy;
 // Include the `items` module, which is generated from items.proto.
 pub mod tank_proto {
