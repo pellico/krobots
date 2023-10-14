@@ -7,7 +7,7 @@ use rapier2d::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[repr(transparent)]
-#[derive(Hash, Eq, PartialEq, Clone, Copy,Default)]
+#[derive(Hash, Eq, PartialEq, Clone, Copy, Default)]
 pub struct ObjUID(u64);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

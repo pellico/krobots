@@ -175,7 +175,7 @@ impl RobotServer {
         radar_width: f32,
     ) -> RadarResult {
         let (angle, detected_tanks) =
-        p_engine.get_radar_result(tank_index, radar_increment, radar_width);
+            p_engine.get_radar_result(tank_index, radar_increment, radar_width);
 
         let mut tanks_radar = Vec::new();
         for (tank, distance) in detected_tanks {
@@ -189,9 +189,9 @@ impl RobotServer {
         tanks_radar.truncate(10);
 
         RadarResult {
-            tick : p_engine.tick(),
+            tick: p_engine.tick(),
             angle,
-            tanks : tanks_radar,
+            tanks: tanks_radar,
         }
     }
 

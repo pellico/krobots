@@ -20,8 +20,8 @@ const TANK_TURRET_Z: f32 = 2.0;
 const TANK_RADAR_Z: f32 = 3.0;
 const BULLET_Z: f32 = 4.0;
 const TANK_TEXT_Z: f32 = 5.0;
-// Offset (x,y) of tank name 
-const TANK_TEXT_OFFSET:(f32,f32) = (0.0,3.0); 
+// Offset (x,y) of tank name
+const TANK_TEXT_OFFSET: Vec2 = Vec2::from_array([0.0,3.0]);
 
 pub fn start_gui(
     rx_data: Box<dyn GameStateReceiver>,
@@ -52,7 +52,9 @@ pub fn start_gui(
             debug_mode: false,
             state: SimulationState::WaitingConnection,
             zero_power_limit: 0.0,
-            physical_scaling_factor,
+        })
+        .insert_resource(TankUISpaceState{
+            tank_scaling_factor:physical_scaling_factor
         })
         .add_systems(Startup, setup)
         .add_systems(Update, get_physical_state)
@@ -63,7 +65,7 @@ pub fn start_gui(
         .add_systems(Startup, configure_visuals_system)
         .add_systems(Startup, configure_ui_state_system)
         .add_systems(Update, ui_update)
-        .add_systems(Update,tank_label)
+        .add_systems(Update, tank_label)
         .add_systems(Update, exit_system)
         .run();
 }
@@ -125,7 +127,13 @@ struct PhysicsState {
     debug_mode: bool,
     state: SimulationState,
     zero_power_limit: f32,
-    physical_scaling_factor: f32,
+}
+
+
+#[derive(Resource)]
+/// Settings of tank space rendering
+struct TankUISpaceState {
+    tank_scaling_factor:f32
 }
 
 #[derive(Resource)]
@@ -134,7 +142,7 @@ struct TankAssets {
     tank_turret_sprite: Handle<Image>,
     tank_radar_sprite: Handle<Image>,
     bullet_sprite: Handle<Image>,
-    tank_font:Handle<Font>
+    tank_font: Handle<Font>,
 }
 
 fn exit_system(mut exit: EventWriter<AppExit>) {
@@ -171,13 +179,13 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let tank_turret_sprite = asset_server.load("turret.png");
     let tank_radar_sprite = asset_server.load("radar.png");
     let bullet_sprite = asset_server.load("bullet.png");
-    let tank_font= asset_server.load("arial.ttf");
+    let tank_font = asset_server.load("arial.ttf");
     commands.insert_resource(TankAssets {
         tank_body_sprite,
         tank_turret_sprite,
         tank_radar_sprite,
         bullet_sprite,
-        tank_font
+        tank_font,
     });
 
     // 2D orthographic camera
@@ -249,6 +257,7 @@ fn tank_spawn_update(
     mut radar: Query<&mut Transform, (With<TankRadar>, Without<TankBody>, Without<TankTurret>)>,
     physics_state: Res<PhysicsState>,
     sprites: Res<TankAssets>,
+    tank_ui_space_state:Res<TankUISpaceState>
 ) {
     let mut tank_id_in_ui: HashSet<ObjUID> = HashSet::new();
     for (mut tank_transform, id_tank, entity, children) in query.iter_mut() {
@@ -286,7 +295,7 @@ fn tank_spawn_update(
                             x: 0.0,
                             y: 0.0,
                             z: TANK_BODY_Z,
-                        }),
+                        }).with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
                         ..default()
                     },
                     phy_id: PhysicalObjUID { phy_id },
@@ -302,7 +311,7 @@ fn tank_spawn_update(
                             x: 0.0,
                             y: 0.0,
                             z: TANK_TURRET_Z,
-                        }),
+                        }).with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
                         ..default()
                     },
                     TankTurret {},
@@ -316,7 +325,7 @@ fn tank_spawn_update(
                             x: 0.0,
                             y: 0.0,
                             z: TANK_RADAR_Z,
-                        }),
+                        }).with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
                         ..default()
                     },
                     TankRadar {},
@@ -332,6 +341,7 @@ fn tank_label(
     mut commands: Commands,
     mut text_query: Query<(&mut Transform, &PhysicalObjUID, Entity), With<Text>>,
     physics_state: Res<PhysicsState>,
+    tank_ui_space_state:Res<TankUISpaceState>
 ) {
     let mut text_in_ui = HashSet::new();
     // Update existing text and remove if tank is no longer present.
@@ -340,14 +350,15 @@ fn tank_label(
         match physics_state.tanks.get(&phy_uid.phy_id) {
             None => commands.entity(entity).despawn_recursive(),
             Some(phy_tank) => {
-                transform.translation.x = phy_tank.position().translation.x ;
-                transform.translation.y = phy_tank.position().translation.y ;
+                transform.translation.x = phy_tank.position().translation.x;
+                transform.translation.y = phy_tank.position().translation.y;
             }
         }
     }
 
     // Add text for all tanks that doesn't have it
     for (&phy_id, tank) in physics_state.tanks.iter() {
+        let tank_text_offset = TANK_TEXT_OFFSET * tank_ui_space_state.tank_scaling_factor;
         if !text_in_ui.contains(&phy_id) {
             commands.spawn(TankTextBundle {
                 text_bundle: Text2dBundle {
@@ -356,8 +367,7 @@ fn tank_label(
                         y: tank.position().translation.y,
                         z: TANK_TEXT_Z,
                     }),
-                    text_anchor:bevy::sprite::Anchor::Custom(Vec2{x:TANK_TEXT_OFFSET.0,y:TANK_TEXT_OFFSET.1}),
-
+                    text_anchor: bevy::sprite::Anchor::Custom(tank_text_offset),
                     text: Text::from_section(
                         tank.name.clone(),
                         TextStyle {

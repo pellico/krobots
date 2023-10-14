@@ -16,42 +16,61 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 mod local_ch;
-use clap::{Parser};
-use ktanks_server::physics::{PhysicsEngine};
-use ktanks_server::{Opts,enable_human_panic};
-use ktanks_server::remote_ch;
+use clap::Parser;
 use ktanks_server::conf;
-use log::{error};
-
+use ktanks_server::physics::PhysicsEngine;
+use ktanks_server::remote_ch;
+use ktanks_server::{enable_human_panic, Opts};
+use log::error;
 
 fn main() {
     enable_human_panic();
     let opts: Opts = crate::Opts::parse();
     //env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(opts.log_level.clone())).init();
     let conf = match opts.configuration_file.as_ref() {
-        None => conf::Conf{..Default::default()},
-        Some(path) => {match conf::Conf::load_configuration(path) {
+        None => conf::Conf {
+            ..Default::default()
+        },
+        Some(path) => match conf::Conf::load_configuration(path) {
             Ok(res) => res,
-            Err(err) => {error!("Error {} loading configuration file {}",err,path);std::process::exit(-1);}
-        }
-        }
+            Err(err) => {
+                error!("Error {} loading configuration file {}", err, path);
+                std::process::exit(-1);
+            }
+        },
     };
-    if opts.no_gui     {
-        let tx_state = remote_ch::UISender::new(opts.remote_gui_port,opts.max_num_remote_gui as usize);
+    if opts.no_gui {
+        let tx_state =
+            remote_ch::UISender::new(opts.remote_gui_port, opts.max_num_remote_gui as usize);
         let rx_ui_command = remote_ch::CommandReceiver::new();
-        let handle = PhysicsEngine::new_simulation_thread(conf,&opts,Box::new(tx_state),Box::new(rx_ui_command));
+        let handle = PhysicsEngine::new_simulation_thread(
+            conf,
+            &opts,
+            Box::new(tx_state),
+            Box::new(rx_ui_command),
+        );
         handle.join().expect("Failed simulation end");
-    }
-    else
-    {
+    } else {
         let (tx_state, rx_state) = local_ch::create_state_channels();
-        let (tx_ui_command,rx_ui_command) =local_ch::create_command_channels();
-        let handle = PhysicsEngine::new_simulation_thread(conf,&opts,Box::new(tx_state),Box::new(rx_ui_command));
+        let (tx_ui_command, rx_ui_command) = local_ch::create_command_channels();
+        let handle = PhysicsEngine::new_simulation_thread(
+            conf,
+            &opts,
+            Box::new(tx_state),
+            Box::new(rx_ui_command),
+        );
         #[cfg(feature = "bevy")]
-        ktanks_server::ui_bevy::start_gui(Box::new(rx_state),Box::new(tx_ui_command),1.0/opts.graphics_scaling_factor );
+        ktanks_server::ui_bevy::start_gui(
+            Box::new(rx_state),
+            Box::new(tx_ui_command),
+            opts.graphics_scaling_factor,
+        );
         #[cfg(feature = "macroquad")]
-        ktanks_server::ui::start_gui(Box::new(rx_state),Box::new(tx_ui_command),1.0/opts.graphics_scaling_factor );
+        ktanks_server::ui::start_gui(
+            Box::new(rx_state),
+            Box::new(tx_ui_command),
+            1.0 / opts.graphics_scaling_factor,
+        );
         handle.join().expect("Failed simulation end");
     }
-
-    } 
+}

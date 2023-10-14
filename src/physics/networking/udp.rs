@@ -47,7 +47,7 @@ impl NetInterface for ClientInterface {
         let dedicated_socket = loop {
             self.connection_port_counter += 1;
             /* If start port it is too high we risk to exceed the max number of port
-            we start again from 1000. We assume that we have always enough free ports for 
+            we start again from 1000. We assume that we have always enough free ports for
             all required connections.
             */
             if self.connection_port_counter == u16::MAX {
@@ -56,12 +56,21 @@ impl NetInterface for ClientInterface {
             match UdpSocket::bind((Ipv4Addr::UNSPECIFIED, self.connection_port_counter)) {
                 Ok(listener) => break listener,
                 Err(e) => match e.kind() {
-                    std::io::ErrorKind::AddrInUse => {debug!("Port {} is in use try next one",self.connection_port_counter);continue},
+                    std::io::ErrorKind::AddrInUse => {
+                        debug!(
+                            "Port {} is in use try next one",
+                            self.connection_port_counter
+                        );
+                        continue;
+                    }
                     _ => panic!("{}", e),
                 },
             };
         };
-        info!("Created connection using local port {} to {}",self.connection_port_counter,src);
+        info!(
+            "Created connection using local port {} to {}",
+            self.connection_port_counter, src
+        );
         dedicated_socket.connect(src).unwrap();
         if self.debug_mode {
             // When in debug mode we want to wait for tank client Command

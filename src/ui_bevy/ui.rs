@@ -10,6 +10,7 @@ pub(super) struct UiState {
     inverted: bool,
     egui_texture_handle: Option<egui::TextureHandle>,
     is_window_open: bool,
+    pub selected_tank_id: Option<ObjUID>,
 }
 
 pub(super) fn configure_visuals_system(mut contexts: EguiContexts) {
@@ -23,13 +24,11 @@ pub(super) fn configure_ui_state_system(mut ui_state: ResMut<UiState>) {
     ui_state.is_window_open = true;
 }
 
-
 pub(super) fn ui_update(
     mut ui_state: ResMut<UiState>,
     mut is_initialized: Local<bool>,
     mut contexts: EguiContexts,
     physics_state: Res<PhysicsState>,
-    mut selected_tank_id: Local<Option<ObjUID>>,
 ) {
     let mut load = false;
     let mut remove = false;
@@ -49,11 +48,11 @@ pub(super) fn ui_update(
     // If no tanks selected tanks is None
     // if there are tanks but no selection, select the first one
     if sorted_tanks.is_empty() {
-        *selected_tank_id = None;
-    } else if selected_tank_id.is_none() {
-        *selected_tank_id = Some(sorted_tanks[0].get_id());
+        ui_state.selected_tank_id = None;
+    } else if ui_state.selected_tank_id.is_none() {
+        ui_state.selected_tank_id = Some(sorted_tanks[0].get_id());
     }
-    let selected_tank = match *selected_tank_id {
+    let selected_tank = match ui_state.selected_tank_id {
         None => None,
         Some(objui) => physics_state.tanks.get(&objui),
     };
@@ -68,7 +67,7 @@ pub(super) fn ui_update(
                 .show_ui(ui, |ui| {
                     for tank in sorted_tanks {
                         ui.selectable_value(
-                            &mut *selected_tank_id,
+                            &mut ui_state.selected_tank_id,
                             Some(tank.get_id()),
                             tank.name.clone(),
                         );

@@ -1,6 +1,6 @@
-use crate::physics::{Point2, Real, };
+use super::*;
+use crate::physics::{Point2, Real};
 use bevy::prelude::*;
-use super::{*};
 
 fn draw_polyline(gizmos: &mut Gizmos, polyline: &[Point2<Real>], scaling_factor: f32) {
     let polyline_size = polyline.len();
@@ -30,13 +30,15 @@ pub(super) fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
         // Draw radar range
 
         let scaled_radar_range = tank.radar_range() * physical_scaling_factor;
-        gizmos.arc_2d(
-            tank.position().translation.into(),
-            -tank.position().rotation.angle() - tank.radar_position() + PI / 2.0,
-            tank.radar_width(),
-            scaled_radar_range,
-            Color::YELLOW,
-        ).segments(10);
+        gizmos
+            .arc_2d(
+                tank.position().translation.into(),
+                -tank.position().rotation.angle() - tank.radar_position() + PI / 2.0,
+                tank.radar_width(),
+                scaled_radar_range,
+                Color::YELLOW,
+            )
+            .segments(10);
 
         // Draw side of radar detection area
         let v1 = tank.position().translation.vector * physical_scaling_factor;
@@ -60,9 +62,11 @@ pub(super) fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
     }
 
     // Draw zero power limit
-    gizmos.circle_2d(
-        Vec2::ZERO,
-        physics_state.zero_power_limit * physical_scaling_factor,
-        Color::GREEN,
-    );
+    gizmos
+        .circle_2d(
+            Vec2::ZERO,
+            physics_state.zero_power_limit * physical_scaling_factor,
+            Color::GREEN,
+        )
+        .segments(64);
 }

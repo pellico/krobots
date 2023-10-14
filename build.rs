@@ -17,7 +17,7 @@ fn get_output_path() -> PathBuf {
 
 
 fn copy_res(src:&str,dest_folder:&PathBuf) {
-    
+
     for entry in std::fs::read_dir(src).unwrap() {
         match entry {
             Ok(src) => {
@@ -27,10 +27,10 @@ fn copy_res(src:&str,dest_folder:&PathBuf) {
             }
             Err(_) => {println!("cargo:warning=Error copying resources")}
         }
-        
+
     }
-    
-    
+
+
 }
 */
 
@@ -39,7 +39,7 @@ fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=resources");
     println!("cargo:rerun-if-changed=src/tank.proto");
     //copy_res("resources",&output_path);
-    println!("cargo:warning=OUT_DIR {}",env::var("OUT_DIR").unwrap());
+    println!("cargo:warning=OUT_DIR {}", env::var("OUT_DIR").unwrap());
     prost_build::compile_protos(&["src/tank.proto"], &["src/"])?;
     Ok(())
 }

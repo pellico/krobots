@@ -30,7 +30,7 @@ pub fn angle_wrapping(angle: f32) -> f32 {
     let mut angle_res = angle;
     loop {
         if angle_res > PI {
-            angle_res += - 2.0 * PI
+            angle_res += -2.0 * PI
         } else if angle_res <= -PI {
             angle_res += 2.0 * PI
         } else {
@@ -39,7 +39,6 @@ pub fn angle_wrapping(angle: f32) -> f32 {
     }
     angle_res
 }
-
 
 #[cfg(test)]
 mod tests {

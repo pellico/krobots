@@ -1,14 +1,7 @@
-//! A freecam-style camera controller plugin.
-//! To use in your own application:
-//! - Copy the code for the [`CameraControllerPlugin`] and add the plugin to your App.
-//! - Attach the [`CameraController`] component to an entity with a [`Camera3dBundle`].
-
+use super::{PhysicsState, UiState};
 use bevy::window::CursorGrabMode;
 use bevy::{input::mouse::MouseMotion, prelude::*};
-
-use std::f32::consts::*;
 use std::fmt;
-
 /// Based on Valorant's default sensitivity, not entirely sure why it is exactly 1.0 / 180.0,
 /// but I'm guessing it is a misunderstanding between degrees/radians and then sticking with
 /// it because it felt nice.
@@ -18,13 +11,14 @@ pub const RADIANS_PER_DOT: f32 = 1.0 / 180.0;
 pub struct CameraController {
     pub enabled: bool,
     pub sensitivity: f32,
-    pub key_forward: KeyCode,
-    pub key_back: KeyCode,
+    pub key_zoom_out: KeyCode,
+    pub key_zoom_in: KeyCode,
     pub key_left: KeyCode,
     pub key_right: KeyCode,
     pub key_up: KeyCode,
     pub key_down: KeyCode,
     pub key_run: KeyCode,
+    pub key_toggle_tank_track: KeyCode,
     pub mouse_key_enable_mouse: MouseButton,
     pub keyboard_key_enable_mouse: KeyCode,
     pub walk_speed: f32,
@@ -38,17 +32,18 @@ impl Default for CameraController {
         Self {
             enabled: true,
             sensitivity: 1.0,
-            key_forward: KeyCode::W,
-            key_back: KeyCode::S,
+            key_zoom_out: KeyCode::Q,
+            key_zoom_in: KeyCode::E,
             key_left: KeyCode::A,
             key_right: KeyCode::D,
-            key_up: KeyCode::E,
-            key_down: KeyCode::Q,
+            key_up: KeyCode::S,
+            key_down: KeyCode::W,
             key_run: KeyCode::ShiftLeft,
+            key_toggle_tank_track: KeyCode::T,
             mouse_key_enable_mouse: MouseButton::Left,
             keyboard_key_enable_mouse: KeyCode::M,
-            walk_speed: 5.0,
-            run_speed: 15.0,
+            walk_speed: 50.0,
+            run_speed: 100.0,
             friction: 0.5,
             velocity: Vec3::ZERO,
         }
@@ -67,16 +62,19 @@ Freecam Controls:
     {:?}{:?}\t- strafe left/right
     {:?}\t- 'run'
     {:?}\t- up
-    {:?}\t- down",
+    {:?}\t- down
+    {:?}\t- toogle tank track
+    ",
             self.mouse_key_enable_mouse,
             self.keyboard_key_enable_mouse,
-            self.key_forward,
-            self.key_back,
+            self.key_zoom_out,
+            self.key_zoom_in,
             self.key_left,
             self.key_right,
             self.key_run,
             self.key_up,
-            self.key_down
+            self.key_down,
+            self.key_toggle_tank_track,
         )
     }
 }
@@ -93,9 +91,8 @@ fn camera_controller(
     time: Res<Time>,
     mut windows: Query<&mut Window>,
     mut mouse_events: EventReader<MouseMotion>,
-    mouse_button_input: Res<Input<MouseButton>>,
-    key_input: Res<Input<KeyCode>>,
-    mut move_toggled: Local<bool>,
+    (mouse_button_input, key_input): (Res<Input<MouseButton>>, Res<Input<KeyCode>>),
+    (mut move_toggled, mut track_tank_enabled): (Local<bool>, Local<bool>),
     mut query: Query<
         (
             &mut Transform,
@@ -104,23 +101,25 @@ fn camera_controller(
         ),
         With<Camera>,
     >,
+    (ui_state, physics_state): (Res<UiState>, Res<PhysicsState>),
 ) {
     let dt = time.delta_seconds();
 
     if let Ok((mut transform, mut options, mut projection)) = query.get_single_mut() {
         // Handle key input
         let mut axis_input = Vec3::ZERO;
-        if key_input.pressed(options.key_forward) {
-            projection.scale *= 1.1f32.powf(1.0);
+        if key_input.pressed(options.key_zoom_out) {
+            projection.scale *= 1.01f32.powf(1.0);
         }
-        if key_input.pressed(options.key_back) {
-            projection.scale *= 1.1f32.powf(-1.0);
+        if key_input.pressed(options.key_zoom_in) {
+            projection.scale *= 1.01f32.powf(-1.0);
         }
 
         // always ensure you end up with sane values
         // (pick an upper and lower bound for your application)
         projection.scale = projection.scale.clamp(0.05, 10.0);
 
+        // Compute direction
         if key_input.pressed(options.key_right) {
             axis_input.x += 1.0;
         }
@@ -136,14 +135,19 @@ fn camera_controller(
         if key_input.just_pressed(options.keyboard_key_enable_mouse) {
             *move_toggled = !*move_toggled;
         }
+        if key_input.just_pressed(options.key_toggle_tank_track) {
+            *track_tank_enabled = !*track_tank_enabled;
+        }
 
         // Apply movement update
         if axis_input != Vec3::ZERO {
             let max_speed = if key_input.pressed(options.key_run) {
-                options.run_speed
+                options.run_speed * projection.scale
             } else {
-                options.walk_speed
+                options.walk_speed * projection.scale
             };
+
+            // Compute velocity vector
             options.velocity = axis_input.normalize() * max_speed;
         } else {
             let friction = options.friction.clamp(0.0, 1.0);
@@ -185,6 +189,21 @@ fn camera_controller(
 
             transform.translation += -options.sensitivity * mouse_delta.x * right
                 + options.sensitivity * mouse_delta.y * Vec3::Y;
+        }
+
+        if *track_tank_enabled {
+            match ui_state.selected_tank_id {
+                // disable tracking if no tank is selected
+                None => *track_tank_enabled = false,
+                Some(ref tank_uid) => match physics_state.tanks.get(tank_uid) {
+                    // disable tracking if I cannot find the tank
+                    None => *track_tank_enabled = false,
+                    Some(tank) => {
+                        transform.translation.x = tank.position().translation.x;
+                        transform.translation.y = tank.position().translation.y;
+                    }
+                },
+            }
         }
     }
 }

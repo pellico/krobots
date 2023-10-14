@@ -1,5 +1,5 @@
+use crate::is_exit_application;
 use crate::physics::*;
-use crate::{is_exit_application};
 use bincode;
 use log::{debug, error, info};
 use message_io::events::EventReceiver;
@@ -13,7 +13,7 @@ use std::{thread, time};
 
 pub struct UISender {
     handler: NodeHandler<UIGameState>,
-    _node_task : NodeTask
+    _node_task: NodeTask,
 }
 
 impl GameStateSender for UISender {
@@ -39,48 +39,48 @@ impl UISender {
                 panic!("Not able to listen connection");
             }
         }
-       
-            let mut endpoints = HashSet::with_capacity(max_number_connections);
-            let _node_task = listener.for_each_async(move |event| match event {
-                NodeEvent::Network(net_event) => match net_event {
-                    NetEvent::Connected(_, _) => (),
-                    NetEvent::Accepted(endpoint, _listener) => {
-                        // Refuse connections if max_number_connections is exceeded
-                        if endpoints.len() >= max_number_connections {
-                            handler.network().remove(endpoint.resource_id());
-                        } else {
-                            endpoints.insert(endpoint);
-                        }
-                    }
-                    NetEvent::Message(_, _) => (),
-                    NetEvent::Disconnected(endpoint) => {
-                        info!("Client @ {} disconnected", endpoint.addr());
-                        endpoints.remove(&endpoint);
-                    }
-                },
-                NodeEvent::Signal(signal) => {
-                    if is_exit_application(){
-                        for endpoint in endpoints.iter() {
-                            handler.network().remove(endpoint.resource_id());
-                        }
-                        handler.stop();
-                    }
-                    let data =
-                        bincode::serialize(&signal).expect("Unable to serialize game state for UI");
-                    for endpoint in endpoints.iter() {
-                        match handler.network().is_ready(endpoint.resource_id()) {
-                            Some(true) => {
-                                handler.network().send(*endpoint, &data);
-                            }
-                            Some(false) => continue,
-                            None => continue,
-                        }
+
+        let mut endpoints = HashSet::with_capacity(max_number_connections);
+        let _node_task = listener.for_each_async(move |event| match event {
+            NodeEvent::Network(net_event) => match net_event {
+                NetEvent::Connected(_, _) => (),
+                NetEvent::Accepted(endpoint, _listener) => {
+                    // Refuse connections if max_number_connections is exceeded
+                    if endpoints.len() >= max_number_connections {
+                        handler.network().remove(endpoint.resource_id());
+                    } else {
+                        endpoints.insert(endpoint);
                     }
                 }
-            });
+                NetEvent::Message(_, _) => (),
+                NetEvent::Disconnected(endpoint) => {
+                    info!("Client @ {} disconnected", endpoint.addr());
+                    endpoints.remove(&endpoint);
+                }
+            },
+            NodeEvent::Signal(signal) => {
+                if is_exit_application() {
+                    for endpoint in endpoints.iter() {
+                        handler.network().remove(endpoint.resource_id());
+                    }
+                    handler.stop();
+                }
+                let data =
+                    bincode::serialize(&signal).expect("Unable to serialize game state for UI");
+                for endpoint in endpoints.iter() {
+                    match handler.network().is_ready(endpoint.resource_id()) {
+                        Some(true) => {
+                            handler.network().send(*endpoint, &data);
+                        }
+                        Some(false) => continue,
+                        None => continue,
+                    }
+                }
+            }
+        });
         UISender {
             handler: handler_copy,
-            _node_task
+            _node_task,
         }
     }
 }
@@ -121,37 +121,40 @@ impl GameStateReceiver for UIReceiver {
         }
         let mut result = None;
         while let Some(event) = self.receiver.try_receive() {
-                match event.network() {
-                    StoredNetEvent::Connected(endpoint, established) => {
-                        if established {
-                            info!(
-                                "Connected to server at {} by {}",
-                                self.server_id.addr(),
-                                TRANSPORT
-                            );
-                            info!(
-                                "Client identified by local port: {}",
-                                self.local_addr.port()
-                            );
-                            self.handler.network().send(endpoint, "start".as_bytes());
-                        } else {
-                            error!("Error connecting to server {}. Is server running?", self.remote_addr);
-                            self.handler.stop();
-                            std::process::exit(-1);
-                        }
-                    }
-                    StoredNetEvent::Accepted(_, _) => unreachable!(), // Only generated when a listener accepts
-                    StoredNetEvent::Message(_endpoint, input_data) => {
-                        let message: UIGameState = bincode::deserialize(&input_data).unwrap();
-                        result = Some(message);
-                    }
-                    StoredNetEvent::Disconnected(_) => {
-                        // On server disconnection kill application
-                        info!("Server is disconnected probably ended the simulation");
+            match event.network() {
+                StoredNetEvent::Connected(endpoint, established) => {
+                    if established {
+                        info!(
+                            "Connected to server at {} by {}",
+                            self.server_id.addr(),
+                            TRANSPORT
+                        );
+                        info!(
+                            "Client identified by local port: {}",
+                            self.local_addr.port()
+                        );
+                        self.handler.network().send(endpoint, "start".as_bytes());
+                    } else {
+                        error!(
+                            "Error connecting to server {}. Is server running?",
+                            self.remote_addr
+                        );
                         self.handler.stop();
-                        std::process::exit(0);
+                        std::process::exit(-1);
                     }
                 }
+                StoredNetEvent::Accepted(_, _) => unreachable!(), // Only generated when a listener accepts
+                StoredNetEvent::Message(_endpoint, input_data) => {
+                    let message: UIGameState = bincode::deserialize(&input_data).unwrap();
+                    result = Some(message);
+                }
+                StoredNetEvent::Disconnected(_) => {
+                    // On server disconnection kill application
+                    info!("Server is disconnected probably ended the simulation");
+                    self.handler.stop();
+                    std::process::exit(0);
+                }
+            }
         }
         result
     }
