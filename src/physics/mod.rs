@@ -334,7 +334,7 @@ impl PhysicsEngine {
             turret.shape_polyline = Self::get_collider_polyline_cuboid(collider_turret);
         }
         for bullet in &mut self.bullets {
-            for contact_pair in self.narrow_phase.contacts_with(bullet.collider_handle) {
+            for contact_pair in self.narrow_phase.contact_pairs_with(bullet.collider_handle) {
                 /*Skip if no contact. This should be false for bullet in contact
                 with tank that has fired the same bullet. See physics hook.
                 */
@@ -347,17 +347,15 @@ impl PhysicsEngine {
                     contact_pair.collider1
                 };
                 // :TODO: Consider if bullet hit turret
-                match self
+                if let Some(target_tank_index) = self
                     .tanks
                     .iter()
                     .position(|x| x.collider_handle == other_collider)
                 {
-                    Some(target_tank_index) => {
-                        debug!("Tank {} has been hit", target_tank_index);
-                        self.tanks[target_tank_index].bullet_damage()
-                    }
-                    None => (),
+                    debug!("Tank {} has been hit", target_tank_index);
+                    self.tanks[target_tank_index].bullet_damage()
                 }
+
                 // Process the contact pair in a way similar to what we did in
                 // the previous example.
                 bullet.tick_counter = 1;

@@ -21,6 +21,7 @@ pub(super) fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
     let physical_scaling_factor = 1.0;
     // Draw tank and turret
     for tank in physics_state.tanks.values() {
+        // Draw tank
         draw_polyline(&mut gizmos, tank.shape_polyline(), physical_scaling_factor);
         draw_polyline(
             &mut gizmos,
