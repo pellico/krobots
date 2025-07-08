@@ -1,0 +1,1 @@
+`wasm-tools component new .\target\wasm32-unknown-unknown\debug\simple_tank.wasm -o .\target\wasm32-unknown-unknown\debug\simple_tank_comp.wasm`

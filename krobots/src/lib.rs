@@ -1,13 +1,11 @@
 pub mod conf;
 pub mod physics;
-pub mod remote_ch;
 pub mod ui_bevy;
+pub mod remote_ch;
 // Include the `items` module, which is generated from items.proto.
-pub mod tank_proto {
-    include!(concat!(env!("OUT_DIR"), "/protobuffer.tank.rs"));
-}
+
 use clap::Parser;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{path::{Path, PathBuf}, sync::atomic::{AtomicBool, Ordering}};
 
 // Flag to true to signal to all thread to exit
 static EXIT_SIGNAL: AtomicBool = AtomicBool::new(false);
@@ -30,11 +28,9 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Parser)]
 #[clap(version = VERSION, author = "Oreste Bernardi")]
 pub struct Opts {
-    /// How many tanks in this game
-    pub(crate) num_tanks: usize,
-    /// Port used to register new tanks
-    #[clap(short, long, default_value = "55230")]
-    pub(crate) port: u16,
+    // Tanks folder
+    #[clap(short,default_value=".")]
+    pub tank_folder:PathBuf,
     //Log level to be used if environmental variable RUST_LOG is not set.
     #[clap(short, long, default_value = "warn",value_parser=["error","warn","info","debug","trace"])]
     pub log_level: String,
@@ -56,9 +52,6 @@ pub struct Opts {
     /// Headless server When specified server will not show any ui but it expect a connection from ui_client
     #[clap(long)]
     pub no_gui: bool,
-    /// Tank client communication protocol. udp is faster but it has issue with NAT and firewall.
-    #[clap(long, default_value = "tcp",value_parser=["tcp","udp"])]
-    pub(crate) tank_client_protocol: String,
     /// Tank client communication protocol. udp is faster but it has issue with NAT and firewall.
     #[clap(long)]
     pub configuration_file: Option<String>,

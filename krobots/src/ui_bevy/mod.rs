@@ -183,7 +183,6 @@ fn get_physical_state(
         let tank_hashmap: HashMap<_, _> =
             state.tanks.into_iter().map(|x| (x.get_id(), x)).collect();
         physics_state.tanks = tank_hashmap;
-        physics_state.max_num_tanks = state.max_num_tanks;
         physics_state.tick = state.tick;
         physics_state.max_ticks = state.max_ticks;
         physics_state.debug_mode = state.debug_mode;

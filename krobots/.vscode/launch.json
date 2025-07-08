@@ -10,8 +10,8 @@
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/ktanks_server.exe",
             "args": [
-                "3",
-                "-d"
+                "-t",
+                "test_folder"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -39,13 +39,14 @@
                 }
             },
             "args": [
-                "3",
-                "-d"
+              "-t",
+                "test_folder"
             ],
             "cwd": "${workspaceRoot}",
             "env": {
                 "RUST_LOG": "ktanks_server=info",
                 "RUST_BACKTRACE": "1",
+                "_NO_DEBUG_HEAP":"1"
             }
         },
         {

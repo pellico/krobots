@@ -17,9 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 use super::GameStateSender;
 use crate::physics::{PhysicsEngine, Real, Rotation2, Vector2};
-use crate::tank_proto::*;
 use log::{debug, error, info};
-use prost::Message;
 use std::io;
 use std::time::Duration;
 mod tcp;

@@ -167,9 +167,6 @@ Tank is damaged when hit by a bullet. When damage is greater than  `damage_max`,
 # Tank interface libraries
 Presently only a python library is provided to communicate with server.
 
-## Python library
-
-[Python library and examples are available documentation](python/README.md) 
 
 # Server debug mode
 Game server doesn't wait for command from tanks client but this doesn't allow to use breakpoint and stop client program to inspect variables and execute step by step client code.

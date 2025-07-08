@@ -20,8 +20,7 @@ rapier2d = { version="0.18", features = [ "simd-stable","serde-serialize"] }
 # Logging  libraries
 env_logger = {version = "*"}
 log = {version = "*", features = ["max_level_debug"]}
-# protobuf library
-prost = "0.10.3"
+
 # command line parser
 clap = { version = "4.0.0", features = ["derive"] }
 csv = "1.1.6"
@@ -36,6 +35,13 @@ confy = "0.4.0"
 bevy = {version = "0.11.2"}
 bevy_egui = {version="0.21.0"}
 bevy_embedded_assets = {version = "0.8.0"}
+wasmtime = {version="34.0.1",features = ["call-hook"]}
+indexmap = "2.9.0"
+anyhow = "1.0.98"
+futures="0.3.31"
+ouroboros="*"
+mockall = "0.13.1"
+
 
 [dependencies.nalgebra]
 version = "*"
@@ -43,6 +49,7 @@ features =["serde-serialize","convert-glam024"]
 
 [profile.dev.package."*"]
 opt-level = 3
+strip = true
 
 [dev-dependencies]
 float_eq = "1"

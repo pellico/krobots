@@ -16,7 +16,6 @@ impl std::fmt::Display for ErrorUIComm {
 pub struct UIGameState {
     pub tanks: Vec<Tank>,
     pub bullets: Vec<Bullet>,
-    pub max_num_tanks: usize,
     pub tick: u32,
     pub max_ticks: u32,
     pub debug_mode: bool,
@@ -42,7 +41,6 @@ pub trait GameStateSender: Send {
         UIGameState {
             tanks: state.tanks.clone(),
             bullets: state.bullets.clone(),
-            max_num_tanks: state.max_num_tanks,
             tick: state.tick,
             max_ticks: state.max_ticks,
             debug_mode: state.debug_mode,

@@ -37,9 +37,7 @@ fn copy_res(src:&str,dest_folder:&PathBuf) {
 fn main() -> Result<()> {
     //let output_path = get_output_path();
     println!("cargo:rerun-if-changed=resources");
-    println!("cargo:rerun-if-changed=src/tank.proto");
     //copy_res("resources",&output_path);
     println!("cargo:warning=OUT_DIR {}", env::var("OUT_DIR").unwrap());
-    prost_build::compile_protos(&["src/tank.proto"], &["src/"])?;
     Ok(())
 }

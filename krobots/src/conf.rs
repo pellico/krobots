@@ -104,20 +104,20 @@ impl Default for Conf {
             bullet_speed: 800.0, //  m/sec
             bullet_damage: 10.0,
             bullet_energy: 100000.0, //This energy is subtracted from tank energy
-            /// Power energy source for each step needed to charge a tank at 0,0 position in 10 seconds simulation time
+            // Power energy source for each step needed to charge a tank at 0,0 position in 10 seconds simulation time
             power_energy_source_step: TANK_ENERGY_MAX / 60.0 / 60.0,
-            /// When tank distance from center is >= ZERO_POWER_LIMIT no charging is possible.
-            /// When tank distance from center is < ZERO_POWER_LIMIT charging power is POWER_ENERGY_SOURCE_STEP *(1-distance/ZERO_POWER_LIMIT)
+            // When tank distance from center is >= ZERO_POWER_LIMIT no charging is possible.
+            // When tank distance from center is < ZERO_POWER_LIMIT charging power is POWER_ENERGY_SOURCE_STEP *(1-distance/ZERO_POWER_LIMIT)
             zero_power_limit: 300.0,
-            /// Minimum temperature of cannon.
+            // Minimum temperature of cannon.
             cannon_min_temp: 20.0,
-            /// Max temperature of cannon. When cannon temperature is higher than this value
-            /// no fire is possible
+            // Max temperature of cannon. When cannon temperature is higher than this value
+            // no fire is possible
             cannon_max_temp: 320.0,
-            /// Temperature increase for each fire
+            // Temperature increase for each fire
             cannon_fire_temp_increase: CANNON_FIRE_TEMP_INCREASE,
-            /// Temperature decrease for each simulation step
-            /// When high temp. tank can fire 1 bullet each second  
+            // Temperature decrease for each simulation step
+            // When high temp. tank can fire 1 bullet each second  
             cannon_temp_decrease_step: CANNON_FIRE_TEMP_INCREASE / 60.0,
         }
     }

@@ -16,9 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-mod networking;
 mod report;
 mod tank;
+mod tank_wasm;
 mod ui_interface;
 mod util;
 pub use self::tank::{Bullet, ObjUID, Tank};
@@ -27,15 +27,17 @@ use self::util::*;
 use crate::conf::*;
 use crate::{is_exit_application, signal_exit, Opts};
 use log::{debug, error, info, warn};
-use networking::RobotServer;
 pub use rapier2d::na::{vector, Isometry2, Rotation2};
 pub use rapier2d::na::{Point2, Vector2};
 use rapier2d::prelude::*;
 pub use rapier2d::prelude::{Real, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
+use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
 use std::time;
+use tank_wasm::WasmTanks;
 
 /**
 Tank body collision group used in colliders.
@@ -85,8 +87,6 @@ impl Default for SimulationState {
 }
 
 pub struct PhysicsEngine {
-    /// Maximum number of tanks
-    max_num_tanks: usize,
     /// Maximum numbers of tick allowed. If `max_ticks` == 0 simulation
     /// is stopped only when only one tank is not disabled/dead.
     max_ticks: u32,
@@ -128,10 +128,38 @@ fn new_point2(x: f32, y: f32) -> Point<f32> {
     [x, y].into()
 }
 
+impl Default for PhysicsEngine {
+    fn default() -> Self {
+          PhysicsEngine {
+            max_ticks: 0,
+            tanks_alive: 0,
+            tanks: vec![],
+            bullets: vec![],
+            tick: 0,
+            rigid_body_set: RigidBodySet::new(),
+            collider_set: ColliderSet::new(),
+            integration_parameters: IntegrationParameters::default(),
+            physics_pipeline: PhysicsPipeline::new(),
+            island_manager: IslandManager::new(),
+            broad_phase: BroadPhase::new(),
+            narrow_phase: NarrowPhase::new(),
+            joint_set: ImpulseJointSet::new(),
+            multibody_joints: MultibodyJointSet::new(),
+            ccd_solver: CCDSolver::new(),
+            physics_hooks: (),
+            event_handler: (),
+            gravity_vector: vector![0.0, 0.0], //No gravity
+            debug_mode: true,
+            state: SimulationState::WaitingConnection,
+            conf:Conf::default()
+        }
+        
+    }
+}
+
 impl PhysicsEngine {
     fn new(conf: Conf, opts: &Opts) -> PhysicsEngine {
         PhysicsEngine {
-            max_num_tanks: opts.num_tanks,
             max_ticks: opts.max_steps,
             tanks_alive: 0,
             tanks: vec![],
@@ -169,11 +197,9 @@ impl PhysicsEngine {
         mut state_sender: Box<dyn GameStateSender>,
         command_receiver: Box<dyn UICommandReceiver>,
     ) -> JoinHandle<()> {
-        let udp_port = opts.port;
         let simulation_rate = opts.sim_step_rate;
-        let use_tcp_tank_client = opts.tank_client_protocol == "tcp";
         let mut p_engine = Self::new(conf, opts);
-
+        let tank_folder = opts.tank_folder.clone();
         let now = time::Instant::now();
         // show some fps measurements every 5 seconds
         let mut fps_counter = ticktock::Timer::apply(|delta_t, prev_tick| (delta_t, *prev_tick), 0)
@@ -181,20 +207,23 @@ impl PhysicsEngine {
             .start(now);
         //Create thread that perform physics simulation
         spawn(move || {
-            info!("Start waiting connections");
-            let mut server = RobotServer::new(p_engine.debug_mode, use_tcp_tank_client);
-            server.wait_connections(&mut p_engine, udp_port, &mut state_sender);
+            info!("Load tanks");
+            let mut wasm_tanks = WasmTanks::new(tank_folder, &mut p_engine);
             info!("Starting simulation");
-            p_engine.state = SimulationState::Running;
+
             for (tick, now) in ticktock::Clock::framerate(simulation_rate).iter() {
                 {
+                    p_engine.state = SimulationState::Running;
                     //Check if received command to exit
                     match command_receiver.receive() {
                         Some(UICommand::QUIT) => p_engine.exit_simulation(),
                         None => (),
                     };
                     // Process all request coming from client
-                    server.process_request(&mut p_engine);
+                    if let Err(val) = wasm_tanks.next_step(&mut p_engine) {
+                        error!("Error in some tanks{:?}", val);
+                        p_engine.exit_simulation();
+                    };
                     p_engine.step();
 
                     // Try to lazily send game state to UI
@@ -233,12 +262,16 @@ impl PhysicsEngine {
     # Arguments
     * `tank_position` - Initial position of tank
     * `name` - Tank name
+
+    # Return
+    * Tank index
     */
-    fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) {
+    fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String)->usize {
         //This tank index is used to set userdata of all collider to skip detection.
         let tank_index = self.tanks.len();
         let tank = Tank::new(self, tank_position, tank_index, name);
         self.tanks.push(tank);
+        tank_index
     }
 
     /// Execute one simulation step
@@ -460,15 +493,16 @@ impl PhysicsEngine {
      *
      * # Arguments
      * `name` - Tank name
+     * `max_num_tanks` - Maximum number of expected tanks
      */
-    fn add_tank_in_circle(&mut self, name: String) {
+    fn add_tank_in_circle(&mut self, name: String,max_num_tanks:usize)->usize {
         let position_vector = Vector2::new(self.conf.start_distance, 0.0);
         //Compute position of new tank
-        let tank_pos_angle = (2.0 * PI / self.max_num_tanks as f32) * (self.tanks.len() + 1) as f32;
+        let tank_pos_angle = (2.0 * PI / max_num_tanks as f32) * (self.tanks.len() + 1) as f32;
         let tank_vector_position = Isometry2::rotation(tank_pos_angle) * position_vector;
         //Angle to compute starting position of tank
         let tank_position = Isometry2::new(tank_vector_position, tank_pos_angle);
-        self.add_tank(tank_position, name);
+        self.add_tank(tank_position, name)
     }
 
     /// Get how many simulation steps are executed
@@ -505,19 +539,23 @@ impl PhysicsEngine {
         vertexs
     }
 
+
+    // Set radar position if not enough energy or tank is dead no update and return false
+    pub fn set_radar_position(&mut self, tank_id: usize,radar_increment: f32,radar_width: f32)->bool {
+         let tank = &mut self.tanks[tank_id];
+        // Update radar position
+        tank.update_radar_attribute(radar_increment, radar_width)
+
+    }
+
     /// Move radar and return detected tanks
     pub fn get_radar_result(
-        &mut self,
-        tank_id: usize,
-        radar_increment: f32,
-        radar_width: f32,
+        &self,
+        tank_id: usize
     ) -> (f32, Vec<(&Tank, f32)>) {
-        let tank = &mut self.tanks[tank_id];
-        // Update radar position
-        let enough_energy = tank.update_radar_attribute(radar_increment, radar_width);
-        // If not enough energy for operation return present position and empty list of detected tank
-        if !enough_energy {
-            return (tank.radar_position, Vec::new());
+        let tank = &self.tanks[tank_id];
+        if tank.is_dead() {
+             return (tank.radar_position, Vec::new());
         }
         // Detect tank in radar detection area.
         let mut result = Vec::new();
@@ -578,8 +616,8 @@ mod tests {
         let opts = crate::Opts::try_parse_from(["Application", &num.to_string()])
             .expect("Failed parse string");
         let mut engine = PhysicsEngine::new(conf, &opts);
-        for _ in 0..num {
-            engine.add_tank_in_circle(format!("tank{}", num));
+        for x in 0..num {
+            engine.add_tank_in_circle(format!("tank{}", x),num as usize);
         }
         engine
     }

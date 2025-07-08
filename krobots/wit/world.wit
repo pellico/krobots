@@ -1,0 +1,109 @@
+package krobots:krobots@0.1.0;
+interface tank { 
+    record polar-vector {
+        /// Radius from the origin.
+        r: f32,
+        /// The angle in radians.
+        p: f32,
+    }
+
+    record tank-status {
+        /// Simulation ticks 60 ticks is 1 sec of simulator time
+        tick: u32,
+        /// Velocity vector of tank center of mass in world reference.
+        /// velocity.r is in m/sec
+        /// velocity.p is in radians/sec
+        velocity:polar-vector,
+        /// Tank rotation angle ]-PI; PI]
+        angle: f32,
+        /// Cannon angle reference to the world ]-pi; pi]
+        cannon-angle: f32,
+        /// Tank damage when reaching 100. Tank is dead
+        damage: f32,
+        /// Tank energy. When there is not enough energy for requested action the action is not executed.
+        energy: f32,
+        /// Last command status
+        command-result:command-result,
+        ///Rotational speed rad/sec
+        angvel: f32,
+        /// Position of power source in tank relative coordinates
+        power-source: polar-vector,
+        // Cannon temperature
+        cannon-temp:f32,
+        // Radar result
+        radar-result:radar-result
+    }
+
+    record tank-radar {
+        /// Distance of detected tank in m
+        distance:f32,
+        /// Damage of detected tank. When equal or greater than SimulationConfig.damage_max is disabled
+        damage:f32,
+    }
+
+    record radar-result {
+        /// Radar angle [radians] relative to angle of tank.
+        angle:f32,
+        /// List of first 10 detected tanks ordered by distance.
+        tanks:list<tank-radar>
+    }
+
+    record simulation-config{
+        /// Max energy allowed for the tank
+        tank-energy-max:f32,
+        /// When damage exceed this limit the tank is dead. No operation are allowed
+        damage-max:f32,
+        /// Max range of bullet
+        bullet-max-range:f32,
+        /// When distance of tank from power source exceed this limit, 
+        /// tank energy is decreased proportionally with distance
+        zero-power-limit:f32,
+        /// Max allowed increment in radians
+        radar-angle-increment-max:f32,
+        /// Max allowed radar width
+        radar-width-max:f32,
+        /// Max allowed radar detection range
+        radar-max-detection-range:f32,
+        /// Bullet speed m/sec (1 tick = 1/60 sec)
+        bullet-speed:f32,
+        /// Maximum power of tank engine
+        max-forward-power:f32,
+        /// Maximum power to turn the tank
+        max-turning-power:f32,
+
+    }
+    variant command {
+    /// Move radar
+    /// angle_increment – How many radians shall be rotated the radar before sampling see simulation_configuration
+    /// width  – Width of the radar in radians Max see simulation_configuration
+    set-radar(tuple<f32,f32>),
+    /// Fire cannon
+    fire-cannon,
+    /// Set cannon position
+    /// angle - Angle relative to tank [radians]
+    set-cannot-position(f32),
+    /// Set engine power
+    /// – Power fraction applied to move forward or backward. [-1.0,1.0] Negative number move backward
+    /// - Power fraction applied to turn the tank. [-1.0,1.0] Negative number move counter-clockwise
+    set-engine-power(tuple<f32,f32>)
+}
+
+enum command-result {
+    success,
+    pending,
+    fail
+}
+    /// Execute Command
+    execute-command:func(command:command);
+    get-status:func()-> tank-status;
+    get-simulation-config:func()->simulation-config;
+ 
+}
+
+
+
+
+world krobot{
+    import tank;
+    export run:func();
+}
