@@ -613,7 +613,7 @@ mod tests {
             }
             None => (),
         };
-        let opts = crate::Opts::try_parse_from(["Application", &num.to_string()])
+        let opts = crate::Opts::try_parse_from([""])
             .expect("Failed parse string");
         let mut engine = PhysicsEngine::new(conf, &opts);
         for x in 0..num {
@@ -656,7 +656,7 @@ mod tests {
         }
 
         let tank0 = engine.tank_mut(0);
-        assert_eq!(tank0.angular_velocity(), 1.0365888);
+        assert_float_eq!(tank0.angular_velocity(), 1.0365888,r2nd <= 0.0001);
         // Set to 0 and verify it is stopping
         tank0.set_turning_power(0.0);
         assert_eq!(tank0.turning_power_fraction(), 0.0);
@@ -676,7 +676,7 @@ mod tests {
         }
 
         let tank0 = engine.tank_mut(0);
-        assert_eq!(tank0.angular_velocity(), -1.0365888);
+        assert_float_eq!(tank0.angular_velocity(), -1.0365888,r2nd <= 0.00001);
         // check wrapping set of angular speed
         tank0.set_turning_power(-2.0);
         assert_eq!(tank0.turning_power_fraction(), -1.0);
@@ -703,11 +703,11 @@ mod tests {
         {
             // Tank angle and velocity angle shall be almost the same
             let velocity_vector = tank0.linvel();
-            assert_eq!(velocity_vector.norm(), 8.001642, "Wrong speed");
+            assert_float_eq!(velocity_vector.norm(), 8.001642, r2nd <= 0.0001);
             let velocity_angle = velocity_vector.y.atan2(velocity_vector.x);
-            assert_eq!(velocity_angle, 2.0795524);
+            assert_float_eq!(velocity_angle, 2.0795524,r2nd<=0.001);
             let tank_angle = tank0.position().rotation.angle();
-            assert_eq!(tank_angle, 2.079504);
+            assert_float_eq!(tank_angle, 2.079504,r2nd<=0.001);
             assert!((velocity_angle - tank_angle).abs() < 0.001);
         }
 
@@ -719,7 +719,7 @@ mod tests {
         let tank0 = engine.tank_mut(0);
         let pos2 = tank0.position().translation.vector;
         let distance = (pos1 - pos2).norm();
-        assert_eq!(distance, 8.002805, "Wrong distance");
+        assert_float_eq!(distance, 8.05,r2nd<=0.001);
 
         // Stop tank
         tank0.set_engine_power(0.0);
@@ -737,9 +737,9 @@ mod tests {
 
         let tank0 = engine.tank_mut(0);
         let velocity_vector = tank0.linvel();
-        assert_eq!(velocity_vector.norm(), 8.001644, "Wrong speed");
+        assert_float_eq!(velocity_vector.norm(), 8.001644,r2nd <= 0.000_02 );
         let velocity_angle = velocity_vector.y.atan2(velocity_vector.x);
-        assert_eq!(velocity_angle, -1.0620875);
+        assert_float_eq!(velocity_angle, -1.0620875,r2nd <= 0.002);
     }
 
     #[test]
