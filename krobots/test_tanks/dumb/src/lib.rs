@@ -1,9 +1,10 @@
 use core::f32;
+use std::sync::OnceState;
 
 use f32::consts::PI;
 use krobots::krobots::tank::*;
 use wit_bindgen::generate;
-generate!({path:"../krobots/wit"});
+generate!({path:"../../wit"});
 
 struct TankComponent;
 export!(TankComponent);
@@ -47,9 +48,9 @@ impl Guest for TankComponent {
         // Initial tank body forward movement power
         let forward_power = 0.9;
         // Angle of power source from tank position in world coordinates. (not referred to tank direction)
-        let target_angle = status.power_source.p;
+        let mut target_angle = status.power_source.p;
         // Distance of power source from tank position
-        let last_power_distance = status.power_source.r;
+        let mut last_power_distance = status.power_source.r;
         let mut delta_ang;
         let mut angimp_set;
         wait_command_execution(Command::SetEnginePower((forward_power, 0.0)));
@@ -66,6 +67,22 @@ impl Guest for TankComponent {
                 forward_power / (1.0 + 10.0 * delta_ang.abs()),
                 angimp_set,
             )));
+            status = get_status();
+            if status.power_source.r > turn_back_distance
+                && last_power_distance <= turn_back_distance
+            {
+                loop {
+                    let vel_direction =
+                        status.velocity.r * (status.velocity.p - status.angle).cos();
+                    if vel_direction < 0.1 {
+                        break;
+                    }
+                    wait_command_execution(Command::SetEnginePower((-0.002 * vel_direction, 0.0)));
+                    status = get_status();
+                }
+                target_angle = status.power_source.p;
+            }
+            last_power_distance = status.power_source.r;
         }
     }
 }

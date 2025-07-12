@@ -130,7 +130,7 @@ fn new_point2(x: f32, y: f32) -> Point<f32> {
 
 impl Default for PhysicsEngine {
     fn default() -> Self {
-          PhysicsEngine {
+        PhysicsEngine {
             max_ticks: 0,
             tanks_alive: 0,
             tanks: vec![],
@@ -151,9 +151,8 @@ impl Default for PhysicsEngine {
             gravity_vector: vector![0.0, 0.0], //No gravity
             debug_mode: true,
             state: SimulationState::WaitingConnection,
-            conf:Conf::default()
+            conf: Conf::default(),
         }
-        
     }
 }
 
@@ -208,7 +207,7 @@ impl PhysicsEngine {
         //Create thread that perform physics simulation
         spawn(move || {
             info!("Load tanks");
-            let mut wasm_tanks = WasmTanks::new(tank_folder, &mut p_engine);
+            let mut wasm_tanks = WasmTanks::new( &mut p_engine);
             info!("Starting simulation");
 
             for (tick, now) in ticktock::Clock::framerate(simulation_rate).iter() {
@@ -266,7 +265,7 @@ impl PhysicsEngine {
     # Return
     * Tank index
     */
-    fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String)->usize {
+    fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) -> usize {
         //This tank index is used to set userdata of all collider to skip detection.
         let tank_index = self.tanks.len();
         let tank = Tank::new(self, tank_position, tank_index, name);
@@ -495,7 +494,7 @@ impl PhysicsEngine {
      * `name` - Tank name
      * `max_num_tanks` - Maximum number of expected tanks
      */
-    fn add_tank_in_circle(&mut self, name: String,max_num_tanks:usize)->usize {
+    fn add_tank_in_circle(&mut self, name: String, max_num_tanks: usize) -> usize {
         let position_vector = Vector2::new(self.conf.start_distance, 0.0);
         //Compute position of new tank
         let tank_pos_angle = (2.0 * PI / max_num_tanks as f32) * (self.tanks.len() + 1) as f32;
@@ -539,23 +538,23 @@ impl PhysicsEngine {
         vertexs
     }
 
-
     // Set radar position if not enough energy or tank is dead no update and return false
-    pub fn set_radar_position(&mut self, tank_id: usize,radar_increment: f32,radar_width: f32)->bool {
-         let tank = &mut self.tanks[tank_id];
+    pub fn set_radar_position(
+        &mut self,
+        tank_id: usize,
+        radar_increment: f32,
+        radar_width: f32,
+    ) -> bool {
+        let tank = &mut self.tanks[tank_id];
         // Update radar position
         tank.update_radar_attribute(radar_increment, radar_width)
-
     }
 
     /// Move radar and return detected tanks
-    pub fn get_radar_result(
-        &self,
-        tank_id: usize
-    ) -> (f32, Vec<(&Tank, f32)>) {
+    pub fn get_radar_result(&self, tank_id: usize) -> (f32, Vec<(&Tank, f32)>) {
         let tank = &self.tanks[tank_id];
         if tank.is_dead() {
-             return (tank.radar_position, Vec::new());
+            return (tank.radar_position, Vec::new());
         }
         // Detect tank in radar detection area.
         let mut result = Vec::new();
@@ -613,11 +612,10 @@ mod tests {
             }
             None => (),
         };
-        let opts = crate::Opts::try_parse_from([""])
-            .expect("Failed parse string");
+        let opts = crate::Opts::try_parse_from([""]).expect("Failed parse string");
         let mut engine = PhysicsEngine::new(conf, &opts);
         for x in 0..num {
-            engine.add_tank_in_circle(format!("tank{}", x),num as usize);
+            engine.add_tank_in_circle(format!("tank{}", x), num as usize);
         }
         engine
     }
@@ -656,7 +654,7 @@ mod tests {
         }
 
         let tank0 = engine.tank_mut(0);
-        assert_float_eq!(tank0.angular_velocity(), 1.0365888,r2nd <= 0.0001);
+        assert_float_eq!(tank0.angular_velocity(), 1.0365888, r2nd <= 0.0001);
         // Set to 0 and verify it is stopping
         tank0.set_turning_power(0.0);
         assert_eq!(tank0.turning_power_fraction(), 0.0);
@@ -676,7 +674,7 @@ mod tests {
         }
 
         let tank0 = engine.tank_mut(0);
-        assert_float_eq!(tank0.angular_velocity(), -1.0365888,r2nd <= 0.00001);
+        assert_float_eq!(tank0.angular_velocity(), -1.0365888, r2nd <= 0.00001);
         // check wrapping set of angular speed
         tank0.set_turning_power(-2.0);
         assert_eq!(tank0.turning_power_fraction(), -1.0);
@@ -705,9 +703,9 @@ mod tests {
             let velocity_vector = tank0.linvel();
             assert_float_eq!(velocity_vector.norm(), 8.001642, r2nd <= 0.0001);
             let velocity_angle = velocity_vector.y.atan2(velocity_vector.x);
-            assert_float_eq!(velocity_angle, 2.0795524,r2nd<=0.001);
+            assert_float_eq!(velocity_angle, 2.0795524, r2nd <= 0.001);
             let tank_angle = tank0.position().rotation.angle();
-            assert_float_eq!(tank_angle, 2.079504,r2nd<=0.001);
+            assert_float_eq!(tank_angle, 2.079504, r2nd <= 0.001);
             assert!((velocity_angle - tank_angle).abs() < 0.001);
         }
 
@@ -719,7 +717,7 @@ mod tests {
         let tank0 = engine.tank_mut(0);
         let pos2 = tank0.position().translation.vector;
         let distance = (pos1 - pos2).norm();
-        assert_float_eq!(distance, 8.05,r2nd<=0.001);
+        assert_float_eq!(distance, 8.05, r2nd <= 0.001);
 
         // Stop tank
         tank0.set_engine_power(0.0);
@@ -737,9 +735,9 @@ mod tests {
 
         let tank0 = engine.tank_mut(0);
         let velocity_vector = tank0.linvel();
-        assert_float_eq!(velocity_vector.norm(), 8.001644,r2nd <= 0.000_02 );
+        assert_float_eq!(velocity_vector.norm(), 8.001644, r2nd <= 0.000_02);
         let velocity_angle = velocity_vector.y.atan2(velocity_vector.x);
-        assert_float_eq!(velocity_angle, -1.0620875,r2nd <= 0.002);
+        assert_float_eq!(velocity_angle, -1.0620875, r2nd <= 0.002);
     }
 
     #[test]

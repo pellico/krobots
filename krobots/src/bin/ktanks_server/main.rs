@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 mod local_ch;
 use clap::Parser;
-use ktanks_server::conf;
+use ktanks_server::{conf,get_tanks_file_from_folder};
 use ktanks_server::physics::PhysicsEngine;
 use ktanks_server::remote_ch;
 use ktanks_server::{enable_human_panic, Opts};
@@ -31,7 +31,7 @@ fn main() {
             .default_filter_or("ktanks_server=".to_string() + &opts.log_level),
     )
     .init();
-    let conf = match opts.configuration_file.as_ref() {
+    let mut conf = match opts.configuration_file.as_ref() {
         None => conf::Conf {
             ..Default::default()
         },
@@ -43,6 +43,13 @@ fn main() {
             }
         },
     };
+
+    // add to conf wasm files in tank folder and sort them.
+    if let Some(ref tank_folder) = opts.tank_folder {
+        let tanks_in_folder = get_tanks_file_from_folder(tank_folder);
+        conf.tanks_list.extend( tanks_in_folder);
+        conf.tanks_list.sort();
+    }
     if opts.no_gui {
         let tx_state =
             remote_ch::UISender::new(opts.remote_gui_port, opts.max_num_remote_gui as usize);

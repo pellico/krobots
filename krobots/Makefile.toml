@@ -1,0 +1,7 @@
+[env]
+# this tells cargo-make that this directory acts as a workspace root
+CARGO_MAKE_WORKSPACE_EMULATION = true
+CARGO_MAKE_CRATE_WORKSPACE_MEMBERS = [
+    "./test_tanks/simple",
+    "test_tanks/dumb"
+]

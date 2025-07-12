@@ -5,6 +5,7 @@ use futures::future::{BoxFuture, FutureExt};
 use crate::physics::tank_wasm::krobots::krobots::tank::PolarVector;
 use crate::physics::{PhysicsEngine, Real, Rotation2, Tank, Vector2};
 use core::num;
+use std::path::PathBuf;
 use indexmap::IndexMap;
 use krobots::krobots::tank;
 use krobots::krobots::tank::{Host, RadarResult, SimulationConfig, TankRadar, TankStatus};
@@ -274,30 +275,13 @@ impl WasmTanks {
         Ok(())
     }
 
-    pub fn new<P: AsRef<Path>>(path: P, p_engine: &mut PhysicsEngine) -> WasmTanks {
-        use std::fs;
+    pub fn new(p_engine: &mut PhysicsEngine) -> WasmTanks {
         let mut result = WasmTanks::default();
-        let paths = fs::read_dir(path.as_ref()).unwrap();
-        let mut tank_path_entries = vec![];
-        for f in paths {
-            match f {
-                Ok(dir_entry) => {
-                    if dir_entry.file_type().unwrap().is_file()
-                        && dir_entry.path().extension() == Some(OsStr::new("wasm"))
-                    {
-                        let path_wasm = dir_entry.path();
-
-                        tank_path_entries.push(path_wasm);
-                    }
-                }
-                Err(_) => continue,
-            }
-        }
-        let num_tanks = tank_path_entries.len();
-        tank_path_entries.iter().for_each(|path_wasm| {
+        let num_tanks = p_engine.conf.tanks_list.len();
+        p_engine.conf.tanks_list.clone().iter().for_each(|path_wasm| {
             let tank_name = path_wasm.file_name().unwrap().to_str().unwrap();
             result
-                .new_tank(path_wasm, tank_name, p_engine, num_tanks)
+                .new_tank(path_wasm, tank_name, &mut *p_engine, num_tanks)
                 .unwrap()
         });
         result
@@ -315,6 +299,8 @@ impl WasmTanks {
             .ok_or_else(|| anyhow::anyhow!("No item"))
     }
 }
+
+
 
 use ouroboros::self_referencing;
 #[self_referencing]
@@ -370,15 +356,18 @@ impl WasmTank {
         let poll_result = self.with_future_mut(|future| future.poll_unpin(&mut cx));
         let result = match poll_result {
             std::task::Poll::Pending => Ok(false),
-            std::task::Poll::Ready(val) =>{ panic!();val.map(|_| true)},
+            std::task::Poll::Ready(val) => {
+                panic!();
+                val.map(|_| true)
+            }
         };
 
         // Process command
         let mut state = self.borrow_state().lock().unwrap();
         state.tank_status.command_result = match state.command {
-            None=> {tank::CommandResult::Success},
+            None => tank::CommandResult::Success,
             Some(command) => {
-                state.command=None;
+                state.command = None;
                 process_command(p_engine, tank_index, command)
             }
         };

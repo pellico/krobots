@@ -25,22 +25,14 @@
         },
         {
             "type": "lldb",
+            
             "request": "launch",
             "name": "Debug executable 'krobots'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=ktanks_server",
-                    "--package=ktanks_server"
-                ],
-                "filter": {
-                    "name": "ktanks_server",
-                    "kind": "bin"
-                }
-            },
+            "preLaunchTask": "cargo make build",
+            "program":"${workspaceFolder}/target/debug/ktanks_server.exe",
             "args": [
-              "-t",
-                "test_folder"
+              "-c",
+                "test_tanks/test.toml"
             ],
             "cwd": "${workspaceRoot}",
             "env": {

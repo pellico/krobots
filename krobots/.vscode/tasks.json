@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cargo",
+			"command": "make",
+			"args": ["build"],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build",
+			"label": "cargo make build"
+		}
+	]
+}

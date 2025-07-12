@@ -19,8 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 use confy;
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-
+use std::path::{Path, PathBuf};
+use anyhow::{Result,anyhow};
 #[derive(Serialize, Deserialize)]
 pub struct Conf {
     pub tank_width_m: f32,
@@ -61,16 +61,30 @@ pub struct Conf {
     /// Temperature decrease for each simulation step
     /// When high temp. tank can fire 1 bullet each second  
     pub cannon_temp_decrease_step: f32,
+    /// List of path to tanks to execute
+    /// this is ignored if tank folder is specified in command line
+    pub tanks_list:Vec<PathBuf>
 }
 
 impl Conf {
-    pub fn load_configuration(path: &str) -> Result<Conf, confy::ConfyError> {
-        let path_full = Path::new(path);
+    /// Load configuration file. If file doesn't exist create a new one
+    pub fn load_configuration(path: &str) -> Result<Conf> {
+        let path_full = Path::new(path).canonicalize()?;
         debug!(
             "Writing or reading configuration from path {}",
             path_full.display()
         );
-        let conf: Conf = confy::load_path(path_full)?;
+        let mut conf: Conf = confy::load_path(&path_full)?;
+
+        //resolve path of tank list relative to location of configuration file
+        let folder_conf = path_full.parent().ok_or_else(||anyhow!("No parent of folder"))?;
+        let resolved_paths:Vec<PathBuf> = conf.tanks_list.into_iter().map(|p| {
+            match p.is_absolute() {
+                true => p,
+                false => folder_conf.join(p)
+            }
+        }).collect();
+        conf.tanks_list=resolved_paths;
         Ok(conf)
     }
 }
@@ -117,8 +131,9 @@ impl Default for Conf {
             // Temperature increase for each fire
             cannon_fire_temp_increase: CANNON_FIRE_TEMP_INCREASE,
             // Temperature decrease for each simulation step
-            // When high temp. tank can fire 1 bullet each second  
+            // When high temp. tank can fire 1 bullet each second
             cannon_temp_decrease_step: CANNON_FIRE_TEMP_INCREASE / 60.0,
+            tanks_list:vec![]
         }
     }
 }
