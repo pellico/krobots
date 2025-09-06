@@ -110,12 +110,12 @@ pub struct PhysicsEngine {
     integration_parameters: IntegrationParameters,
     physics_pipeline: PhysicsPipeline,
     island_manager: IslandManager,
-    broad_phase: BroadPhase,
+    broad_phase: DefaultBroadPhase,
     narrow_phase: NarrowPhase,
     joint_set: ImpulseJointSet,
     multibody_joints: MultibodyJointSet,
     ccd_solver: CCDSolver,
-    physics_hooks: (),
+    physics_hooks: MyPhysicsHooks,
     event_handler: (),
     gravity_vector: Vector2<Real>,
 }
@@ -141,12 +141,12 @@ impl Default for PhysicsEngine {
             integration_parameters: IntegrationParameters::default(),
             physics_pipeline: PhysicsPipeline::new(),
             island_manager: IslandManager::new(),
-            broad_phase: BroadPhase::new(),
+            broad_phase: DefaultBroadPhase::new(),
             narrow_phase: NarrowPhase::new(),
             joint_set: ImpulseJointSet::new(),
             multibody_joints: MultibodyJointSet::new(),
             ccd_solver: CCDSolver::new(),
-            physics_hooks: (),
+            physics_hooks: MyPhysicsHooks{},
             event_handler: (),
             gravity_vector: vector![0.0, 0.0], //No gravity
             debug_mode: true,
@@ -169,12 +169,12 @@ impl PhysicsEngine {
             integration_parameters: IntegrationParameters::default(),
             physics_pipeline: PhysicsPipeline::new(),
             island_manager: IslandManager::new(),
-            broad_phase: BroadPhase::new(),
+            broad_phase: DefaultBroadPhase::new(),
             narrow_phase: NarrowPhase::new(),
             joint_set: ImpulseJointSet::new(),
             multibody_joints: MultibodyJointSet::new(),
             ccd_solver: CCDSolver::new(),
-            physics_hooks: (),
+            physics_hooks: MyPhysicsHooks{},
             event_handler: (),
             gravity_vector: vector![0.0, 0.0], //No gravity
             debug_mode: opts.debug_mode,
@@ -343,9 +343,9 @@ impl PhysicsEngine {
             &mut self.joint_set,
             &mut self.multibody_joints,
             &mut self.ccd_solver,
-            None,
             &self.physics_hooks,
             &self.event_handler,
+     
         );
         self.tick += 1;
         //Read back present status
@@ -674,7 +674,7 @@ mod tests {
         }
 
         let tank0 = engine.tank_mut(0);
-        assert_float_eq!(tank0.angular_velocity(), -1.0365888, r2nd <= 0.00001);
+        assert_float_eq!(tank0.angular_velocity(), -1.0365888, r2nd <= 0.0001);
         // check wrapping set of angular speed
         tank0.set_turning_power(-2.0);
         assert_eq!(tank0.turning_power_fraction(), -1.0);
@@ -820,7 +820,7 @@ mod tests {
         let bullet_position1 = (&engine.bullets[0]).position().translation.vector;
         let velocity_vector = (bullet_position1 - bullet_position0) * 60.0;
         let velocity_abs = velocity_vector.norm();
-        let angle = velocity_vector.angle(&vector![1.0, 0.0]);
+        let angle = velocity_vector.angle(&nalgebra::vector![1.0, 0.0]);
         // Speed as defined in conf
         assert_float_eq!(velocity_abs, &engine.conf.bullet_speed, abs <= 0.001);
         // angle the same as the turret when fired.

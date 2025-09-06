@@ -1,6 +1,5 @@
 use std::env;
 use std::io::Result;
-extern crate prost_build;
 
 /*
 use std::path::Path;

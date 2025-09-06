@@ -19,5 +19,8 @@ args=["build","--profile","${CARGO_MAKE_CARGO_PROFILE}"]
 condition = { files_modified = { input = ["${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}.wasm"], output = ["${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}_comp.wasm"] } }
 description = "Runs the rust compiler and build a wasm component"
 command="wasm-tools"
-args=["component", "new","${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}.wasm","-o","${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}.wasm"]
+args=["component", "new","${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}.wasm","-o","${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}_comp.wasm"]
 dependencies = ["build-module","install-wasm-tools"]
+
+[tasks.test]
+clear=true

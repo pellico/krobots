@@ -53,12 +53,27 @@ impl Guest for TankComponent {
         let mut last_power_distance = status.power_source.r;
         let mut delta_ang;
         let mut angimp_set;
+        let simulation_config = get_simulation_config();
         wait_command_execution(Command::SetEnginePower((forward_power, 0.0)));
 
         loop {
             wait_command_execution(Command::SetRadar((-0.17, 0.17)));
             let mut radar_result = get_status().radar_result;
             wait_command_execution(Command::SetCannotPosition(radar_result.angle));
+            if !radar_result.tanks.is_empty() {
+                wait_command_execution(Command::SetRadar((-0.17, 0.01)));
+                radar_result=get_status().radar_result;
+                wait_command_execution(Command::SetCannotPosition(radar_result.angle));
+                for _ in 0..34 {
+                   wait_command_execution(Command::SetRadar((0.01, 0.01)));
+                   radar_result=get_status().radar_result;
+                   wait_command_execution(Command::SetCannotPosition(radar_result.angle));
+                   if !radar_result.tanks.is_empty() && radar_result.tanks[0].distance < simulation_config.bullet_max_range {
+                    wait_command_execution(Command::FireCannon);
+                   }
+                }
+
+            }
             status = get_status();
             delta_ang = angle_wrapping(target_angle - status.angle);
             angimp_set = (0.5 * delta_ang - 0.01 * status.angvel) * status.angvel.abs();

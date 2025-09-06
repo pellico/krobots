@@ -8,17 +8,22 @@
             "name": "(Windows) Launch vsdbg",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/target/debug/ktanks_server.exe",
-            "args": [
-                "-t",
-                "test_folder"
-            ],
             "stopAtEntry": false,
+           "program":"${workspaceFolder}/target/debug/ktanks_server.exe",
+            "args": [
+              "-c",
+                "test_tanks/test.toml"
+            ],
+     
             "cwd": "${workspaceFolder}",
             "environment": [
                 {
                     "name": "RUST_LOG",
-                    "value": "trace"
+                    "value": "ktanks_server=info"
+                },
+                {
+                    "name": "_NO_DEBUG_HEAP",
+                    "value": "1"
                 }
             ],
             "console": "externalTerminal"

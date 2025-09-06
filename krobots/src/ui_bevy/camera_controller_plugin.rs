@@ -32,16 +32,16 @@ impl Default for CameraController {
         Self {
             enabled: true,
             sensitivity: 1.0,
-            key_zoom_out: KeyCode::Q,
-            key_zoom_in: KeyCode::E,
-            key_left: KeyCode::A,
-            key_right: KeyCode::D,
-            key_up: KeyCode::S,
-            key_down: KeyCode::W,
+            key_zoom_out: KeyCode::KeyQ,
+            key_zoom_in: KeyCode::KeyE,
+            key_left: KeyCode::KeyA,
+            key_right: KeyCode::KeyD,
+            key_up: KeyCode::KeyS,
+            key_down: KeyCode::KeyW,
             key_run: KeyCode::ShiftLeft,
-            key_toggle_tank_track: KeyCode::T,
+            key_toggle_tank_track: KeyCode::KeyT,
             mouse_key_enable_mouse: MouseButton::Left,
-            keyboard_key_enable_mouse: KeyCode::M,
+            keyboard_key_enable_mouse: KeyCode::KeyM,
             walk_speed: 50.0,
             run_speed: 100.0,
             friction: 0.5,
@@ -91,7 +91,7 @@ fn camera_controller(
     time: Res<Time>,
     mut windows: Query<&mut Window>,
     mut mouse_events: EventReader<MouseMotion>,
-    (mouse_button_input, key_input): (Res<Input<MouseButton>>, Res<Input<KeyCode>>),
+    (mouse_button_input, key_input): (Res<ButtonInput<MouseButton>>, Res<ButtonInput<KeyCode>>),
     (mut move_toggled, mut track_tank_enabled): (Local<bool>, Local<bool>),
     mut query: Query<
         (
@@ -157,7 +157,7 @@ fn camera_controller(
             }
         }
 
-        let right = transform.right();
+        let right:Vec3 = transform.right().into();
         transform.translation +=
             options.velocity.x * dt * right + options.velocity.y * dt * Vec3::Y;
 
@@ -173,7 +173,7 @@ fn camera_controller(
                 window.cursor.visible = false;
             }
 
-            for mouse_event in mouse_events.iter() {
+            for mouse_event in mouse_events.read() {
                 mouse_delta += mouse_event.delta;
             }
         }
@@ -185,7 +185,7 @@ fn camera_controller(
         }
 
         if mouse_delta != Vec2::ZERO {
-            let right = transform.right();
+            let right:Vec3 = transform.right().into();
 
             transform.translation += -options.sensitivity * mouse_delta.x * right
                 + options.sensitivity * mouse_delta.y * Vec3::Y;

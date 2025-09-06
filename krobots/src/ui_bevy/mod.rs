@@ -2,6 +2,7 @@ use crate::physics::{
     GameStateReceiver, ObjUID, Point2, Real, SimulationState, UICommand, UICommandSender,
 };
 use bevy::app::AppExit;
+use bevy::color::palettes::css::GOLD;
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::EguiPlugin;
 use std::collections::{HashMap, HashSet};
@@ -15,7 +16,7 @@ use gizmos::gizmos;
 mod ui;
 use ui::*;
 
-const TIME_STEP: f32 = 1.0 / 60.0;
+const TIME_STEP: f64 = 1.0 / 60.0;
 const BOUNDS: Vec2 = Vec2::new(1200.0, 640.0);
 const TANK_BODY_Z: f32 = 1.0;
 const TANK_TURRET_Z: f32 = 2.0;
@@ -34,13 +35,13 @@ pub fn start_gui(
         .add_plugins(
             DefaultPlugins
                 .build()
-                .add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin),
+                .add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin::default()),
         )
         .add_plugins((CameraControllerPlugin, EguiPlugin))
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
         .insert_resource(Msaa::Sample4)
         .init_resource::<UiState>()
-        .insert_resource(FixedTime::new_from_secs(TIME_STEP))
+        .insert_resource(Time::<Fixed>::from_seconds(TIME_STEP))
         .insert_resource(SimulatorRx {
             rx_data: Mutex::new(rx_data),
         })
@@ -154,11 +155,11 @@ struct TankAssets {
 
 fn exit_system(mut exit: EventWriter<AppExit>) {
     if crate::is_exit_application() {
-        exit.send(AppExit);
+        exit.send(AppExit::Success);
     }
 }
 
-fn check_exit_button(key_input: Res<Input<KeyCode>>, simulator_tx: Res<SimulatorTx>) {
+fn check_exit_button(key_input: Res<ButtonInput<KeyCode>>, simulator_tx: Res<SimulatorTx>) {
     if key_input.just_pressed(KeyCode::Escape) {
         simulator_tx
             .tx_ui_command
@@ -288,10 +289,10 @@ fn tank_spawn_update(
                 tank_transform.rotation =
                     Quat::from_rotation_z(phy_tank.position().rotation.angle());
                 for child in children.iter() {
-                    if let Ok(mut trans_radar) = radar.get_component_mut::<Transform>(*child) {
+                    if let Ok(mut trans_radar)= radar.get_mut(*child) {
                         trans_radar.rotation = Quat::from_rotation_z(phy_tank.radar_position());
                     }
-                    if let Ok(mut trans_turret) = turrets.get_component_mut::<Transform>(*child) {
+                    if let Ok(mut trans_turret) = turrets.get_mut(*child) {
                         trans_turret.rotation = Quat::from_rotation_z(
                             phy_tank.turret().angle() - phy_tank.position().rotation.angle(),
                         )
@@ -395,7 +396,7 @@ fn tank_label(
                         tank.name.clone(),
                         TextStyle {
                             font_size: 10.0,
-                            color: Color::GOLD,
+                            color: Color::Srgba(GOLD),
                             // If no font is specified, it will use the default font.
                             ..default()
                         },

@@ -21,3 +21,6 @@ description = "Runs the rust compiler and build a wasm component"
 command="wasm-tools"
 args=["component", "new","${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}.wasm","-o","${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}_comp.wasm"]
 dependencies = ["build-module","install-wasm-tools"]
+
+[tasks.test]
+clear=true

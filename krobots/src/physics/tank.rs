@@ -318,7 +318,7 @@ impl Tank {
     ) {
         if let Some(angle) = self.turret.new_angle {
             let joint = joint_set
-                .get_mut(self.cannon_joint_handle)
+                .get_mut(self.cannon_joint_handle,true)
                 .expect("Unable to get cannon joint");
             let ball_joint = joint
                 .data

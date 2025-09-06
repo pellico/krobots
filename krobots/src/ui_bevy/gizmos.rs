@@ -1,5 +1,6 @@
 use super::*;
 use crate::physics::{Point2, Real};
+use bevy::color::palettes::css::{GREEN,YELLOW};
 use bevy::prelude::*;
 
 fn draw_polyline(gizmos: &mut Gizmos, polyline: &[Point2<Real>], scaling_factor: f32) {
@@ -8,12 +9,12 @@ fn draw_polyline(gizmos: &mut Gizmos, polyline: &[Point2<Real>], scaling_factor:
         .iter()
         .map(|&x| <Point2<Real> as Into<Vec2>>::into(x) * scaling_factor)
         .collect();
-    gizmos.linestrip_2d(poly_vec, Color::RED);
+    gizmos.linestrip_2d(poly_vec,  Color::Srgba( bevy::color::palettes::css::RED));
     //Close shape
     gizmos.line_2d(
         <Point2<Real> as Into<Vec2>>::into(polyline[polyline_size - 1]) * scaling_factor,
         <Point2<Real> as Into<Vec2>>::into(polyline[0]) * scaling_factor,
-        Color::RED,
+        Color::Srgba( bevy::color::palettes::css::RED),
     );
 }
 
@@ -34,12 +35,12 @@ pub(super) fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
         gizmos
             .arc_2d(
                 tank.position().translation.into(),
-                -tank.position().rotation.angle() - tank.radar_position() + PI / 2.0,
+                tank.position().rotation.angle() + tank.radar_position() - PI / 2.0,
                 tank.radar_width(),
                 scaled_radar_range,
-                Color::GREEN,
+                Color::Srgba(GREEN),
             )
-            .segments(10);
+            .resolution(10);
 
         // Draw side of radar detection area
         let v1 = tank.position().translation.vector * physical_scaling_factor;
@@ -52,8 +53,8 @@ pub(super) fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
             * nalgebra::vector![scaled_radar_range, 0.0])
             + v1;
 
-        gizmos.line_2d(v1.into(), v2.into(), Color::YELLOW);
-        gizmos.line_2d(v1.into(), v3.into(), Color::YELLOW);
+        gizmos.line_2d(v1.into(), v2.into(), Color::Srgba(YELLOW));
+        gizmos.line_2d(v1.into(), v3.into(), Color::Srgba(YELLOW));
     }
 
     // Draw bullets
@@ -67,7 +68,7 @@ pub(super) fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
         .circle_2d(
             Vec2::ZERO,
             physics_state.zero_power_limit * physical_scaling_factor,
-            Color::GREEN,
+            Color::Srgba(GREEN),
         )
-        .segments(64);
+        .resolution(64);
 }

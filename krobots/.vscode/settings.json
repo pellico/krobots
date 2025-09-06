@@ -7,5 +7,7 @@
     "files.watcherExclude": {
         "**/target/**": true
     },
-    "rust-analyzer.check.command": "clippy"
+    "rust-analyzer.check.command": "clippy",
+    "editor.codeLens": false,
+    "rust-analyzer.lens.enable": false
 }

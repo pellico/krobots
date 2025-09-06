@@ -187,7 +187,7 @@ impl Default for WasmTanks {
         let mut config = wasmtime::Config::new();
         config.consume_fuel(true);
         config.async_support(true);
-        config.debug_info(true);
+        config.debug_info(false);
         let engine = Engine::new(&config).expect("Failed instantiating engine");
         WasmTanks {
             tanks: Default::default(),
@@ -386,7 +386,7 @@ mod tests {
         let mut all_tanks = WasmTanks::default();
         all_tanks
             .new_tank(
-                "../simple_tank/target/wasm32-unknown-unknown/debug/simple_tank_comp.wasm",
+                "./test_tanks/simple/target/wasm32-unknown-unknown/debug/simple_comp.wasm",
                 "simple-tank",
                 &mut physics_engine,
                 1,
