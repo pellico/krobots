@@ -9,16 +9,7 @@ generate!({path:"../../wit"});
 struct TankComponent;
 export!(TankComponent);
 
-fn wait_command_execution(command: Command) -> CommandResult {
-    execute_command(command);
-    let old_tick = get_status().tick;
-    loop {
-        let status = get_status();
-        if old_tick != status.tick {
-            return status.command_result;
-        }
-    }
-}
+
 
 fn wait_next_tick() {
     let old_tick = get_status().tick;
@@ -54,22 +45,22 @@ impl Guest for TankComponent {
         let mut delta_ang;
         let mut angimp_set;
         let simulation_config = get_simulation_config();
-        wait_command_execution(Command::SetEnginePower((forward_power, 0.0)));
+        execute_command(Command::SetEnginePower((forward_power, 0.0)));
 
         loop {
-            wait_command_execution(Command::SetRadar((-0.17, 0.17)));
+            execute_command(Command::SetRadar((-0.17, 0.17)));
             let mut radar_result = get_status().radar_result;
-            wait_command_execution(Command::SetCannotPosition(radar_result.angle));
+            execute_command(Command::SetCannotPosition(radar_result.angle));
             if !radar_result.tanks.is_empty() {
-                wait_command_execution(Command::SetRadar((-0.17, 0.01)));
+                execute_command(Command::SetRadar((-0.17, 0.01)));
                 radar_result=get_status().radar_result;
-                wait_command_execution(Command::SetCannotPosition(radar_result.angle));
+                execute_command(Command::SetCannotPosition(radar_result.angle));
                 for _ in 0..34 {
-                   wait_command_execution(Command::SetRadar((0.01, 0.01)));
+                   execute_command(Command::SetRadar((0.01, 0.01)));
                    radar_result=get_status().radar_result;
-                   wait_command_execution(Command::SetCannotPosition(radar_result.angle));
+                   execute_command(Command::SetCannotPosition(radar_result.angle));
                    if !radar_result.tanks.is_empty() && radar_result.tanks[0].distance < simulation_config.bullet_max_range {
-                    wait_command_execution(Command::FireCannon);
+                    execute_command(Command::FireCannon);
                    }
                 }
 
@@ -78,7 +69,7 @@ impl Guest for TankComponent {
             delta_ang = angle_wrapping(target_angle - status.angle);
             angimp_set = (0.5 * delta_ang - 0.01 * status.angvel) * status.angvel.abs();
             //If too big error angle reduce forward speed
-            wait_command_execution(Command::SetEnginePower((
+            execute_command(Command::SetEnginePower((
                 forward_power / (1.0 + 10.0 * delta_ang.abs()),
                 angimp_set,
             )));
@@ -92,7 +83,7 @@ impl Guest for TankComponent {
                     if vel_direction < 0.1 {
                         break;
                     }
-                    wait_command_execution(Command::SetEnginePower((-0.002 * vel_direction, 0.0)));
+                    execute_command(Command::SetEnginePower((-0.002 * vel_direction, 0.0)));
                     status = get_status();
                 }
                 target_angle = status.power_source.p;

@@ -5,10 +5,10 @@ use futures::future::{BoxFuture, FutureExt};
 use crate::physics::tank_wasm::krobots::krobots::tank::PolarVector;
 use crate::physics::{PhysicsEngine, Real, Rotation2, Tank, Vector2};
 use core::num;
-use std::path::PathBuf;
 use indexmap::IndexMap;
 use krobots::krobots::tank;
 use krobots::krobots::tank::{Host, RadarResult, SimulationConfig, TankRadar, TankStatus};
+use std::path::PathBuf;
 use std::{
     cell::RefCell,
     default,
@@ -27,11 +27,12 @@ const FUEL_INTERVAL: u64 = 10000;
 bindgen!({
     world:"krobot",
     async: {
-        only_imports:[]
+        only_imports:["execute-command"]
     },
      require_store_data_send: true,
       //additional_derives: [Default],
     include_generated_code_from_file: false,
+
 
 });
 impl Default for tank::TankStatus {
@@ -120,11 +121,15 @@ impl krobots::krobots::tank::Host for Arc<Mutex<MyState>> {
     fn get_status(&mut self) -> TankStatus {
         let state = self.lock().unwrap();
         state.tank_status.clone()
+       
     }
-    fn execute_command(&mut self, command: tank::Command) -> () {
-        let mut state = self.lock().unwrap();
-        state.command = Some(command);
-        state.tank_status.command_result = tank::CommandResult::Pending;
+    async fn execute_command(&mut self, command: tank::Command) {
+        {
+            let mut state = self.lock().unwrap();
+            state.command = Some(command);
+            state.tank_status.command_result = tank::CommandResult::Pending;
+        }
+        futures::pending!();
     }
 
     // #[doc = " Get tank status"]
@@ -187,7 +192,8 @@ impl Default for WasmTanks {
         let mut config = wasmtime::Config::new();
         config.consume_fuel(true);
         config.async_support(true);
-        config.debug_info(false);
+        config.debug_info(true);
+        config.cranelift_opt_level(wasmtime::OptLevel::None);
         let engine = Engine::new(&config).expect("Failed instantiating engine");
         WasmTanks {
             tanks: Default::default(),
@@ -278,12 +284,17 @@ impl WasmTanks {
     pub fn new(p_engine: &mut PhysicsEngine) -> WasmTanks {
         let mut result = WasmTanks::default();
         let num_tanks = p_engine.conf.tanks_list.len();
-        p_engine.conf.tanks_list.clone().iter().for_each(|path_wasm| {
-            let tank_name = path_wasm.file_name().unwrap().to_str().unwrap();
-            result
-                .new_tank(path_wasm, tank_name, &mut *p_engine, num_tanks)
-                .unwrap()
-        });
+        p_engine
+            .conf
+            .tanks_list
+            .clone()
+            .iter()
+            .for_each(|path_wasm| {
+                let tank_name = path_wasm.file_name().unwrap().to_str().unwrap();
+                result
+                    .new_tank(path_wasm, tank_name, &mut *p_engine, num_tanks)
+                    .unwrap()
+            });
         result
     }
     pub fn next_step(&mut self, p_engine: &mut PhysicsEngine) -> anyhow::Result<()> {
@@ -299,8 +310,6 @@ impl WasmTanks {
             .ok_or_else(|| anyhow::anyhow!("No item"))
     }
 }
-
-
 
 use ouroboros::self_referencing;
 #[self_referencing]

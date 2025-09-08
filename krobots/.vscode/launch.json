@@ -9,6 +9,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "stopAtEntry": false,
+              "preLaunchTask": "cargo make build",
            "program":"${workspaceFolder}/target/debug/ktanks_server.exe",
             "args": [
               "-c",
