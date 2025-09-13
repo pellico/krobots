@@ -1,16 +1,17 @@
 use crate::physics::{
-    GameStateReceiver, ObjUID, Point2, Real, SimulationState, UICommand, UICommandSender,
+    GameStateReceiver, ObjUID, SimulationState, UICommand, UICommandSender,
 };
 use bevy::app::AppExit;
 use bevy::color::palettes::css::GOLD;
 use bevy::sprite::Anchor;
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::window::WindowCloseRequested;
+use bevy::{prelude::*};
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
+use bincode::de;
 use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
 use std::sync::Mutex;
 mod camera_controller_plugin;
-use bevy_embedded_assets::EmbeddedAssetPlugin;
 use camera_controller_plugin::{CameraController, CameraControllerPlugin};
 mod gizmos;
 use gizmos::gizmos;
@@ -33,7 +34,10 @@ pub fn start_gui(
     physical_scaling_factor: f32,
 ) {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin{
+            close_when_requested:false,
+            ..default()
+        }))
         .add_plugins( EguiPlugin::default())
         .add_plugins(CameraControllerPlugin)
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
@@ -48,7 +52,6 @@ pub fn start_gui(
         .insert_resource(PhysicsState {
             tanks: HashMap::new(),
             bullets: HashMap::new(),
-            max_num_tanks: 0,
             tick: 0,
             max_ticks: 0,
             debug_mode: false,
@@ -63,12 +66,12 @@ pub fn start_gui(
         .add_systems(Update, gizmos.after(get_physical_state))
         .add_systems(Update, bullet_spawn_update.after(get_physical_state))
         .add_systems(Update, tank_spawn_update.after(get_physical_state))
-        //.add_systems(EguiPrimaryContextPass, configure_visuals_system)
         .add_systems(Startup, configure_ui_state_system)
         .add_systems(EguiPrimaryContextPass, ui_update)
         .add_systems(Update, tank_label)
         .add_systems(Update, exit_system)
         .add_systems(Update, check_exit_button)
+        .add_systems(Update, handle_close_window_event)
         .run();
 }
 
@@ -83,9 +86,6 @@ struct TankRadar {}
 
 #[derive(Component)]
 struct Bullet {}
-
-#[derive(Component)]
-struct EnergyCircle {}
 
 #[derive(Component)]
 struct PhysicalObjUID {
@@ -134,7 +134,6 @@ struct SimulatorTx {
 struct PhysicsState {
     tanks: HashMap<ObjUID, super::physics::Tank>,
     bullets: HashMap<ObjUID, super::physics::Bullet>,
-    max_num_tanks: usize,
     tick: u32,
     max_ticks: u32,
     debug_mode: bool,
@@ -159,7 +158,7 @@ struct TankAssets {
 
 fn exit_system(mut exit: EventWriter<AppExit>) {
     if crate::is_exit_application() {
-        exit.send(AppExit::Success);
+        exit.write(AppExit::Success);
     }
 }
 
@@ -308,7 +307,7 @@ fn tank_spawn_update(
     }
     let phy_tanks = &physics_state.tanks;
 
-    for (&phy_id, tank) in phy_tanks.iter() {
+    for (&phy_id, _tank) in phy_tanks.iter() {
         if !tank_id_in_ui.contains(&phy_id) {
             let tank_body = commands
                 .spawn(TankBodyBundle {
@@ -380,7 +379,7 @@ fn tank_label(
     for (mut transform, phy_uid, entity) in text_query.iter_mut() {
         text_in_ui.insert(phy_uid.phy_id);
         match physics_state.tanks.get(&phy_uid.phy_id) {
-            None => commands.entity(entity).despawn_recursive(),
+            None => commands.entity(entity).despawn(),
             Some(phy_tank) => {
                 transform.translation.x = phy_tank.position().translation.x;
                 transform.translation.y = phy_tank.position().translation.y;
@@ -410,4 +409,18 @@ fn tank_label(
             });
         }
     }
+}
+
+fn handle_close_window_event(
+  events: EventReader<WindowCloseRequested>,simulator_tx: Res<SimulatorTx>
+) {
+    if !events.is_empty() {
+         simulator_tx
+            .tx_ui_command
+            .lock()
+            .unwrap()
+            .send(UICommand::QUIT)
+            .unwrap();
+    }
+
 }

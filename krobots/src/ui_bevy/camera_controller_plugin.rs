@@ -1,16 +1,11 @@
 use super::{PhysicsState, UiState};
 use bevy::prelude::*;
 use bevy::window::CursorGrabMode;
-use bevy::{input::mouse::MouseMotion, prelude::*};
+use bevy::input::mouse::MouseMotion;
 use std::fmt;
-/// Based on Valorant's default sensitivity, not entirely sure why it is exactly 1.0 / 180.0,
-/// but I'm guessing it is a misunderstanding between degrees/radians and then sticking with
-/// it because it felt nice.
-pub const RADIANS_PER_DOT: f32 = 1.0 / 180.0;
 
 #[derive(Component)]
 pub struct CameraController {
-    pub enabled: bool,
     pub sensitivity: f32,
     pub key_zoom_out: KeyCode,
     pub key_zoom_in: KeyCode,
@@ -31,7 +26,6 @@ pub struct CameraController {
 impl Default for CameraController {
     fn default() -> Self {
         Self {
-            enabled: true,
             sensitivity: 1.0,
             key_zoom_out: KeyCode::KeyQ,
             key_zoom_in: KeyCode::KeyE,
@@ -106,7 +100,7 @@ fn camera_controller(
 ) {
     let dt = time.delta_secs();
 
-    if let Ok((mut transform, mut options, mut projection_enum)) = query.single_mut() {
+    if let Ok((mut transform, mut options, projection_enum)) = query.single_mut() {
         // Handle key input
         let projection = match projection_enum.into_inner() {
             Projection::Orthographic(a) => a,

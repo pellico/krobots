@@ -50,10 +50,7 @@ pub struct CommandLocalReceiver {
 impl UICommandReceiver for CommandLocalReceiver {
     #[inline]
     fn receive(&self) -> Option<UICommand> {
-        match self.rx_data.try_recv() {
-            Ok(a) => Some(a),
-            Err(_) => None,
-        }
+        self.rx_data.try_recv().ok()
     }
 }
 

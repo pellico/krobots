@@ -1,22 +1,15 @@
-use bevy::ecs::schedule::common_conditions;
+use bevy::log;
 use bevy::math::bool;
 use futures::future::{BoxFuture, FutureExt};
 
 use crate::physics::tank_wasm::krobots::krobots::tank::PolarVector;
-use crate::physics::{PhysicsEngine, Real, Rotation2, Tank, Vector2};
-use core::num;
+use crate::physics::{PhysicsEngine, Real, Rotation2,Vector2};
 use indexmap::IndexMap;
 use krobots::krobots::tank;
-use krobots::krobots::tank::{Host, RadarResult, SimulationConfig, TankRadar, TankStatus};
-use std::path::PathBuf;
+use krobots::krobots::tank::{RadarResult, SimulationConfig, TankRadar, TankStatus};
 use std::{
-    cell::RefCell,
-    default,
-    ffi::OsStr,
-    future::{self, Future},
     path::Path,
     pin::Pin,
-    rc::Rc,
     sync::{Arc, Mutex},
 };
 use wasmtime::{
@@ -274,6 +267,7 @@ impl WasmTanks {
             state,
             index: tank_index,
             future_builder: |bind: &Pin<Box<Krobot>>| bind.call_run(store).boxed(),
+            has_exit:false
         }
         .build();
         self.tanks.insert(name.to_string(), new_tank);
@@ -299,7 +293,9 @@ impl WasmTanks {
     }
     pub fn next_step(&mut self, p_engine: &mut PhysicsEngine) -> anyhow::Result<()> {
         for tank in self.tanks.values_mut() {
-            tank.next_step(p_engine)?;
+            if !tank.with_has_exit(|e|*e ) {
+                tank.next_step(p_engine)?;
+            }
         }
         Ok(())
     }
@@ -317,6 +313,10 @@ pub struct WasmTank {
     bindings: Pin<Box<Krobot>>,
     index: usize,
     state: Arc<Mutex<MyState>>,
+    /// True if the run function has exited
+    /// In this case tank will no longer checked
+    has_exit:bool,
+
     #[borrows(bindings)]
     #[not_covariant]
     future: BoxFuture<'this, wasmtime::Result<()>>,
@@ -327,7 +327,7 @@ fn process_command(
     tank_index: usize,
     command: tank::Command,
 ) -> tank::CommandResult {
-    let mut tank = p_engine.tank_mut(tank_index);
+    let tank = p_engine.tank_mut(tank_index);
     match command {
         tank::Command::FireCannon => match tank.turret_mut().fire() {
             true => tank::CommandResult::Success,
@@ -352,7 +352,7 @@ fn process_command(
 }
 
 impl WasmTank {
-    pub fn next_step(&mut self, p_engine: &mut PhysicsEngine) -> anyhow::Result<bool> {
+    pub fn next_step(&mut self, p_engine: &mut PhysicsEngine) -> anyhow::Result<()> {
         let tank_index = *self.borrow_index();
         // Update state before executing the next step
         let mut state = self.borrow_state().lock().unwrap();
@@ -364,10 +364,20 @@ impl WasmTank {
         let mut cx = std::task::Context::from_waker(waker);
         let poll_result = self.with_future_mut(|future| future.poll_unpin(&mut cx));
         let result = match poll_result {
-            std::task::Poll::Pending => Ok(false),
+            std::task::Poll::Pending => Ok(()),
             std::task::Poll::Ready(val) => {
-                panic!();
-                val.map(|_| true)
+                match val {
+                    Ok(_) => {self.with_has_exit_mut(|e| *e=true);
+                        log::warn!("Tank index {} exited.",self.borrow_index());
+                        Ok(())
+                    },
+                    Err(err) => {
+                        log::error!("Tank index {} exited due to an error {}",self.borrow_index(),err);
+                        Ok(())
+                    }
+                }
+                
+                
             }
         };
 
@@ -386,7 +396,6 @@ impl WasmTank {
 
 #[cfg(test)]
 mod tests {
-    use crate::Opts;
 
     use super::*;
     #[test]
@@ -404,7 +413,7 @@ mod tests {
         let tank = all_tanks.get_tank_mut("simple-tank").unwrap();
         for _ in 0..10 {
             println!("next step");
-            assert!(!tank.next_step(&mut physics_engine).unwrap());
+            assert!(tank.next_step(&mut physics_engine).is_ok());
         }
     }
 }

@@ -67,7 +67,7 @@ pub fn enable_human_panic() {
     #[allow(unused_imports)]
     use human_panic::{handle_dump, print_msg, Metadata};
     #[allow(unused_imports)]
-    use std::panic::{self, PanicInfo};
+    use std::panic::{self, PanicHookInfo};
 
     #[cfg(not(debug_assertions))]
     match ::std::env::var("RUST_BACKTRACE") {
@@ -79,7 +79,7 @@ pub fn enable_human_panic() {
                 homepage: env!("CARGO_PKG_HOMEPAGE").into(),
             };
 
-            panic::set_hook(Box::new(move |info: &PanicInfo| {
+            panic::set_hook(Box::new(move |info: &PanicHookInfo| {
                 let file_path = handle_dump(&meta, info);
                 print_msg(file_path, &meta)
                     .expect("human-panic: printing error message to console failed");

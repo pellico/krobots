@@ -33,8 +33,6 @@ use rapier2d::prelude::*;
 pub use rapier2d::prelude::{Real, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
-use std::path::Path;
-use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
 use std::time;
 use tank_wasm::WasmTanks;
@@ -74,16 +72,13 @@ impl PhysicsHooks for MyPhysicsHooks {
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Default)]
 pub enum SimulationState {
     /// Waiting connection from all tanks
+    #[default]
     WaitingConnection,
     /// Simulation running
     Running,
-}
-impl Default for SimulationState {
-    fn default() -> Self {
-        SimulationState::WaitingConnection
-    }
 }
 
 pub struct PhysicsEngine {
@@ -118,14 +113,6 @@ pub struct PhysicsEngine {
     physics_hooks: MyPhysicsHooks,
     event_handler: (),
     gravity_vector: Vector2<Real>,
-}
-
-/// Create Point2
-/// Workaround of rust analyzer
-/// https://github.com/rust-analyzer/rust-analyzer/issues/8654
-
-fn new_point2(x: f32, y: f32) -> Point<f32> {
-    [x, y].into()
 }
 
 impl Default for PhysicsEngine {
@@ -198,7 +185,6 @@ impl PhysicsEngine {
     ) -> JoinHandle<()> {
         let simulation_rate = opts.sim_step_rate;
         let mut p_engine = Self::new(conf, opts);
-        let tank_folder = opts.tank_folder.clone();
         let now = time::Instant::now();
         // show some fps measurements every 5 seconds
         let mut fps_counter = ticktock::Timer::apply(|delta_t, prev_tick| (delta_t, *prev_tick), 0)
@@ -468,7 +454,7 @@ impl PhysicsEngine {
         //Compute bullet speed and sum cannon edge speed (world speed)
         let velocity = (cannon_position * vector![conf.bullet_speed, 0.0]) + velocity_cannon_edge;
         //bullet shall be created in front of cannon and outside of the tank
-        let bullet_position = cannon_position * new_point2(1.8, 0.0);
+        let bullet_position = cannon_position * Point::new(1.8, 0.0);
         let bullet_body = RigidBodyBuilder::dynamic()
             .translation(bullet_position.coords)
             .linvel(velocity)
@@ -600,17 +586,14 @@ mod tests {
     use crate::conf::Conf;
     use clap::Parser;
     use float_eq::assert_float_eq;
-    use nalgebra::vector;
+
     pub use rapier2d::na::Vector2;
     use std::f32::consts::PI;
 
     fn setup_engine(num: u32, distance: Option<f32>) -> PhysicsEngine {
         let mut conf = Conf::default();
-        match distance {
-            Some(dist) => {
-                conf.start_distance = dist;
-            }
-            None => (),
+        if let Some(dist) = distance {
+            conf.start_distance = dist;
         };
         let opts = crate::Opts::try_parse_from([""]).expect("Failed parse string");
         let mut engine = PhysicsEngine::new(conf, &opts);
@@ -817,7 +800,7 @@ mod tests {
         // Compute velocity vector and angle
         let bullet_position0 = bullet1.position().translation.vector;
         engine.step();
-        let bullet_position1 = (&engine.bullets[0]).position().translation.vector;
+        let bullet_position1 = engine.bullets[0].position().translation.vector;
         let velocity_vector = (bullet_position1 - bullet_position0) * 60.0;
         let velocity_abs = velocity_vector.norm();
         let angle = velocity_vector.angle(&nalgebra::vector![1.0, 0.0]);
@@ -829,7 +812,7 @@ mod tests {
         // Check that hit and damage other tank
         let mut last_position = bullet_position1;
         while !engine.bullets.is_empty() {
-            last_position = (&engine.bullets[0]).position().translation.vector;
+            last_position = engine.bullets[0].position().translation.vector;
             engine.step();
         }
         assert!(

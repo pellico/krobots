@@ -277,24 +277,12 @@ impl Tank {
     /// power_fraction: range [-1.0,1.0]
     /// tank_id: tank number
     pub fn set_engine_power(&mut self, power_fraction: f32) {
-        let energy = if power_fraction > 1.0 {
-            1.0
-        } else if power_fraction < -1.0 {
-            -1.0
-        } else {
-            power_fraction
-        };
+        let energy = power_fraction.clamp(-1.0, 1.0);
         self.engine_power = energy * self.max_engine_power;
     }
 
     pub fn set_turning_power(&mut self, power_fraction: f32) {
-        let power_fraction_wrapped = if power_fraction > 1.0 {
-            1.0
-        } else if power_fraction < -1.0 {
-            -1.0
-        } else {
-            power_fraction
-        };
+        let power_fraction_wrapped = power_fraction.clamp(-1.0, 1.0);
         self.turning_power = self.turning_power_max * power_fraction_wrapped;
     }
 

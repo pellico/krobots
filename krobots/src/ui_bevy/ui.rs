@@ -1,8 +1,7 @@
 use super::{ObjUID, PhysicsState, SimulatorTx};
 use crate::physics::{Tank, UICommand};
-use anyhow::Ok;
-use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_egui::{egui::{self, CornerRadius}, EguiContexts};
+use bevy::{prelude::*};
+use bevy_egui::{egui::{self}, EguiContexts};
 
 #[derive(Default, Resource)]
 pub(super) struct UiState {
@@ -23,7 +22,7 @@ pub(super) fn ui_update(
     mut is_initialized: Local<bool>,
     mut contexts: EguiContexts,
     physics_state: Res<PhysicsState>,
-    mut simulator_tx: Res<SimulatorTx>,
+    simulator_tx: Res<SimulatorTx>,
 ) {
     let mut load = false;
     let mut remove = false;

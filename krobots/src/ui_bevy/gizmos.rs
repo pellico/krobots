@@ -1,7 +1,6 @@
 use super::*;
 use crate::physics::{Point2, Real};
 use bevy::color::palettes::css::{GREEN,YELLOW};
-use bevy::prelude::*;
 
 fn draw_polyline(gizmos: &mut Gizmos, polyline: &[Point2<Real>], scaling_factor: f32) {
     let polyline_size = polyline.len();
