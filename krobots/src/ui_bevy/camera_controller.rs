@@ -1,7 +1,7 @@
 use super::{PhysicsState, UiState};
+use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 use bevy::window::CursorGrabMode;
-use bevy::input::mouse::MouseMotion;
 use std::fmt;
 
 #[derive(Component)]
@@ -16,7 +16,6 @@ pub struct CameraController {
     pub key_run: KeyCode,
     pub key_toggle_tank_track: KeyCode,
     pub mouse_key_enable_mouse: MouseButton,
-    pub keyboard_key_enable_mouse: KeyCode,
     pub walk_speed: f32,
     pub run_speed: f32,
     pub friction: f32,
@@ -36,7 +35,6 @@ impl Default for CameraController {
             key_run: KeyCode::ShiftLeft,
             key_toggle_tank_track: KeyCode::KeyT,
             mouse_key_enable_mouse: MouseButton::Left,
-            keyboard_key_enable_mouse: KeyCode::KeyM,
             walk_speed: 50.0,
             run_speed: 100.0,
             friction: 0.5,
@@ -52,16 +50,15 @@ impl fmt::Display for CameraController {
             "
 Freecam Controls:
     MOUSE\t- Move camera orientation
-    {:?}/{:?}\t- Enable mouse movement
-    {:?}{:?}\t- forward/backward
-    {:?}{:?}\t- strafe left/right
+    {:?}\t- Enable mouse movement
+    {:?}/{:?}\t- forward/backward
+    {:?}/{:?}\t- strafe left/right
     {:?}\t- 'run'
     {:?}\t- up
     {:?}\t- down
     {:?}\t- toogle tank track
     ",
             self.mouse_key_enable_mouse,
-            self.keyboard_key_enable_mouse,
             self.key_zoom_out,
             self.key_zoom_in,
             self.key_left,
@@ -74,21 +71,11 @@ Freecam Controls:
     }
 }
 
-
 pub fn camera_controller(
     time: Res<Time>,
-    mut windows: Query<&mut Window>,
-    mut mouse_events: EventReader<MouseMotion>,
-    (mouse_button_input, key_input): (Res<ButtonInput<MouseButton>>, Res<ButtonInput<KeyCode>>),
-    (mut move_toggled, mut track_tank_enabled): (Local<bool>, Local<bool>),
-    mut query: Query<
-        (
-            &mut Transform,
-            &mut CameraController,
-            &mut Projection,
-        ),
-        With<Camera>,
-    >,
+    key_input: Res<ButtonInput<KeyCode>>,
+    mut track_tank_enabled: Local<bool>,
+    mut query: Query<(&mut Transform, &mut CameraController, &mut Projection), With<Camera>>,
     (ui_state, physics_state): (Res<UiState>, Res<PhysicsState>),
 ) {
     let dt = time.delta_secs();
@@ -97,8 +84,7 @@ pub fn camera_controller(
         // Handle key input
         let projection = match projection_enum.into_inner() {
             Projection::Orthographic(a) => a,
-            _ => return
-
+            _ => return,
         };
         let mut axis_input = Vec3::ZERO;
         if key_input.pressed(options.key_zoom_out) {
@@ -125,9 +111,7 @@ pub fn camera_controller(
         if key_input.pressed(options.key_down) {
             axis_input.y -= 1.0;
         }
-        if key_input.just_pressed(options.keyboard_key_enable_mouse) {
-            *move_toggled = !*move_toggled;
-        }
+  
         if key_input.just_pressed(options.key_toggle_tank_track) {
             *track_tank_enabled = !*track_tank_enabled;
         }
@@ -150,15 +134,43 @@ pub fn camera_controller(
             }
         }
 
-        let right:Vec3 = transform.right().into();
+        let right: Vec3 = transform.right().into();
         transform.translation +=
             options.velocity.x * dt * right + options.velocity.y * dt * Vec3::Y;
 
+        if *track_tank_enabled {
+            match ui_state.selected_tank_id {
+                // disable tracking if no tank is selected
+                None => *track_tank_enabled = false,
+                Some(ref tank_uid) => match physics_state.tanks.get(tank_uid) {
+                    // disable tracking if I cannot find the tank
+                    None => *track_tank_enabled = false,
+                    Some(tank) => {
+                        transform.translation.x = tank.position().translation.x;
+                        transform.translation.y = tank.position().translation.y;
+                    }
+                },
+            }
+        }
+    }
+}
+
+pub fn camera_controller_mouse(
+    mut windows: Query<&mut Window>,
+    mut mouse_events: EventReader<MouseMotion>,
+    mouse_button_input: Res<ButtonInput<MouseButton>>,
+    mut query: Query<(&mut Transform, &mut CameraController), With<Camera>>,
+) {
+    if let Ok((mut transform, options)) = query.single_mut() {
+        // Handle key input
+
         // Handle mouse input
         let mut mouse_delta = Vec2::ZERO;
-        if mouse_button_input.pressed(options.mouse_key_enable_mouse) || *move_toggled {
+        if mouse_button_input.pressed(options.mouse_key_enable_mouse) {
             for mut window in &mut windows {
                 if !window.focused {
+                    window.cursor_options.grab_mode = CursorGrabMode::None;
+                    window.cursor_options.visible = true;
                     continue;
                 }
 
@@ -178,25 +190,10 @@ pub fn camera_controller(
         }
 
         if mouse_delta != Vec2::ZERO {
-            let right:Vec3 = transform.right().into();
+            let right: Vec3 = transform.right().into();
 
             transform.translation += -options.sensitivity * mouse_delta.x * right
                 + options.sensitivity * mouse_delta.y * Vec3::Y;
-        }
-
-        if *track_tank_enabled {
-            match ui_state.selected_tank_id {
-                // disable tracking if no tank is selected
-                None => *track_tank_enabled = false,
-                Some(ref tank_uid) => match physics_state.tanks.get(tank_uid) {
-                    // disable tracking if I cannot find the tank
-                    None => *track_tank_enabled = false,
-                    Some(tank) => {
-                        transform.translation.x = tank.position().translation.x;
-                        transform.translation.y = tank.position().translation.y;
-                    }
-                },
-            }
         }
     }
 }

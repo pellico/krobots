@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
 use std::sync::Mutex;
 mod camera_controller;
-use camera_controller::{CameraController,camera_controller};
+use camera_controller::{CameraController,camera_controller,camera_controller_mouse};
 mod gizmos;
 use gizmos::gizmos;
 mod ui;
@@ -59,7 +59,8 @@ pub fn start_gui(
             tank_scaling_factor: physical_scaling_factor,
         })
         .add_systems(Startup, setup)
-        .add_systems(Update,camera_controller.run_if(not( egui_wants_any_pointer_input)))
+        .add_systems(Update,camera_controller_mouse.run_if(not( egui_wants_any_pointer_input)))
+         .add_systems(Update, camera_controller)
         .add_systems(Update, get_physical_state)
         .add_systems(Update, gizmos.after(get_physical_state))
         .add_systems(Update, bullet_spawn_update.after(get_physical_state))
