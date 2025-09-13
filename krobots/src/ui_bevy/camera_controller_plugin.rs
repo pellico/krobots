@@ -1,4 +1,5 @@
 use super::{PhysicsState, UiState};
+use bevy::prelude::*;
 use bevy::window::CursorGrabMode;
 use bevy::{input::mouse::MouseMotion, prelude::*};
 use std::fmt;
@@ -97,7 +98,7 @@ fn camera_controller(
         (
             &mut Transform,
             &mut CameraController,
-            &mut OrthographicProjection,
+            &mut Projection,
         ),
         With<Camera>,
     >,
@@ -105,8 +106,13 @@ fn camera_controller(
 ) {
     let dt = time.delta_secs();
 
-    if let Ok((mut transform, mut options, mut projection)) = query.get_single_mut() {
+    if let Ok((mut transform, mut options, mut projection_enum)) = query.single_mut() {
         // Handle key input
+        let projection = match projection_enum.into_inner() {
+            Projection::Orthographic(a) => a,
+            _ => return
+
+        };
         let mut axis_input = Vec3::ZERO;
         if key_input.pressed(options.key_zoom_out) {
             projection.scale *= 1.01f32.powf(1.0);

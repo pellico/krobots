@@ -1,5 +1,6 @@
 use super::{ObjUID, PhysicsState, SimulatorTx};
 use crate::physics::{Tank, UICommand};
+use anyhow::Ok;
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui::{self, CornerRadius}, EguiContexts};
 
@@ -11,13 +12,6 @@ pub(super) struct UiState {
     egui_texture_handle: Option<egui::TextureHandle>,
     is_window_open: bool,
     pub selected_tank_id: Option<ObjUID>,
-}
-
-pub(super) fn configure_visuals_system(mut contexts: EguiContexts) {
-    contexts.ctx_mut().set_visuals(egui::Visuals {
-        window_corner_radius:CornerRadius::ZERO,
-        ..Default::default()
-    });
 }
 
 pub(super) fn configure_ui_state_system(mut ui_state: ResMut<UiState>) {
@@ -39,7 +33,7 @@ pub(super) fn ui_update(
         *is_initialized = true;
     }
 
-    let ctx = contexts.ctx_mut();
+    let ctx = contexts.ctx_mut().unwrap();
 
     // Sort tanks
     let mut sorted_tanks: Vec<&Tank> = physics_state.tanks.values().collect();

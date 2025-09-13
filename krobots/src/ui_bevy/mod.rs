@@ -5,7 +5,7 @@ use bevy::app::AppExit;
 use bevy::color::palettes::css::GOLD;
 use bevy::sprite::Anchor;
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_egui::EguiPlugin;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
 use std::sync::Mutex;
@@ -33,13 +33,10 @@ pub fn start_gui(
     physical_scaling_factor: f32,
 ) {
     App::new()
-        .add_plugins(
-            DefaultPlugins
-                .build()
-                .add_before::<bevy::asset::AssetPlugin>(EmbeddedAssetPlugin::default()),
-        )
-        .add_plugins((CameraControllerPlugin, EguiPlugin))
-        .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
+        .add_plugins(DefaultPlugins)
+        .add_plugins( EguiPlugin::default())
+        .add_plugins(CameraControllerPlugin)
+        .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .init_resource::<UiState>()
         .insert_resource(Time::<Fixed>::from_seconds(TIME_STEP))
         .insert_resource(SimulatorRx {
@@ -66,9 +63,9 @@ pub fn start_gui(
         .add_systems(Update, gizmos.after(get_physical_state))
         .add_systems(Update, bullet_spawn_update.after(get_physical_state))
         .add_systems(Update, tank_spawn_update.after(get_physical_state))
-        .add_systems(Startup, configure_visuals_system)
+        //.add_systems(EguiPrimaryContextPass, configure_visuals_system)
         .add_systems(Startup, configure_ui_state_system)
-        .add_systems(Update, ui_update)
+        .add_systems(EguiPrimaryContextPass, ui_update)
         .add_systems(Update, tank_label)
         .add_systems(Update, exit_system)
         .add_systems(Update, check_exit_button)
@@ -216,7 +213,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // 2D orthographic camera
     let camera_controller = CameraController::default();
     info!("{}", camera_controller);
-    commands.spawn((Camera2d::default(), camera_controller));
+    commands.spawn((Camera2d, camera_controller));
 
     let horizontal_margin = BOUNDS.x / 4.0;
     let vertical_margin = BOUNDS.y / 4.0;
@@ -290,17 +287,17 @@ fn tank_spawn_update(
         tank_id_in_ui.insert(id_tank.phy_id);
 
         match physics_state.tanks.get(&id_tank.phy_id) {
-            None => commands.entity(entity).despawn_recursive(),
+            None => commands.entity(entity).despawn(),
             Some(phy_tank) => {
                 tank_transform.translation.x = phy_tank.position().translation.x;
                 tank_transform.translation.y = phy_tank.position().translation.y;
                 tank_transform.rotation =
                     Quat::from_rotation_z(phy_tank.position().rotation.angle());
                 for child in children.iter() {
-                    if let Ok(mut trans_radar) = radar.get_mut(*child) {
+                    if let Ok(mut trans_radar) = radar.get_mut(child) {
                         trans_radar.rotation = Quat::from_rotation_z(phy_tank.radar_position());
                     }
-                    if let Ok(mut trans_turret) = turrets.get_mut(*child) {
+                    if let Ok(mut trans_turret) = turrets.get_mut(child) {
                         trans_turret.rotation = Quat::from_rotation_z(
                             phy_tank.turret().angle() - phy_tank.position().rotation.angle(),
                         )
