@@ -13,4 +13,7 @@
     "lldb.launch.env": {
         "_NO_DEBUG_HEAP": "1"
     },
+    "rust-analyzer.cargo.extraEnv": {
+         "RUSTFLAGS": "-Clinker=rust-lld.exe"
+    }
 }

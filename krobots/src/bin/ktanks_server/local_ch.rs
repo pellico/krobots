@@ -1,3 +1,4 @@
+use bevy::app::TerminalCtrlCHandlerPlugin;
 use ktanks_server::physics::*;
 use log::{debug, error};
 use std::sync::mpsc;
@@ -73,6 +74,7 @@ pub fn create_command_channels() -> (CommandLocalSender, CommandLocalReceiver) {
             .expect("Failed to send quit command");
         //If not exiting in regular way just quit application
         thread::sleep(time::Duration::from_secs(4));
+        TerminalCtrlCHandlerPlugin::gracefully_exit();
         error!("Failed to exit in regular way by generating game report. Forcing application exit");
         std::process::exit(-1);
     })

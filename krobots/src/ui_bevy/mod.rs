@@ -3,6 +3,7 @@ use crate::physics::{
 };
 use bevy::app::AppExit;
 use bevy::color::palettes::css::GOLD;
+use bevy::sprite::Anchor;
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::EguiPlugin;
 use std::collections::{HashMap, HashSet};
@@ -35,11 +36,10 @@ pub fn start_gui(
         .add_plugins(
             DefaultPlugins
                 .build()
-                .add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin::default()),
+                .add_before::<bevy::asset::AssetPlugin>(EmbeddedAssetPlugin::default()),
         )
         .add_plugins((CameraControllerPlugin, EguiPlugin))
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
-        .insert_resource(Msaa::Sample4)
         .init_resource::<UiState>()
         .insert_resource(Time::<Fixed>::from_seconds(TIME_STEP))
         .insert_resource(SimulatorRx {
@@ -98,22 +98,29 @@ struct PhysicalObjUID {
 
 #[derive(Bundle)]
 struct BulletBundle {
-    sprite_bundle: SpriteBundle,
+    sprite_bundle: Sprite,
+    transform: Transform,
     phy_id: PhysicalObjUID,
     marker: Bullet,
 }
 
 #[derive(Bundle)]
 struct TankBodyBundle {
-    sprite_bundle: SpriteBundle,
+    sprite_bundle: Sprite,
+    transform: Transform,
     phy_id: PhysicalObjUID,
     marker: TankBody,
 }
 
 #[derive(Bundle)]
 struct TankTextBundle {
-    text_bundle: Text2dBundle,
+    text_bundle: Text2d,
     phy_id: PhysicalObjUID,
+    transform: Transform,
+    text_anchor: Anchor,
+    text_color: TextColor,
+    text_font: TextFont,
+    text_layout:TextLayout
 }
 
 #[derive(Resource)]
@@ -209,7 +216,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // 2D orthographic camera
     let camera_controller = CameraController::default();
     info!("{}", camera_controller);
-    commands.spawn((Camera2dBundle::default(), camera_controller));
+    commands.spawn((Camera2d::default(), camera_controller));
 
     let horizontal_margin = BOUNDS.x / 4.0;
     let vertical_margin = BOUNDS.y / 4.0;
@@ -243,17 +250,18 @@ fn bullet_spawn_update(
         // For physical bulletes that are not in the UI spawn related entity
         if !bullets_id_in_ui.contains(phy_obj_id) {
             commands.spawn(BulletBundle {
-                sprite_bundle: SpriteBundle {
-                    texture: sprites.bullet_sprite.clone(),
-                    transform: Transform {
-                        translation: Vec3 {
-                            x: phy_bullet.position().translation.x,
-                            y: phy_bullet.position().translation.y,
-                            z: BULLET_Z,
-                        },
-                        rotation: Quat::from_rotation_z(phy_bullet.position().rotation.angle()),
-                        ..Default::default()
+                sprite_bundle: Sprite {
+                    image: sprites.bullet_sprite.clone(),
+
+                    ..Default::default()
+                },
+                transform: Transform {
+                    translation: Vec3 {
+                        x: phy_bullet.position().translation.x,
+                        y: phy_bullet.position().translation.y,
+                        z: BULLET_Z,
                     },
+                    rotation: Quat::from_rotation_z(phy_bullet.position().rotation.angle()),
                     ..Default::default()
                 },
                 phy_id: PhysicalObjUID {
@@ -289,7 +297,7 @@ fn tank_spawn_update(
                 tank_transform.rotation =
                     Quat::from_rotation_z(phy_tank.position().rotation.angle());
                 for child in children.iter() {
-                    if let Ok(mut trans_radar)= radar.get_mut(*child) {
+                    if let Ok(mut trans_radar) = radar.get_mut(*child) {
                         trans_radar.rotation = Quat::from_rotation_z(phy_tank.radar_position());
                     }
                     if let Ok(mut trans_turret) = turrets.get_mut(*child) {
@@ -307,17 +315,18 @@ fn tank_spawn_update(
         if !tank_id_in_ui.contains(&phy_id) {
             let tank_body = commands
                 .spawn(TankBodyBundle {
-                    sprite_bundle: SpriteBundle {
-                        texture: sprites.tank_body_sprite.clone(),
-                        transform: Transform::IDENTITY
-                            .with_translation(Vec3 {
-                                x: 0.0,
-                                y: 0.0,
-                                z: TANK_BODY_Z,
-                            })
-                            .with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
+                    sprite_bundle: Sprite {
+                        image: sprites.tank_body_sprite.clone(),
+
                         ..default()
                     },
+                    transform: Transform::IDENTITY
+                        .with_translation(Vec3 {
+                            x: 0.0,
+                            y: 0.0,
+                            z: TANK_BODY_Z,
+                        })
+                        .with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
                     phy_id: PhysicalObjUID { phy_id },
                     marker: TankBody {},
                 })
@@ -325,45 +334,47 @@ fn tank_spawn_update(
 
             let turret = commands
                 .spawn((
-                    SpriteBundle {
-                        texture: sprites.tank_turret_sprite.clone(),
-                        transform: Transform::IDENTITY
-                            .with_translation(Vec3 {
-                                x: 0.0,
-                                y: 0.0,
-                                z: TANK_TURRET_Z,
-                            })
-                            .with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
+                    Sprite {
+                        image: sprites.tank_turret_sprite.clone(),
+
                         ..default()
                     },
                     TankTurret {},
+                    Transform::IDENTITY
+                        .with_translation(Vec3 {
+                            x: 0.0,
+                            y: 0.0,
+                            z: TANK_TURRET_Z,
+                        })
+                        .with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
                 ))
                 .id();
             let radar = commands
                 .spawn((
-                    SpriteBundle {
-                        texture: sprites.tank_radar_sprite.clone(),
-                        transform: Transform::IDENTITY
-                            .with_translation(Vec3 {
-                                x: 0.0,
-                                y: 0.0,
-                                z: TANK_RADAR_Z,
-                            })
-                            .with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
+                    Sprite {
+                        image: sprites.tank_radar_sprite.clone(),
+
                         ..default()
                     },
                     TankRadar {},
+                    Transform::IDENTITY
+                        .with_translation(Vec3 {
+                            x: 0.0,
+                            y: 0.0,
+                            z: TANK_RADAR_Z,
+                        })
+                        .with_scale(Vec3::splat(tank_ui_space_state.tank_scaling_factor)),
                 ))
                 .id();
             // add the child to the parent
-            commands.entity(tank_body).push_children(&[turret, radar]);
+            commands.entity(tank_body).add_children(&[turret, radar]);
         }
     }
 }
 
 fn tank_label(
     mut commands: Commands,
-    mut text_query: Query<(&mut Transform, &PhysicalObjUID, Entity), With<Text>>,
+    mut text_query: Query<(&mut Transform, &PhysicalObjUID, Entity), With<Text2d>>,
     physics_state: Res<PhysicsState>,
     tank_ui_space_state: Res<TankUISpaceState>,
 ) {
@@ -385,25 +396,19 @@ fn tank_label(
         let tank_text_offset = TANK_TEXT_OFFSET * tank_ui_space_state.tank_scaling_factor;
         if !text_in_ui.contains(&phy_id) {
             commands.spawn(TankTextBundle {
-                text_bundle: Text2dBundle {
-                    transform: Transform::IDENTITY.with_translation(Vec3 {
-                        x: tank.position().translation.x,
-                        y: tank.position().translation.y,
-                        z: TANK_TEXT_Z,
-                    }),
-                    text_anchor: bevy::sprite::Anchor::Custom(tank_text_offset),
-                    text: Text::from_section(
-                        tank.name.clone(),
-                        TextStyle {
-                            font_size: 10.0,
-                            color: Color::Srgba(GOLD),
-                            // If no font is specified, it will use the default font.
-                            ..default()
-                        },
-                    ),
-
-                    ..default()
+                text_bundle: Text2d(tank.name.clone()),
+                text_font: TextFont {
+                    font_size: 10.0,
+                    ..Default::default()
                 },
+                text_color: TextColor(Color::Srgba(GOLD)),
+                text_anchor: bevy::sprite::Anchor::Custom(tank_text_offset),
+                text_layout:TextLayout::new_with_justify(JustifyText::Center),
+                transform: Transform::IDENTITY.with_translation(Vec3 {
+                    x: tank.position().translation.x,
+                    y: tank.position().translation.y,
+                    z: TANK_TEXT_Z,
+                }),
                 phy_id: PhysicalObjUID { phy_id },
             });
         }

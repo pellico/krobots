@@ -103,7 +103,7 @@ fn camera_controller(
     >,
     (ui_state, physics_state): (Res<UiState>, Res<PhysicsState>),
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
 
     if let Ok((mut transform, mut options, mut projection)) = query.get_single_mut() {
         // Handle key input
@@ -169,8 +169,8 @@ fn camera_controller(
                     continue;
                 }
 
-                window.cursor.grab_mode = CursorGrabMode::Locked;
-                window.cursor.visible = false;
+                window.cursor_options.grab_mode = CursorGrabMode::Locked;
+                window.cursor_options.visible = false;
             }
 
             for mouse_event in mouse_events.read() {
@@ -179,8 +179,8 @@ fn camera_controller(
         }
         if mouse_button_input.just_released(options.mouse_key_enable_mouse) {
             for mut window in &mut windows {
-                window.cursor.grab_mode = CursorGrabMode::None;
-                window.cursor.visible = true;
+                window.cursor_options.grab_mode = CursorGrabMode::None;
+                window.cursor_options.visible = true;
             }
         }
 

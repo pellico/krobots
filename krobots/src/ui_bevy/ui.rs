@@ -1,7 +1,7 @@
 use super::{ObjUID, PhysicsState, SimulatorTx};
 use crate::physics::{Tank, UICommand};
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_egui::{egui, EguiContexts, EguiSettings};
+use bevy_egui::{egui::{self, CornerRadius}, EguiContexts};
 
 #[derive(Default, Resource)]
 pub(super) struct UiState {
@@ -15,7 +15,7 @@ pub(super) struct UiState {
 
 pub(super) fn configure_visuals_system(mut contexts: EguiContexts) {
     contexts.ctx_mut().set_visuals(egui::Visuals {
-        window_rounding: 0.0.into(),
+        window_corner_radius:CornerRadius::ZERO,
         ..Default::default()
     });
 }
