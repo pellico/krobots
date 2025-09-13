@@ -74,15 +74,8 @@ Freecam Controls:
     }
 }
 
-pub struct CameraControllerPlugin;
 
-impl Plugin for CameraControllerPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, camera_controller);
-    }
-}
-
-fn camera_controller(
+pub fn camera_controller(
     time: Res<Time>,
     mut windows: Query<&mut Window>,
     mut mouse_events: EventReader<MouseMotion>,

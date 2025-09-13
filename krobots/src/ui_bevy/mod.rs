@@ -6,20 +6,18 @@ use bevy::color::palettes::css::GOLD;
 use bevy::sprite::Anchor;
 use bevy::window::WindowCloseRequested;
 use bevy::{prelude::*};
-use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
-use bincode::de;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass,input:: egui_wants_any_pointer_input};
 use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
 use std::sync::Mutex;
-mod camera_controller_plugin;
-use camera_controller_plugin::{CameraController, CameraControllerPlugin};
+mod camera_controller;
+use camera_controller::{CameraController,camera_controller};
 mod gizmos;
 use gizmos::gizmos;
 mod ui;
 use ui::*;
 
 const TIME_STEP: f64 = 1.0 / 60.0;
-const BOUNDS: Vec2 = Vec2::new(1200.0, 640.0);
 const TANK_BODY_Z: f32 = 1.0;
 const TANK_TURRET_Z: f32 = 2.0;
 const TANK_RADAR_Z: f32 = 3.0;
@@ -39,7 +37,6 @@ pub fn start_gui(
             ..default()
         }))
         .add_plugins( EguiPlugin::default())
-        .add_plugins(CameraControllerPlugin)
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .init_resource::<UiState>()
         .insert_resource(Time::<Fixed>::from_seconds(TIME_STEP))
@@ -62,6 +59,7 @@ pub fn start_gui(
             tank_scaling_factor: physical_scaling_factor,
         })
         .add_systems(Startup, setup)
+        .add_systems(Update,camera_controller.run_if(not( egui_wants_any_pointer_input)))
         .add_systems(Update, get_physical_state)
         .add_systems(Update, gizmos.after(get_physical_state))
         .add_systems(Update, bullet_spawn_update.after(get_physical_state))
@@ -153,7 +151,6 @@ struct TankAssets {
     tank_turret_sprite: Handle<Image>,
     tank_radar_sprite: Handle<Image>,
     bullet_sprite: Handle<Image>,
-    tank_font: Handle<Font>,
 }
 
 fn exit_system(mut exit: EventWriter<AppExit>) {
@@ -200,13 +197,13 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let tank_turret_sprite = asset_server.load("turret.png");
     let tank_radar_sprite = asset_server.load("radar.png");
     let bullet_sprite = asset_server.load("bullet.png");
-    let tank_font = asset_server.load("arial.ttf");
+
     commands.insert_resource(TankAssets {
         tank_body_sprite,
         tank_turret_sprite,
         tank_radar_sprite,
         bullet_sprite,
-        tank_font,
+        
     });
 
     // 2D orthographic camera
@@ -214,9 +211,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     info!("{}", camera_controller);
     commands.spawn((Camera2d, camera_controller));
 
-    let horizontal_margin = BOUNDS.x / 4.0;
-    let vertical_margin = BOUNDS.y / 4.0;
-    // spawn the parent and get its Entity id
+
 }
 
 fn bullet_spawn_update(
@@ -269,6 +264,7 @@ fn bullet_spawn_update(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn tank_spawn_update(
     mut commands: Commands,
     mut query: Query<
