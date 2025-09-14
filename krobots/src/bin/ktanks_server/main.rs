@@ -16,12 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 mod local_ch;
+use std::{thread, time};
+
+use bevy::app::TerminalCtrlCHandlerPlugin;
 use clap::Parser;
-use ktanks_server::{conf,get_tanks_file_from_folder};
-use ktanks_server::physics::PhysicsEngine;
+use ktanks_server::physics::{PhysicsEngine, UICommand, UICommandSender};
 use ktanks_server::remote_ch;
-use ktanks_server::{enable_human_panic, Opts};
-use log::error;
+use ktanks_server::{Opts, enable_human_panic};
+use ktanks_server::{conf, get_tanks_file_from_folder};
+use log::{debug, error};
 
 fn main() {
     enable_human_panic();
@@ -47,7 +50,7 @@ fn main() {
     // add to conf wasm files in tank folder and sort them.
     if let Some(ref tank_folder) = opts.tank_folder {
         let tanks_in_folder = get_tanks_file_from_folder(tank_folder);
-        conf.tanks_list.extend( tanks_in_folder);
+        conf.tanks_list.extend(tanks_in_folder);
         conf.tanks_list.sort();
     }
     if opts.no_gui {
@@ -64,6 +67,23 @@ fn main() {
     } else {
         let (tx_state, rx_state) = local_ch::create_state_channels();
         let (tx_ui_command, rx_ui_command) = local_ch::create_command_channels();
+        // In case of ctrl-c send a command to server thread to stop simulation and then
+        // close application
+        let tx_data_ctrlc = tx_ui_command.clone();
+        ctrlc::set_handler(move || {
+            debug!("Received Ctrl-C quit application");
+            tx_data_ctrlc
+                .send(UICommand::QUIT)
+                .expect("Failed to send quit command");
+            //If not exiting in regular way just quit application
+            TerminalCtrlCHandlerPlugin::gracefully_exit();
+            thread::sleep(time::Duration::from_secs(1));
+            error!(
+                "Failed to exit in regular way by generating game report. Forcing application exit"
+            );
+            std::process::exit(-1);
+        })
+        .expect("Error setting Ctrl-C handler");
         let handle = PhysicsEngine::new_simulation_thread(
             conf,
             &opts,

@@ -1,8 +1,5 @@
-use bevy::app::TerminalCtrlCHandlerPlugin;
 use ktanks_server::physics::*;
-use log::{debug, error};
 use std::sync::mpsc;
-use std::{thread, time};
 pub struct UILocalSender {
     tx_data: mpsc::Sender<UIGameState>,
 }
@@ -29,7 +26,7 @@ impl GameStateReceiver for UILocalReceiver {
         self.rx_data.try_iter().last()
     }
 }
-
+#[derive(Clone)]
 pub struct CommandLocalSender {
     tx_data: mpsc::Sender<UICommand>,
 }
@@ -63,20 +60,6 @@ pub fn create_state_channels() -> (UILocalSender, UILocalReceiver) {
 
 pub fn create_command_channels() -> (CommandLocalSender, CommandLocalReceiver) {
     let (tx_data, rx_data) = mpsc::channel::<UICommand>();
-    let tx_data_ctrlc = tx_data.clone();
-    ctrlc::set_handler(move || {
-        debug!("Received Ctrl-C quit application");
-        tx_data_ctrlc
-            .send(UICommand::QUIT)
-            .expect("Failed to send quit command");
-        //If not exiting in regular way just quit application
-        thread::sleep(time::Duration::from_secs(4));
-        TerminalCtrlCHandlerPlugin::gracefully_exit();
-        error!("Failed to exit in regular way by generating game report. Forcing application exit");
-        std::process::exit(-1);
-    })
-    .expect("Error setting Ctrl-C handler");
-
     let sender = CommandLocalSender { tx_data };
     let receiver = CommandLocalReceiver { rx_data };
     (sender, receiver)

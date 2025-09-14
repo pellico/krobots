@@ -1,14 +1,17 @@
 use super::{ObjUID, PhysicsState, SimulatorTx};
-use crate::physics::{Tank, UICommand};
-use bevy::{prelude::*};
-use bevy_egui::{egui::{self}, EguiContexts};
+use crate::{
+    physics::{Tank, UICommand},
+    ui_bevy::camera_controller::CameraController,
+};
+use bevy::prelude::*;
+use bevy_egui::{
+    EguiContexts,
+    egui::{self},
+};
 
 #[derive(Default, Resource)]
 pub(super) struct UiState {
-    label: String,
     value: f32,
-    inverted: bool,
-    egui_texture_handle: Option<egui::TextureHandle>,
     is_window_open: bool,
     pub selected_tank_id: Option<ObjUID>,
 }
@@ -23,6 +26,7 @@ pub(super) fn ui_update(
     mut contexts: EguiContexts,
     physics_state: Res<PhysicsState>,
     simulator_tx: Res<SimulatorTx>,
+    mut query: Query<&mut CameraController, With<Camera>>,
 ) {
     let mut load = false;
     let mut remove = false;
@@ -109,16 +113,6 @@ pub(super) fn ui_update(
                     ui.add(
                         egui::ProgressBar::new(power_fraction)
                             .show_percentage()
-                            .text("Set engine power")
-                            .desired_width(150.0)
-                            .fill(egui::Color32::DARK_BLUE),
-                    );
-                    ui.label(format!("{:.1}", power));
-                });
-                ui.horizontal(|ui| {
-                    ui.add(
-                        egui::ProgressBar::new(power_fraction)
-                            .show_percentage()
                             .text("Engine Power")
                             .desired_width(150.0)
                             .fill(egui::Color32::DARK_BLUE),
@@ -175,7 +169,10 @@ pub(super) fn ui_update(
                     ui.end_row();
                 });
             }
-
+            ui.separator();
+            if let Ok(mut camera_controller) = query.single_mut() {
+                ui.checkbox(&mut camera_controller.track_tank_enabled, "Tank tracking");
+            }
             ui.add(egui::Slider::new(&mut ui_state.value, 0.0..=10.0).text("value"));
             if ui.button("Increment").clicked() {
                 ui_state.value += 1.0;
@@ -189,7 +186,6 @@ pub(super) fn ui_update(
             });
 
             ui.allocate_space(egui::Vec2::new(1.0, 10.0));
-            ui.checkbox(&mut ui_state.is_window_open, "Window Is Open");
 
             ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
                 ui.add(egui::Hyperlink::from_label_and_url(

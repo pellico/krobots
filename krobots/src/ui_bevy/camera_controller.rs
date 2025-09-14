@@ -20,6 +20,7 @@ pub struct CameraController {
     pub run_speed: f32,
     pub friction: f32,
     pub velocity: Vec3,
+    pub track_tank_enabled:bool,
 }
 
 impl Default for CameraController {
@@ -39,6 +40,7 @@ impl Default for CameraController {
             run_speed: 100.0,
             friction: 0.5,
             velocity: Vec3::ZERO,
+            track_tank_enabled:false,
         }
     }
 }
@@ -74,7 +76,6 @@ Freecam Controls:
 pub fn camera_controller(
     time: Res<Time>,
     key_input: Res<ButtonInput<KeyCode>>,
-    mut track_tank_enabled: Local<bool>,
     mut query: Query<(&mut Transform, &mut CameraController, &mut Projection), With<Camera>>,
     (ui_state, physics_state): (Res<UiState>, Res<PhysicsState>),
 ) {
@@ -113,7 +114,7 @@ pub fn camera_controller(
         }
   
         if key_input.just_pressed(options.key_toggle_tank_track) {
-            *track_tank_enabled = !*track_tank_enabled;
+            options.track_tank_enabled = !options.track_tank_enabled;
         }
 
         // Apply movement update
@@ -138,13 +139,13 @@ pub fn camera_controller(
         transform.translation +=
             options.velocity.x * dt * right + options.velocity.y * dt * Vec3::Y;
 
-        if *track_tank_enabled {
+        if options.track_tank_enabled {
             match ui_state.selected_tank_id {
                 // disable tracking if no tank is selected
-                None => *track_tank_enabled = false,
+                None => options.track_tank_enabled = false,
                 Some(ref tank_uid) => match physics_state.tanks.get(tank_uid) {
                     // disable tracking if I cannot find the tank
-                    None => *track_tank_enabled = false,
+                    None => options.track_tank_enabled = false,
                     Some(tank) => {
                         transform.translation.x = tank.position().translation.x;
                         transform.translation.y = tank.position().translation.y;
