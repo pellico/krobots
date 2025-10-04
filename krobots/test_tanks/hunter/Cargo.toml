@@ -1,0 +1,12 @@
+[package]
+name = "hunter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+#futures = { version = "0.3.31", default-features = false ,features = ["executor","async-await"]}
+wit-bindgen = { version = "0.43.0"}
+
+[lib]
+crate-type = ["cdylib"]
+

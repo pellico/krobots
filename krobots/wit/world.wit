@@ -85,7 +85,9 @@ interface tank {
     /// Set engine power
     /// – Power fraction applied to move forward or backward. [-1.0,1.0] Negative number move backward
     /// - Power fraction applied to turn the tank. [-1.0,1.0] Negative number move counter-clockwise
-    set-engine-power(tuple<f32,f32>)
+    set-engine-power(tuple<f32,f32>),
+    /// Get Status
+    get-status,
 }
 
 enum command-result {
@@ -94,8 +96,8 @@ enum command-result {
     fail
 }
     /// Execute Command
-    execute-command:func(command:command);
-    get-status:func()-> tank-status;
+    execute-command:func(command:command)-> tank-status;
+    // get-status:func()-> tank-status;
     get-simulation-config:func()->simulation-config;
  
 }

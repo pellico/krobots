@@ -1,0 +1,26 @@
+[env]
+CARGO_BUILD_TARGET="wasm32-unknown-unknown"
+
+[env.release]
+BIN_FOLDER_NAME="release"
+
+[env.development]
+BIN_FOLDER_NAME="debug"
+
+[tasks.install-wasm-tools]
+install_crate = { crate_name = "wasm-tools", binary = "wasm-tools", test_arg = "--help" }
+
+
+[tasks.build-module]
+command="cargo"
+args=["build","--profile","${CARGO_MAKE_CARGO_PROFILE}"]
+
+[tasks.build]
+condition = { files_modified = { input = ["${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}.wasm"], output = ["${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}_comp.wasm"] } }
+description = "Runs the rust compiler and build a wasm component"
+command="wasm-tools"
+args=["component", "new","-g","${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}.wasm","-o","${CARGO_MAKE_CRATE_CUSTOM_TRIPLE_TARGET_DIRECTORY}/${BIN_FOLDER_NAME}/${CARGO_MAKE_CRATE_NAME}_comp.wasm"]
+dependencies = ["build-module","install-wasm-tools"]
+
+[tasks.test]
+clear=true

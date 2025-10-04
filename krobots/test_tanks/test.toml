@@ -27,4 +27,4 @@ cannon_min_temp = 20.0
 cannon_max_temp = 320.0
 cannon_fire_temp_increase = 120.0
 cannon_temp_decrease_step = 2.0
-tanks_list = ["./dumb/target/wasm32-unknown-unknown/debug/dumb_comp.wasm","./simple/target/wasm32-unknown-unknown/debug/simple_comp.wasm"]
+tanks_list = ["./dumb/target/wasm32-unknown-unknown/debug/dumb_comp.wasm","./simple/target/wasm32-unknown-unknown/debug/simple_comp.wasm","./hunter/target/wasm32-unknown-unknown/debug/hunter_comp.wasm"]

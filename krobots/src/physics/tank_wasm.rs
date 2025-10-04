@@ -1,9 +1,10 @@
 use bevy::log;
 use bevy::math::bool;
 use futures::future::{BoxFuture, FutureExt};
+use wasmtime::{StoreLimits, StoreLimitsBuilder};
 
 use crate::physics::tank_wasm::krobots::krobots::tank::PolarVector;
-use crate::physics::{PhysicsEngine, Real, Rotation2,Vector2};
+use crate::physics::{PhysicsEngine, Real, Rotation2, Vector2};
 use indexmap::IndexMap;
 use krobots::krobots::tank;
 use krobots::krobots::tank::{RadarResult, SimulationConfig, TankRadar, TankStatus};
@@ -13,14 +14,14 @@ use std::{
     sync::{Arc, Mutex},
 };
 use wasmtime::{
-    component::{bindgen, Component, HasSelf, Linker},
     Engine, Store,
+    component::{Component, HasSelf, Linker, bindgen},
 };
 const FUEL_INTERVAL: u64 = 10000;
 bindgen!({
     world:"krobot",
     async: {
-        only_imports:["execute-command"]
+        only_imports:["execute-command"] 
     },
      require_store_data_send: true,
       //additional_derives: [Default],
@@ -104,6 +105,7 @@ struct MyState {
     command: Option<tank::Command>,
     simulation_config: tank::SimulationConfig,
     tank_status: tank::TankStatus,
+    limits: StoreLimits,
 }
 
 impl krobots::krobots::tank::Host for Arc<Mutex<MyState>> {
@@ -111,67 +113,18 @@ impl krobots::krobots::tank::Host for Arc<Mutex<MyState>> {
         let state = self.lock().unwrap();
         state.simulation_config
     }
-    fn get_status(&mut self) -> TankStatus {
-        let state = self.lock().unwrap();
-        state.tank_status.clone()
-       
-    }
-    async fn execute_command(&mut self, command: tank::Command) {
+ 
+    async fn execute_command(&mut self, command: tank::Command) -> TankStatus {
         {
             let mut state = self.lock().unwrap();
             state.command = Some(command);
             state.tank_status.command_result = tank::CommandResult::Pending;
         }
         futures::pending!();
+        let state = self.lock().unwrap();
+        state.tank_status.clone()
+
     }
-
-    // #[doc = " Get tank status"]
-    // fn get_status(&mut self) -> TankStatus {
-    //     let p_engine = self.p_engine.lock().unwrap();
-    //     let tank = p_engine.tank(self.tank_index);
-    //     let tank_position = tank.position();
-    //     let vel = tank.linvel();
-    //     let angvel = tank.angular_velocity();
-    //     TankStatus {
-    //         tick: p_engine.tick(),
-    //         velocity: krobots::krobots::tank::PolarVector {
-    //             r: vel.norm(),
-    //             p: vel.y.atan2(vel.x),
-    //         },
-
-    //         angle: tank_position.rotation.angle(),
-    //         angvel,
-    //         energy: tank.energy(),
-    //         damage: tank.damage(),
-    //         cannon_angle: tank.turret().angle(),
-    //         power_source: krobots::krobots::tank::PolarVector {
-    //             r: tank_position.translation.vector.norm(),
-    //             p: Rotation2::rotation_between(
-    //                 &Vector2::<Real>::x(),
-    //                 &(-tank_position.translation.vector),
-    //             )
-    //             .angle(),
-    //         },
-    //         success: true,
-    //         cannon_temp: tank.turret().cannon_temperature(),
-    //     }
-    // }
-
-    // fn get_simulation_config(&mut self) -> SimulationConfig {
-    //     let p_engine = self.p_engine.lock().unwrap();
-    //     SimulationConfig {
-    //         tank_energy_max: p_engine.conf.tank_energy_max,
-    //         damage_max: p_engine.conf.damage_max,
-    //         bullet_max_range: p_engine.conf.bullet_max_range,
-    //         zero_power_limit: p_engine.conf.zero_power_limit,
-    //         radar_angle_increment_max: p_engine.conf.radar_angle_increment_max,
-    //         radar_width_max: p_engine.conf.radar_width_max,
-    //         radar_max_detection_range: p_engine.conf.radar_max_detection_distance,
-    //         bullet_speed: p_engine.conf.bullet_speed,
-    //         max_forward_power: p_engine.conf.tank_engine_power_max,
-    //         max_turning_power: p_engine.conf.turning_power_max,
-    //     }
-    // }
 }
 
 pub struct WasmTanks {
@@ -230,6 +183,14 @@ impl WasmTanks {
             command: None,
             simulation_config,
             tank_status,
+            limits: StoreLimitsBuilder::new()
+                .memory_size(64 * 1024)
+                .instances(1)
+                .memories(1)
+                .tables(10)
+                .table_elements(1000)
+                .trap_on_grow_failure(true)
+                .build(),
         }));
         let mut store = Store::new(&self.engine, state.clone());
         // store.call_hook(|mut cx, call_hook| {
@@ -267,7 +228,7 @@ impl WasmTanks {
             state,
             index: tank_index,
             future_builder: |bind: &Pin<Box<Krobot>>| bind.call_run(store).boxed(),
-            has_exit:false
+            has_exit: false,
         }
         .build();
         self.tanks.insert(name.to_string(), new_tank);
@@ -293,13 +254,13 @@ impl WasmTanks {
     }
     pub fn next_step(&mut self, p_engine: &mut PhysicsEngine) -> anyhow::Result<()> {
         for tank in self.tanks.values_mut() {
-            if !tank.with_has_exit(|e|*e ) {
+            if !tank.with_has_exit(|e| *e) {
                 tank.next_step(p_engine)?;
             }
         }
         Ok(())
     }
-
+    #[cfg(test)]
     fn get_tank_mut<T: AsRef<str>>(&mut self, name: T) -> anyhow::Result<&mut WasmTank> {
         self.tanks
             .get_mut(name.as_ref())
@@ -315,7 +276,7 @@ pub struct WasmTank {
     state: Arc<Mutex<MyState>>,
     /// True if the run function has exited
     /// In this case tank will no longer checked
-    has_exit:bool,
+    has_exit: bool,
 
     #[borrows(bindings)]
     #[not_covariant]
@@ -348,6 +309,9 @@ fn process_command(
                 false => tank::CommandResult::Fail,
             }
         }
+        tank::Command::GetStatus =>  tank::CommandResult::Success
+        
+    
     }
 }
 
@@ -365,20 +329,22 @@ impl WasmTank {
         let poll_result = self.with_future_mut(|future| future.poll_unpin(&mut cx));
         let result = match poll_result {
             std::task::Poll::Pending => Ok(()),
-            std::task::Poll::Ready(val) => {
-                match val {
-                    Ok(_) => {self.with_has_exit_mut(|e| *e=true);
-                        log::warn!("Tank index {} exited.",self.borrow_index());
-                        Ok(())
-                    },
-                    Err(err) => {
-                        log::error!("Tank index {} exited due to an error {}",self.borrow_index(),err);
-                        Ok(())
-                    }
+            std::task::Poll::Ready(val) => match val {
+                Ok(_) => {
+                    self.with_has_exit_mut(|e| *e = true);
+                    log::error!("Tank index {} exited.", self.borrow_index());
+                    Ok(())
                 }
-                
-                
-            }
+                Err(err) => {
+                    self.with_has_exit_mut(|e| *e = true);
+                    log::error!(
+                        "Tank index {} exited due to an error {}",
+                        self.borrow_index(),
+                        err
+                    );
+                    Ok(())
+                }
+            },
         };
 
         // Process command

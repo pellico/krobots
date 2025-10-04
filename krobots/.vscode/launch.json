@@ -49,6 +49,24 @@
         },
         {
             "type": "lldb",
+            
+            "request": "launch",
+            "name": "Debug wasm modules",
+            "preLaunchTask": "cargo make build",
+            "program":"${workspaceFolder}/target/release/ktanks_server.exe",
+            "args": [
+              "-c",
+                "test_tanks/test.toml"
+            ],
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "RUST_LOG": "ktanks_server=info",
+                "RUST_BACKTRACE": "1",
+                "_NO_DEBUG_HEAP":"1"
+            }
+        },
+        {
+            "type": "lldb",
             "request": "launch",
             "name": "Debug unit tests in executable 'krobots'",
             "cargo": {

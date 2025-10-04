@@ -1,6 +1,4 @@
 use core::f32;
-use std::sync::OnceState;
-
 use f32::consts::PI;
 use krobots::krobots::tank::*;
 use wit_bindgen::generate;
@@ -10,11 +8,6 @@ struct TankComponent;
 export!(TankComponent);
 
 
-
-fn wait_next_tick() {
-    let old_tick = get_status().tick;
-    while (get_status().tick == old_tick) {}
-}
 
 /// Wrap angle in the range ]pi,pi]
 fn angle_wrapping(angle: f32) -> f32 {
@@ -35,7 +28,7 @@ impl Guest for TankComponent {
     fn run() {
         // At this distance from power source turn back to power source
         let turn_back_distance = 150.0;
-        let mut status = get_status();
+        let mut status =execute_command(Command::GetStatus);
         // Initial tank body forward movement power
         let forward_power = 0.9;
         // Angle of power source from tank position in world coordinates. (not referred to tank direction)
@@ -49,15 +42,15 @@ impl Guest for TankComponent {
 
         loop {
             execute_command(Command::SetRadar((-0.17, 0.17)));
-            let mut radar_result = get_status().radar_result;
+            let mut radar_result = execute_command(Command::GetStatus).radar_result;
             execute_command(Command::SetCannotPosition(radar_result.angle));
             if !radar_result.tanks.is_empty() {
                 execute_command(Command::SetRadar((-0.17, 0.01)));
-                radar_result=get_status().radar_result;
+                radar_result=execute_command(Command::GetStatus).radar_result;
                 execute_command(Command::SetCannotPosition(radar_result.angle));
                 for _ in 0..34 {
                    execute_command(Command::SetRadar((0.01, 0.01)));
-                   radar_result=get_status().radar_result;
+                   radar_result=execute_command(Command::GetStatus).radar_result;
                    execute_command(Command::SetCannotPosition(radar_result.angle));
                    if !radar_result.tanks.is_empty() && radar_result.tanks[0].distance < simulation_config.bullet_max_range {
                     execute_command(Command::FireCannon);
@@ -65,7 +58,7 @@ impl Guest for TankComponent {
                 }
 
             }
-            status = get_status();
+            status = execute_command(Command::GetStatus);
             delta_ang = angle_wrapping(target_angle - status.angle);
             angimp_set = (0.5 * delta_ang - 0.01 * status.angvel) * status.angvel.abs();
             //If too big error angle reduce forward speed
@@ -73,7 +66,7 @@ impl Guest for TankComponent {
                 forward_power / (1.0 + 10.0 * delta_ang.abs()),
                 angimp_set,
             )));
-            status = get_status();
+            status = execute_command(Command::GetStatus);
             if status.power_source.r > turn_back_distance
                 && last_power_distance <= turn_back_distance
             {
@@ -84,7 +77,7 @@ impl Guest for TankComponent {
                         break;
                     }
                     execute_command(Command::SetEnginePower((-0.002 * vel_direction, 0.0)));
-                    status = get_status();
+                    status = execute_command(Command::GetStatus);
                 }
                 target_angle = status.power_source.p;
             }
