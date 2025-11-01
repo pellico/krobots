@@ -197,8 +197,8 @@ pub(super) fn ui_update(
 
     egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
         // The top panel is often a good place for a menu bar:
-        egui::menu::bar(ui, |ui| {
-            egui::menu::menu_button(ui, "File", |ui| {
+        egui::MenuBar::new().ui(ui, |ui| {
+            ui.menu_button("File", |ui| {
                 if ui.button("Quit").clicked() {
                     simulator_tx
                         .tx_ui_command

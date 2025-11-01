@@ -700,7 +700,7 @@ mod tests {
         let tank0 = engine.tank_mut(0);
         let pos2 = tank0.position().translation.vector;
         let distance = (pos1 - pos2).norm();
-        assert_float_eq!(distance, 8.05, r2nd <= 0.001);
+        assert_float_eq!(distance, 8.086, r2nd <= 0.001);
 
         // Stop tank
         tank0.set_engine_power(0.0);

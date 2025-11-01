@@ -154,7 +154,7 @@ struct TankAssets {
     bullet_sprite: Handle<Image>,
 }
 
-fn exit_system(mut exit: EventWriter<AppExit>) {
+fn exit_system(mut exit: MessageWriter<AppExit>) {
     if crate::is_exit_application() {
         exit.write(AppExit::Success);
     }
@@ -395,8 +395,8 @@ fn tank_label(
                     ..Default::default()
                 },
                 text_color: TextColor(Color::Srgba(GOLD)),
-                text_anchor: bevy::sprite::Anchor::Custom(tank_text_offset),
-                text_layout:TextLayout::new_with_justify(JustifyText::Center),
+                text_anchor: bevy::sprite::Anchor(tank_text_offset),
+                text_layout:TextLayout::new_with_justify(Justify::Center),
                 transform: Transform::IDENTITY.with_translation(Vec3 {
                     x: tank.position().translation.x,
                     y: tank.position().translation.y,
@@ -409,7 +409,7 @@ fn tank_label(
 }
 
 fn handle_close_window_event(
-  events: EventReader<WindowCloseRequested>,simulator_tx: Res<SimulatorTx>
+  events: MessageReader<WindowCloseRequested>,simulator_tx: Res<SimulatorTx>
 ) {
     if !events.is_empty() {
          simulator_tx

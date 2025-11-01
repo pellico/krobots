@@ -70,7 +70,7 @@ impl Tank {
         name: String,
     ) -> Tank {
         let body = RigidBodyBuilder::dynamic()
-            .position(tank_position)
+            .pose(tank_position)
             .linear_damping(p_engine.conf.linear_damping)
             .angular_damping(p_engine.conf.angular_damping)
             .build();

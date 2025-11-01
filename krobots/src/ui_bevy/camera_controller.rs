@@ -1,7 +1,7 @@
 use super::{PhysicsState, UiState};
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
-use bevy::window::CursorGrabMode;
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use std::fmt;
 
 #[derive(Component)]
@@ -157,26 +157,26 @@ pub fn camera_controller(
 }
 
 pub fn camera_controller_mouse(
-    mut windows: Query<&mut Window>,
-    mut mouse_events: EventReader<MouseMotion>,
+    mut windows_options: Query<(&mut Window,&mut CursorOptions)>,
+    mut mouse_events: MessageReader<MouseMotion>,
     mouse_button_input: Res<ButtonInput<MouseButton>>,
     mut query: Query<(&mut Transform, &mut CameraController), With<Camera>>,
 ) {
     if let Ok((mut transform, options)) = query.single_mut() {
         // Handle key input
-
+      
         // Handle mouse input
         let mut mouse_delta = Vec2::ZERO;
         if mouse_button_input.pressed(options.mouse_key_enable_mouse) {
-            for mut window in &mut windows {
+            for (window,mut cursor_options) in &mut windows_options {
                 if !window.focused {
-                    window.cursor_options.grab_mode = CursorGrabMode::None;
-                    window.cursor_options.visible = true;
+                    cursor_options.grab_mode = CursorGrabMode::None;
+                    cursor_options.visible = true;
                     continue;
                 }
 
-                window.cursor_options.grab_mode = CursorGrabMode::Locked;
-                window.cursor_options.visible = false;
+                cursor_options.grab_mode = CursorGrabMode::Locked;
+                cursor_options.visible = false;
             }
 
             for mouse_event in mouse_events.read() {
@@ -184,9 +184,9 @@ pub fn camera_controller_mouse(
             }
         }
         if mouse_button_input.just_released(options.mouse_key_enable_mouse) {
-            for mut window in &mut windows {
-                window.cursor_options.grab_mode = CursorGrabMode::None;
-                window.cursor_options.visible = true;
+            for (_,mut cursor_options) in &mut windows_options {
+                cursor_options.grab_mode = CursorGrabMode::None;
+                cursor_options.visible = true;
             }
         }
 
