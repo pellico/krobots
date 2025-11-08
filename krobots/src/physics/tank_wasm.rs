@@ -20,9 +20,12 @@ use wasmtime::{
 const FUEL_INTERVAL: u64 = 10000;
 bindgen!({
     world:"krobot",
-    async: {
-        only_imports:["execute-command"] 
+    imports:{
+        "krobots:krobots/tank/execute-command":async
     },
+    exports:{
+        default:async
+    }, 
      require_store_data_send: true,
       //additional_derives: [Default],
     include_generated_code_from_file: false,
