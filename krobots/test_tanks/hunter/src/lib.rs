@@ -244,8 +244,10 @@ async fn track_and_fire(tank: &RefCell<TankController>) -> ! {
                     tank_ref.state = TankState::Track(enemy_last_pos)
                 }
             }
+            drop(tank_ref);
+            pending_once().await;
         }
-
+        
         pending_once().await;
     }
 }
