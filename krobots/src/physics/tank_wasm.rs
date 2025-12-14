@@ -109,6 +109,7 @@ struct MyState {
     simulation_config: tank::SimulationConfig,
     tank_status: tank::TankStatus,
     limits: StoreLimits,
+    log_messages:Vec<String>
 }
 
 impl krobots::krobots::tank::Host for Arc<Mutex<MyState>> {
@@ -128,6 +129,11 @@ impl krobots::krobots::tank::Host for Arc<Mutex<MyState>> {
         state.tank_status.clone()
 
     }
+    fn log_message(&mut self, message: std::string::String) {
+        let mut state = self.lock().unwrap();
+        state.log_messages.push(message);
+     }
+
 }
 
 pub struct WasmTanks {
@@ -194,6 +200,7 @@ impl WasmTanks {
                 .table_elements(1000)
                 .trap_on_grow_failure(true)
                 .build(),
+            log_messages:vec![]
         }));
         let mut store = Store::new(&self.engine, state.clone());
         // store.call_hook(|mut cx, call_hook| {
@@ -247,8 +254,7 @@ impl WasmTanks {
             .tanks_list
             .clone()
             .iter()
-            .for_each(|path_wasm| {
-                let tank_name = path_wasm.file_name().unwrap().to_str().unwrap();
+            .for_each(|(tank_name,path_wasm)| {
                 result
                     .new_tank(path_wasm, tank_name, &mut *p_engine, num_tanks)
                     .unwrap()
@@ -359,6 +365,11 @@ impl WasmTank {
                 process_command(p_engine, tank_index, command)
             }
         };
+        // Move messages to tank object
+        
+        let messages = state.log_messages.drain(0..).map(|m| (p_engine.tick,m)).collect();
+        let tank = p_engine.tank_mut(tank_index);
+        tank.set_log_messages(messages);
         result
     }
 }

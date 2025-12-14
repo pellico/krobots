@@ -1,7 +1,10 @@
+use crate::physics::UICommand;
+use crate::ui_bevy::SimulatorTx;
+
 use super::{PhysicsState, UiState};
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
-use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
+use bevy::window::{CursorGrabMode, CursorOptions};
 use std::fmt;
 
 #[derive(Component)]
@@ -20,7 +23,7 @@ pub struct CameraController {
     pub run_speed: f32,
     pub friction: f32,
     pub velocity: Vec3,
-    pub track_tank_enabled:bool,
+    pub track_tank_enabled: bool,
 }
 
 impl Default for CameraController {
@@ -40,7 +43,7 @@ impl Default for CameraController {
             run_speed: 100.0,
             friction: 0.5,
             velocity: Vec3::ZERO,
-            track_tank_enabled:false,
+            track_tank_enabled: false,
         }
     }
 }
@@ -76,6 +79,7 @@ Freecam Controls:
 pub fn camera_controller(
     time: Res<Time>,
     key_input: Res<ButtonInput<KeyCode>>,
+    simulator_tx: Res<SimulatorTx>,
     mut query: Query<(&mut Transform, &mut CameraController, &mut Projection), With<Camera>>,
     (ui_state, physics_state): (Res<UiState>, Res<PhysicsState>),
 ) {
@@ -112,9 +116,35 @@ pub fn camera_controller(
         if key_input.pressed(options.key_down) {
             axis_input.y -= 1.0;
         }
-  
+
         if key_input.just_pressed(options.key_toggle_tank_track) {
             options.track_tank_enabled = !options.track_tank_enabled;
+        }
+
+        if key_input.pressed(KeyCode::F1) {
+            simulator_tx
+                .tx_ui_command
+                .lock()
+                .unwrap()
+                .send(UICommand::EnterDebugMode)
+                .expect("Failed to send quit command to simulator");
+        }
+        if key_input.pressed(KeyCode::F2) {
+            simulator_tx
+                .tx_ui_command
+                .lock()
+                .unwrap()
+                .send(UICommand::ExitDebugMode)
+                .expect("Failed to send quit command to simulator");
+        }
+
+        if key_input.just_released(KeyCode::F3) {
+            simulator_tx
+                .tx_ui_command
+                .lock()
+                .unwrap()
+                .send(UICommand::NextStep)
+                .expect("Failed to send quit command to simulator");
         }
 
         // Apply movement update
@@ -157,18 +187,18 @@ pub fn camera_controller(
 }
 
 pub fn camera_controller_mouse(
-    mut windows_options: Query<(&mut Window,&mut CursorOptions)>,
+    mut windows_options: Query<(&mut Window, &mut CursorOptions)>,
     mut mouse_events: MessageReader<MouseMotion>,
     mouse_button_input: Res<ButtonInput<MouseButton>>,
     mut query: Query<(&mut Transform, &mut CameraController), With<Camera>>,
 ) {
     if let Ok((mut transform, options)) = query.single_mut() {
         // Handle key input
-      
+
         // Handle mouse input
         let mut mouse_delta = Vec2::ZERO;
         if mouse_button_input.pressed(options.mouse_key_enable_mouse) {
-            for (window,mut cursor_options) in &mut windows_options {
+            for (window, mut cursor_options) in &mut windows_options {
                 if !window.focused {
                     cursor_options.grab_mode = CursorGrabMode::None;
                     cursor_options.visible = true;
@@ -184,7 +214,7 @@ pub fn camera_controller_mouse(
             }
         }
         if mouse_button_input.just_released(options.mouse_key_enable_mouse) {
-            for (_,mut cursor_options) in &mut windows_options {
+            for (_, mut cursor_options) in &mut windows_options {
                 cursor_options.grab_mode = CursorGrabMode::None;
                 cursor_options.visible = true;
             }

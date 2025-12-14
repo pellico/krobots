@@ -25,15 +25,15 @@ pub use self::tank::{Bullet, ObjUID, Tank};
 pub use self::ui_interface::*;
 use self::util::*;
 use crate::conf::*;
-use crate::{is_exit_application, signal_exit, Opts};
+use crate::{Opts, is_exit_application, signal_exit};
 use log::{debug, error, info, warn};
-pub use rapier2d::na::{vector, Isometry2, Rotation2};
+pub use rapier2d::na::{Isometry2, Rotation2, vector};
 pub use rapier2d::na::{Point2, Vector2};
 use rapier2d::prelude::*;
 pub use rapier2d::prelude::{Real, RigidBodyHandle};
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
-use std::thread::{spawn, JoinHandle};
+use std::thread::{JoinHandle, spawn};
 use std::time;
 use tank_wasm::WasmTanks;
 
@@ -48,7 +48,7 @@ const BULLET_GROUP: InteractionGroups =
     InteractionGroups::new(Group::GROUP_3, Group::GROUP_1.union(Group::GROUP_2));
 
 struct MyPhysicsHooks;
-
+pub type TickType = u32;
 impl PhysicsHooks for MyPhysicsHooks {
     fn filter_contact_pair(&self, context: &PairFilterContext) -> Option<SolverFlags> {
         // This is a silly example of contact pair filter that:
@@ -71,20 +71,21 @@ impl PhysicsHooks for MyPhysicsHooks {
     }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
-#[derive(Default)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Default, PartialEq, Eq)]
 pub enum SimulationState {
     /// Waiting connection from all tanks
     #[default]
     WaitingConnection,
     /// Simulation running
     Running,
+    /// Debug mode
+    DebugMode,
 }
 
 pub struct PhysicsEngine {
     /// Maximum numbers of tick allowed. If `max_ticks` == 0 simulation
     /// is stopped only when only one tank is not disabled/dead.
-    max_ticks: u32,
+    max_ticks: TickType,
     /// How many tanks are still alive
     tanks_alive: u32,
     /// All tanks in the game
@@ -92,7 +93,7 @@ pub struct PhysicsEngine {
     /// All bullets in the simulation
     bullets: Vec<Bullet>,
     /// Present number of ticks
-    tick: u32,
+    tick: TickType,
     /// If true simulation wait for commands from tanks
     debug_mode: bool,
     /// Simulation state
@@ -133,7 +134,7 @@ impl Default for PhysicsEngine {
             joint_set: ImpulseJointSet::new(),
             multibody_joints: MultibodyJointSet::new(),
             ccd_solver: CCDSolver::new(),
-            physics_hooks: MyPhysicsHooks{},
+            physics_hooks: MyPhysicsHooks {},
             event_handler: (),
             gravity_vector: vector![0.0, 0.0], //No gravity
             debug_mode: true,
@@ -161,7 +162,7 @@ impl PhysicsEngine {
             joint_set: ImpulseJointSet::new(),
             multibody_joints: MultibodyJointSet::new(),
             ccd_solver: CCDSolver::new(),
-            physics_hooks: MyPhysicsHooks{},
+            physics_hooks: MyPhysicsHooks {},
             event_handler: (),
             gravity_vector: vector![0.0, 0.0], //No gravity
             debug_mode: opts.debug_mode,
@@ -193,31 +194,43 @@ impl PhysicsEngine {
         //Create thread that perform physics simulation
         spawn(move || {
             info!("Load tanks");
-            let mut wasm_tanks = WasmTanks::new( &mut p_engine);
+            let mut wasm_tanks = WasmTanks::new(&mut p_engine);
             info!("Starting simulation");
-
+            p_engine.state = SimulationState::Running;
             for (tick, now) in ticktock::Clock::framerate(simulation_rate).iter() {
                 {
-                    p_engine.state = SimulationState::Running;
+                    let mut next_debug_step = false;
+
                     //Check if received command to exit
                     match command_receiver.receive() {
                         Some(UICommand::QUIT) => p_engine.exit_simulation(),
+                        Some(UICommand::EnterDebugMode) => {
+                            p_engine.state = SimulationState::DebugMode
+                        }
+                        Some(UICommand::ExitDebugMode) => p_engine.state = SimulationState::Running,
+                        Some(UICommand::NextStep) => next_debug_step = true,
                         None => (),
                     };
-                    // Process all request coming from client
-                    if let Err(val) = wasm_tanks.next_step(&mut p_engine) {
-                        error!("Error in some tanks{:?}", val);
-                        p_engine.exit_simulation();
-                    };
-                    p_engine.step();
 
-                    // Try to lazily send game state to UI
-                    // If failing teh send ignore it.
-                    match state_sender.send(&p_engine) {
-                        Ok(_) => (),
-                        Err(_) => debug!("Failed sending state to UI ignore it"),
+                    // Execute step and send update if debug_mode is false or
+                    // debug_mode is true and next step button is pressed.
+                    if p_engine.state == SimulationState::Running
+                        || (p_engine.state == SimulationState::DebugMode && next_debug_step)
+                    {
+                        // Process all request coming from client
+                        if let Err(val) = wasm_tanks.next_step(&mut p_engine) {
+                            error!("Error in some tanks{:?}", val);
+                            p_engine.exit_simulation();
+                        };
+                        p_engine.step();
+
+                        // Try to lazily send game state to UI
+                        // If failing sender ignore it.
+                        match state_sender.send(&p_engine) {
+                            Ok(_) => (),
+                            Err(_) => debug!("Failed sending state to UI ignore it"),
+                        }
                     }
-
                     // Compute fps and show message if it is too low.
                     if let Some((delta_t, prev_tick)) = fps_counter.update(now) {
                         fps_counter.set_value(tick);
@@ -331,7 +344,6 @@ impl PhysicsEngine {
             &mut self.ccd_solver,
             &self.physics_hooks,
             &self.event_handler,
-     
         );
         self.tick += 1;
         //Read back present status
@@ -581,8 +593,8 @@ impl PhysicsEngine {
 
 #[cfg(test)]
 mod tests {
-    use super::util::*;
     use super::PhysicsEngine;
+    use super::util::*;
     use crate::conf::Conf;
     use clap::Parser;
     use float_eq::assert_float_eq;

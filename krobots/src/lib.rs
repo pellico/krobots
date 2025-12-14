@@ -5,6 +5,7 @@ pub mod ui_bevy;
 // Include the `items` module, which is generated from items.proto.
 
 use clap::Parser;
+use indexmap::IndexMap;
 use std::{
     ffi, fs, path::{Path, PathBuf}, sync::atomic::{AtomicBool, Ordering}
 };
@@ -91,9 +92,9 @@ pub fn enable_human_panic() {
 }
 
 
-pub fn get_tanks_file_from_folder<P: AsRef<Path>>(path: P) -> Vec<std::path::PathBuf> {
+pub fn get_tanks_file_from_folder<P: AsRef<Path>>(path: P) -> IndexMap<String,std::path::PathBuf> {
     let paths = fs::read_dir(path.as_ref()).unwrap();
-    let mut tank_path_entries = vec![];
+    let mut tank_path_entries = IndexMap::new();
     for f in paths {
         match f {
             Ok(dir_entry) => {
@@ -101,13 +102,18 @@ pub fn get_tanks_file_from_folder<P: AsRef<Path>>(path: P) -> Vec<std::path::Pat
                     && dir_entry.path().extension() == Some(ffi::OsStr::new("wasm"))
                 {
                     let path_wasm = dir_entry.path();
-
-                    tank_path_entries.push(path_wasm);
+                    let file_name = path_wasm
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .expect("stem of wasm file is an empty string")
+                        .to_string();
+               
+                    tank_path_entries.insert(file_name,path_wasm);
                 }
             }
             Err(_) => continue,
         }
     }
-    tank_path_entries.sort();
+    tank_path_entries.sort_by(|k1,_,k2,_| k1.cmp(k2));
     tank_path_entries
 }

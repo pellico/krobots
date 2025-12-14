@@ -1,6 +1,8 @@
+use std::collections::{HashMap, VecDeque};
+
 use super::{ObjUID, PhysicsState, SimulatorTx};
 use crate::{
-    physics::{Tank, UICommand},
+    physics::{Tank, TickType, UICommand},
     ui_bevy::camera_controller::CameraController,
 };
 use bevy::prelude::*;
@@ -9,11 +11,16 @@ use bevy_egui::{
     egui::{self},
 };
 
+/// Number of messages to keep in the log messages buffer
+const NUM_MESSAGES_BUFFER: usize = 20;
+
 #[derive(Default, Resource)]
 pub(super) struct UiState {
     value: f32,
     is_window_open: bool,
     pub selected_tank_id: Option<ObjUID>,
+    pub tank_messages: HashMap<ObjUID, VecDeque<(TickType, String)>>,
+    last_tick: TickType,
 }
 
 pub(super) fn configure_ui_state_system(mut ui_state: ResMut<UiState>) {
@@ -22,6 +29,7 @@ pub(super) fn configure_ui_state_system(mut ui_state: ResMut<UiState>) {
 
 pub(super) fn ui_update(
     mut ui_state: ResMut<UiState>,
+    //key_input: Res<ButtonInput<KeyCode>>,
     mut is_initialized: Local<bool>,
     mut contexts: EguiContexts,
     physics_state: Res<PhysicsState>,
@@ -33,9 +41,18 @@ pub(super) fn ui_update(
     let mut invert = false;
 
     if !*is_initialized {
+        for (id, tank) in &physics_state.tanks {
+            ui_state.tank_messages.insert(*id, VecDeque::new());
+        }
+        copy_tank_msg_in_buffer(&mut ui_state, &physics_state);
+        ui_state.last_tick = physics_state.tick;
         *is_initialized = true;
     }
 
+    // Copy messages in buffer avoiding duplicates.
+    if ui_state.last_tick < physics_state.tick {
+        copy_tank_msg_in_buffer(&mut ui_state, &physics_state);
+    }
     let ctx = contexts.ctx_mut().unwrap();
 
     // Sort tanks
@@ -56,6 +73,8 @@ pub(super) fn ui_update(
     };
     let selected_tank_name = selected_tank.map_or("", |x| &x.name);
 
+    ui_state.last_tick = physics_state.tick;
+    /// Render gui using egui
     egui::SidePanel::left("side_panel")
         .default_width(200.0)
         .show(ctx, |ui| {
@@ -170,9 +189,14 @@ pub(super) fn ui_update(
                 });
             }
             ui.separator();
+
             if let Ok(mut camera_controller) = query.single_mut() {
                 ui.checkbox(&mut camera_controller.track_tank_enabled, "Tank tracking");
             }
+            ui.horizontal(|ui| {
+                ui.label("Tick:");
+                ui.label(format!("{}", physics_state.tick));
+            });
             ui.add(egui::Slider::new(&mut ui_state.value, 0.0..=10.0).text("value"));
             if ui.button("Increment").clicked() {
                 ui_state.value += 1.0;
@@ -186,6 +210,24 @@ pub(super) fn ui_update(
             });
 
             ui.allocate_space(egui::Vec2::new(1.0, 10.0));
+
+            ui.separator();
+
+            // Tank messages
+            ui.label("Messages");
+            let messages_text = if let Some(ref selected_tank) = ui_state.selected_tank_id {
+                ui_state.tank_messages[selected_tank]
+                    .iter()
+                    .rev()
+                    .take(10)
+                    .rev()
+                    .map(|(tick, message)| format!("{} - {}", tick, message))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            } else {
+                "".to_string()
+            };
+            ui.text_edit_multiline(&mut messages_text.as_str());
 
             ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
                 ui.add(egui::Hyperlink::from_label_and_url(
@@ -210,4 +252,23 @@ pub(super) fn ui_update(
             });
         });
     });
+}
+
+fn copy_tank_msg_in_buffer(
+    ui_state: &mut ResMut<'_, UiState>,
+    physics_state: &Res<'_, PhysicsState>,
+) {
+    for (id, tank) in &physics_state.tanks {
+        let mut messages = ui_state
+            .tank_messages
+            .get_mut(id)
+            .expect("Added a tank after initialization ?");
+
+        for msg in tank.log_messages() {
+            messages.push_back(msg.clone());
+            if messages.len() > NUM_MESSAGES_BUFFER {
+                messages.remove(0);
+            }
+        }
+    }
 }

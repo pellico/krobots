@@ -99,6 +99,8 @@ enum command-result {
     execute-command:func(command:command)-> tank-status;
     // get-status:func()-> tank-status;
     get-simulation-config:func()->simulation-config;
+    // Print log message
+    log-message:func(message:string);
  
 }
 

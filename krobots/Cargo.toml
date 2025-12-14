@@ -33,11 +33,11 @@ message-io = { version = "0.14.5", default-features = false, features = [
 bincode = "1.3.3"
 ctrlc = "3.2.1"
 human-panic = "1.0.3"
-confy = "0.4.0"
+confy = "2"
 bevy = { version = "0.17" }
 bevy_egui = { version = "0.38" }
 bevy_embedded_assets = { version = "0.14" }
-wasmtime = { version = "36", features = ["call-hook"] }
+wasmtime = { version = "36.0.3", features = ["call-hook"] }
 indexmap = "2.9.0"
 anyhow = "1.0.98"
 futures = { version = "0.3.31", features = ["async-await"] }

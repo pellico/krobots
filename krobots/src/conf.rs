@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 use confy;
+use indexmap::IndexMap;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -61,9 +62,9 @@ pub struct Conf {
     /// Temperature decrease for each simulation step
     /// When high temp. tank can fire 1 bullet each second  
     pub cannon_temp_decrease_step: f32,
-    /// List of path to tanks to execute
+    /// Map of path to tanks to execute
     /// this is ignored if tank folder is specified in command line
-    pub tanks_list:Vec<PathBuf>
+    pub tanks_list:IndexMap<String,PathBuf>
 }
 
 impl Conf {
@@ -78,10 +79,10 @@ impl Conf {
 
         //resolve path of tank list relative to location of configuration file
         let folder_conf = path_full.parent().ok_or_else(||anyhow!("No parent of folder"))?;
-        let resolved_paths:Vec<PathBuf> = conf.tanks_list.into_iter().map(|p| {
+        let resolved_paths:IndexMap<String,PathBuf> = conf.tanks_list.into_iter().map(|(name,p)| {
             match p.is_absolute() {
-                true => p,
-                false => folder_conf.join(p)
+                true => (name,p),
+                false => (name,folder_conf.join(p))
             }
         }).collect();
         conf.tanks_list=resolved_paths;
@@ -133,7 +134,7 @@ impl Default for Conf {
             // Temperature decrease for each simulation step
             // When high temp. tank can fire 1 bullet each second
             cannon_temp_decrease_step: CANNON_FIRE_TEMP_INCREASE / 60.0,
-            tanks_list:vec![]
+            tanks_list:IndexMap::new()
         }
     }
 }

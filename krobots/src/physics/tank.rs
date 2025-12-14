@@ -1,6 +1,7 @@
 use super::util::*;
 use super::PhysicsEngine;
 use crate::conf::*;
+use crate::physics::TickType;
 use rapier2d::na::Isometry2;
 use rapier2d::na::{Point2, Vector2};
 use rapier2d::prelude::*;
@@ -60,6 +61,8 @@ pub struct Tank {
     radar_width_max: f32,
     pub(super) radar_max_detection_distance: f32,
     bullet_damage: f32,
+    // Buffer of log message with tick stamp.
+    log_messages:Vec<(TickType,String)>
 }
 
 impl Tank {
@@ -175,6 +178,7 @@ impl Tank {
             radar_width_max: p_engine.conf.radar_width_max,
             radar_max_detection_distance: p_engine.conf.radar_max_detection_distance,
             bullet_damage: p_engine.conf.bullet_damage,
+            log_messages:vec![]
         }
     }
 
@@ -414,6 +418,14 @@ impl Tank {
         self.radar_width = radar_w;
         true
     }
+    pub fn set_log_messages(&mut self,messages:Vec<(TickType,String)>) {
+        self.log_messages=messages;
+
+    }
+    pub fn log_messages(&self)-> &Vec<(TickType,String)> {
+        &self.log_messages
+    }
+
 }
 
 impl Turret {
@@ -457,6 +469,7 @@ impl Turret {
             false
         }
     }
+
 }
 
 impl Bullet {

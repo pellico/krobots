@@ -51,7 +51,6 @@ fn main() {
     if let Some(ref tank_folder) = opts.tank_folder {
         let tanks_in_folder = get_tanks_file_from_folder(tank_folder);
         conf.tanks_list.extend(tanks_in_folder);
-        conf.tanks_list.sort();
     }
     if opts.no_gui {
         let tx_state =
