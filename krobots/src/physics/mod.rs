@@ -204,10 +204,14 @@ impl PhysicsEngine {
                     //Check if received command to exit
                     match command_receiver.receive() {
                         Some(UICommand::QUIT) => p_engine.exit_simulation(),
-                        Some(UICommand::EnterDebugMode) => {
-                            p_engine.state = SimulationState::DebugMode
+                        Some(UICommand::ToggleDebugMode) => {
+                            match p_engine.state {
+                                SimulationState::DebugMode => p_engine.state=SimulationState::Running,
+                                SimulationState::Running => p_engine.state=SimulationState::DebugMode,
+                                SimulationState::WaitingConnection => ()
+                            }
+              
                         }
-                        Some(UICommand::ExitDebugMode) => p_engine.state = SimulationState::Running,
                         Some(UICommand::NextStep) => next_debug_step = true,
                         None => (),
                     };

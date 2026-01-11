@@ -37,7 +37,7 @@ interface tank {
     record tank-radar {
         /// Distance of detected tank in m
         distance:f32,
-        /// Damage of detected tank. When equal or greater than SimulationConfig.damage_max is disabled
+        /// Damage of detected tank. When it is greater than SimulationConfig.damage_max, tank is disabled
         damage:f32,
     }
 

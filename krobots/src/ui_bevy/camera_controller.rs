@@ -24,6 +24,8 @@ pub struct CameraController {
     pub friction: f32,
     pub velocity: Vec3,
     pub track_tank_enabled: bool,
+    pub key_enable_disable_debug_mode:KeyCode,
+    pub key_next_step_debug_mode:KeyCode,
 }
 
 impl Default for CameraController {
@@ -44,6 +46,10 @@ impl Default for CameraController {
             friction: 0.5,
             velocity: Vec3::ZERO,
             track_tank_enabled: false,
+            key_enable_disable_debug_mode:KeyCode::F1,
+            key_next_step_debug_mode:KeyCode::F2
+
+
         }
     }
 }
@@ -62,6 +68,8 @@ Freecam Controls:
     {:?}\t- up
     {:?}\t- down
     {:?}\t- toogle tank track
+    {:?}\t- Enable/Disable Debug Mode
+    {:?}\t- Next step
     ",
             self.mouse_key_enable_mouse,
             self.key_zoom_out,
@@ -72,6 +80,8 @@ Freecam Controls:
             self.key_up,
             self.key_down,
             self.key_toggle_tank_track,
+            self.key_enable_disable_debug_mode,
+            self.key_next_step_debug_mode
         )
     }
 }
@@ -121,24 +131,15 @@ pub fn camera_controller(
             options.track_tank_enabled = !options.track_tank_enabled;
         }
 
-        if key_input.pressed(KeyCode::F1) {
+        if key_input.pressed(options.key_enable_disable_debug_mode) {
             simulator_tx
                 .tx_ui_command
                 .lock()
                 .unwrap()
-                .send(UICommand::EnterDebugMode)
+                .send(UICommand::ToggleDebugMode)
                 .expect("Failed to send quit command to simulator");
         }
-        if key_input.pressed(KeyCode::F2) {
-            simulator_tx
-                .tx_ui_command
-                .lock()
-                .unwrap()
-                .send(UICommand::ExitDebugMode)
-                .expect("Failed to send quit command to simulator");
-        }
-
-        if key_input.just_released(KeyCode::F3) {
+        if key_input.just_released(options.key_next_step_debug_mode) {
             simulator_tx
                 .tx_ui_command
                 .lock()

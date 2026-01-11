@@ -140,6 +140,20 @@ fn move_control(tank: &RefCell<TankController>) {
     }
 }
 
+fn is_tank_alive(configuration: &SimulationConfig, tank_radar: &TankRadar) -> bool {
+    tank_radar.damage <= configuration.damage_max
+}
+
+fn next_tank<'a, 'b>(
+    configuration: &'a SimulationConfig,
+    radar_result: &'b RadarResult,
+) -> Option<&'b TankRadar> {
+    radar_result
+        .tanks
+        .iter()
+        .find(|&t| is_tank_alive(configuration, t))
+}
+
 async fn track_and_fire(tank: &RefCell<TankController>) -> ! {
     let tank_ref = tank.borrow_mut();
     let mut track_and_fire_old_tank_angle = tank_ref.last_status.angle;
@@ -159,8 +173,9 @@ async fn track_and_fire(tank: &RefCell<TankController>) -> ! {
                 tank_ref.configuration.radar_angle_increment_max / 1.5 - tank_angle_shift;
             tank_ref.execute_command(Command::SetRadar((radar_delta, radar_width)));
 
-            if !tank_ref.last_status.radar_result.tanks.is_empty() {
-                let tank = &tank_ref.last_status.radar_result.tanks[0];
+            if let Some(tank) =
+                next_tank(&tank_ref.configuration, &tank_ref.last_status.radar_result)
+            {
                 enemy_last_pos = tank_ref.polar_2_cart(PolarCoord {
                     r: tank.distance,
                     p: tank_ref.last_status.angle + tank_ref.last_status.radar_result.angle,
@@ -192,62 +207,69 @@ async fn track_and_fire(tank: &RefCell<TankController>) -> ! {
                 // Try left
                 tank_ref.execute_command(Command::SetRadar((radar_width, radar_width)));
             }
-            if tank_ref.last_status.radar_result.tanks.is_empty() {
-                radar_width *= 3.0;
-                if radar_width > tank_ref.configuration.radar_angle_increment_max {
-                    tank_ref.state = TankState::Search;
-                    break;
-                }
-            } else {
-                let enemy_tank = &tank_ref.last_status.radar_result.tanks[0];
-                let radar_angle = tank_ref.last_status.radar_result.angle;
-                enemy_last_pos = tank_ref.polar_2_cart(PolarCoord {
-                    r: enemy_tank.distance,
-                    p: tank_ref.last_status.angle + radar_angle,
-                });
-                let min_radar_width = (ENEMY_TANK_MIN_SIZE / enemy_tank.distance).atan();
 
-                tank_ref.execute_command(Command::SetCannotPosition(radar_angle));
-                // If radar width is less or equal the min_radar_width required to have enough precise fire
-                // and
-                let delta_cannon_radar = angle_wrapping(
-                    tank_ref.last_status.cannon_angle
-                        - tank_ref.last_status.angle
-                        -tank_ref.last_status.radar_result.angle
-                        
-                );
-                if radar_width <= min_radar_width
-                    && !tank_ref.last_status.radar_result.tanks.is_empty()
-                    && tank_ref.last_status.radar_result.tanks[0].distance < fire_min_distance
-                    && delta_cannon_radar.abs() < min_radar_width
-                {
-                    tank_ref.state = TankState::FireTracking(enemy_last_pos);
-                    while tank_ref.last_status.cannon_temp < 320.0 {
-                        tank_ref.execute_command(Command::FireCannon);
+            match next_tank(&tank_ref.configuration, &tank_ref.last_status.radar_result) {
+                // No alive tank detected
+                None => {
+                    radar_width *= 3.0;
+                    if radar_width > tank_ref.configuration.radar_angle_increment_max {
+                        tank_ref.state = TankState::Search;
+                        break;
+                    }
+                }
+                Some(enemy_tank) => {
+                    // One alive tank detected
+                    let enemy_tank = &tank_ref.last_status.radar_result.tanks[0];
+                    let radar_angle = tank_ref.last_status.radar_result.angle;
+                    enemy_last_pos = tank_ref.polar_2_cart(PolarCoord {
+                        r: enemy_tank.distance,
+                        p: tank_ref.last_status.angle + radar_angle,
+                    });
+                    let min_radar_width = (ENEMY_TANK_MIN_SIZE / enemy_tank.distance).atan();
+
+                    tank_ref.execute_command(Command::SetCannotPosition(radar_angle));
+                    // If radar width is less or equal the min_radar_width required to have enough precise fire
+                    // and
+                    let delta_cannon_radar = angle_wrapping(
+                        tank_ref.last_status.cannon_angle
+                            - tank_ref.last_status.angle
+                            - tank_ref.last_status.radar_result.angle,
+                    );
+                    if radar_width <= min_radar_width
+                        && !tank_ref.last_status.radar_result.tanks.is_empty()
+                        && tank_ref.last_status.radar_result.tanks[0].distance < fire_min_distance
+                        && delta_cannon_radar.abs() < min_radar_width
+                    {
+                        tank_ref.state = TankState::FireTracking(enemy_last_pos);
+                        while tank_ref.last_status.cannon_temp < 320.0 {
+                            tank_ref.execute_command(Command::FireCannon);
+                            log_message("Fire");
+                            if !&tank_ref.last_status.radar_result.tanks.is_empty() {
+                                let enemy_tank = &tank_ref.last_status.radar_result.tanks[0];
+                                enemy_last_pos = tank_ref.polar_2_cart(PolarCoord {
+                                    r: enemy_tank.distance,
+                                    p: tank_ref.last_status.angle + radar_angle,
+                                });
+                                tank_ref.state = TankState::FireTracking(enemy_last_pos)
+                            }
+                        }
+                    } else {
                         if !&tank_ref.last_status.radar_result.tanks.is_empty() {
                             let enemy_tank = &tank_ref.last_status.radar_result.tanks[0];
                             enemy_last_pos = tank_ref.polar_2_cart(PolarCoord {
                                 r: enemy_tank.distance,
                                 p: tank_ref.last_status.angle + radar_angle,
                             });
-                            tank_ref.state = TankState::FireTracking(enemy_last_pos)
                         }
+                        tank_ref.state = TankState::Track(enemy_last_pos)
                     }
-                } else {
-                    if !&tank_ref.last_status.radar_result.tanks.is_empty() {
-                        let enemy_tank = &tank_ref.last_status.radar_result.tanks[0];
-                        enemy_last_pos = tank_ref.polar_2_cart(PolarCoord {
-                            r: enemy_tank.distance,
-                            p: tank_ref.last_status.angle + radar_angle,
-                        });
-                    }
-                    tank_ref.state = TankState::Track(enemy_last_pos)
                 }
             }
+
             drop(tank_ref);
             pending_once().await;
         }
-        
+
         pending_once().await;
     }
 }

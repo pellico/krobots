@@ -25,8 +25,7 @@ pub struct UIGameState {
 
 pub enum UICommand {
     QUIT,
-    EnterDebugMode,
-    ExitDebugMode,
+    ToggleDebugMode,
     NextStep,
 }
 
