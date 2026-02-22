@@ -16,7 +16,7 @@ pub struct Turret {
     pub(super) phy_body_handle: RigidBodyHandle,
     pub(super) collider_handle: ColliderHandle,
     pub(super) angle: f32, //Updated during step
-    pub(super) shape_polyline: Vec<Point2<Real>>,
+    pub(super) shape_polyline: Vec<Vector>,
     pub(super) fire: bool,
     pub(super) new_angle: Option<f32>, // New position. None if there is no command change
     pub(super) cannon_temperature: f32,
@@ -30,8 +30,8 @@ pub struct Bullet {
     pub(super) phy_body_handle: RigidBodyHandle,
     pub(super) collider_handle: ColliderHandle,
     pub(super) tick_counter: u32, //tick count down when zero the bullet will be destroyed
-    pub(super) shape_polyline: Vec<Point2<Real>>,
-    pub(super) position: Isometry2<Real>,
+    pub(super) shape_polyline: Vec<Vector>,
+    pub(super) position: Pose,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -47,9 +47,9 @@ pub struct Tank {
     pub(super) max_engine_power: f32,
     pub(super) turning_power_max: f32,
     pub(super) turning_power: f32,
-    pub(super) shape_polyline: Vec<Point2<Real>>,
-    pub(super) position: Isometry<Real>,
-    pub(super) linvel: Vector<Real>,
+    pub(super) shape_polyline: Vec<Vector>,
+    pub(super) position: Pose,
+    pub(super) linvel: Vector,
     pub(super) angular_velocity: Real, //Present angular velocity
     pub(super) radar_position: f32,    // Angle relative to the tank
     radar_width: f32,
@@ -68,7 +68,7 @@ pub struct Tank {
 impl Tank {
     pub fn new(
         p_engine: &mut PhysicsEngine,
-        tank_position: Isometry<Real>,
+        tank_position: Pose,
         tank_index: usize,
         name: String,
     ) -> Tank {
@@ -101,7 +101,7 @@ impl Tank {
         Setup turret
         */
         let turret_body = RigidBodyBuilder::dynamic()
-            .translation(tank_position.translation.vector)
+            .translation(tank_position.translation)
             .rotation(0.0)
             .build();
         let rigid_body_turret_handle = p_engine.rigid_body_set.insert(turret_body);
@@ -125,8 +125,8 @@ impl Tank {
         );
         // Create joint to move turret together with tank.
         let joint = RevoluteJointBuilder::new()
-            .local_anchor1(point![0.0, 0.0])
-            .local_anchor2(point![-p_engine.conf.turret_width_m / 2.0, 0.0])
+            .local_anchor1(Vector::new(0.0, 0.0))
+            .local_anchor2(Vector::new(-p_engine.conf.turret_width_m / 2.0, 0.0))
             .motor_model(MotorModel::AccelerationBased)
             .motor_position(
                 0.0,
@@ -166,7 +166,7 @@ impl Tank {
             turning_power_max: p_engine.conf.turning_power_max,
             shape_polyline: shape_polyline_tank,
             position: *rigid_body.position(),
-            linvel: *rigid_body.linvel(),
+            linvel: rigid_body.linvel(),
             angular_velocity: 0.0,
             radar_position: 0.0,
             radar_width: p_engine.conf.radar_width_max,
@@ -192,7 +192,7 @@ impl Tank {
 
     #[inline]
     pub fn linear_velocity(&self) -> Real {
-        self.linvel.norm()
+        self.linvel.length()
     }
 
     #[inline]
@@ -203,9 +203,9 @@ impl Tank {
     #[inline]
     /// Get the velocity along the tank direction
     pub fn forward_velocity(&self) -> Real {
-        let unit_vector = Vector2::<f32>::identity();
-        let direction_vector = self.position * unit_vector;
-        direction_vector.dot(&self.linvel)
+        let unit_vector = Vector::X;
+        let direction_vector = self.position.rotation * unit_vector;
+        self.linvel.dot(direction_vector)
     }
 
     #[inline]
@@ -224,7 +224,7 @@ impl Tank {
     }
 
     #[inline]
-    pub fn linvel(&self) -> Vector<Real> {
+    pub fn linvel(&self) -> Vector {
         self.linvel
     }
 
@@ -234,7 +234,7 @@ impl Tank {
     }
 
     #[inline]
-    pub fn position(&self) -> Isometry<Real> {
+    pub fn position(&self) -> Pose {
         self.position
     }
 
@@ -260,7 +260,7 @@ impl Tank {
     }
 
     #[inline]
-    pub fn shape_polyline(&self) -> &Vec<Point2<Real>> {
+    pub fn shape_polyline(&self) -> &Vec<Vector> {
         &self.shape_polyline
     }
 
@@ -350,7 +350,7 @@ impl Tank {
             0.0
         };
         // Energy transmission decrease linearly and go to zero at distance ZERO_POWER_LIMIT
-        let distance_from_center = self.position.translation.vector.norm();
+        let distance_from_center = self.position.translation.length();
         // Beyond ZERO_POWER_LIMIT energy will be drained from the tank.
         let charged_energy =
             conf.power_energy_source_step * (1.0 - distance_from_center / conf.zero_power_limit);
@@ -444,7 +444,7 @@ impl Turret {
     }
 
     #[inline]
-    pub fn shape_polyline(&self) -> &Vec<Point2<Real>> {
+    pub fn shape_polyline(&self) -> &Vec<Vector> {
         &self.shape_polyline
     }
 
@@ -474,11 +474,11 @@ impl Turret {
 
 impl Bullet {
     #[inline]
-    pub fn position(&self) -> Isometry2<Real> {
+    pub fn position(&self) -> Pose {
         self.position
     }
     #[inline]
-    pub fn shape_polyline(&self) -> &Vec<Point2<Real>> {
+    pub fn shape_polyline(&self) -> &Vec<Vector> {
         &self.shape_polyline
     }
     #[inline]

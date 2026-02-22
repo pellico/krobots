@@ -27,10 +27,10 @@ use self::util::*;
 use crate::conf::*;
 use crate::{Opts, is_exit_application, signal_exit};
 use log::{debug, error, info, warn};
-pub use rapier2d::na::{Isometry2, Rotation2, vector};
+pub use rapier2d::na::{Isometry2, Rotation2};
 pub use rapier2d::na::{Point2, Vector2};
 use rapier2d::prelude::*;
-pub use rapier2d::prelude::{Real, RigidBodyHandle};
+pub use rapier2d::prelude::{Real, RigidBodyHandle,vector};
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 use std::thread::{JoinHandle, spawn};
@@ -41,11 +41,11 @@ use tank_wasm::WasmTanks;
 Tank body collision group used in colliders.
 */
 const TANK_GROUP: InteractionGroups =
-    InteractionGroups::new(Group::GROUP_1, Group::GROUP_1.union(Group::GROUP_3));
+    InteractionGroups::new(Group::GROUP_1, Group::GROUP_1.union(Group::GROUP_3),InteractionTestMode::And);
 const TURRET_GROUP: InteractionGroups =
-    InteractionGroups::new(Group::GROUP_2, Group::GROUP_2.union(Group::GROUP_3));
+    InteractionGroups::new(Group::GROUP_2, Group::GROUP_2.union(Group::GROUP_3),InteractionTestMode::And);
 const BULLET_GROUP: InteractionGroups =
-    InteractionGroups::new(Group::GROUP_3, Group::GROUP_1.union(Group::GROUP_2));
+    InteractionGroups::new(Group::GROUP_3, Group::GROUP_1.union(Group::GROUP_2),InteractionTestMode::And);
 
 struct MyPhysicsHooks;
 pub type TickType = u32;
@@ -113,7 +113,7 @@ pub struct PhysicsEngine {
     ccd_solver: CCDSolver,
     physics_hooks: MyPhysicsHooks,
     event_handler: (),
-    gravity_vector: Vector2<Real>,
+    gravity_vector: Vector,
 }
 
 impl Default for PhysicsEngine {
@@ -136,7 +136,7 @@ impl Default for PhysicsEngine {
             ccd_solver: CCDSolver::new(),
             physics_hooks: MyPhysicsHooks {},
             event_handler: (),
-            gravity_vector: vector![0.0, 0.0], //No gravity
+            gravity_vector: Vector::new(0.0, 0.0), //No gravity
             debug_mode: true,
             state: SimulationState::WaitingConnection,
             conf: Conf::default(),
@@ -164,7 +164,7 @@ impl PhysicsEngine {
             ccd_solver: CCDSolver::new(),
             physics_hooks: MyPhysicsHooks {},
             event_handler: (),
-            gravity_vector: vector![0.0, 0.0], //No gravity
+            gravity_vector: Vector::new(0.0, 0.0), //No gravity
             debug_mode: opts.debug_mode,
             state: SimulationState::WaitingConnection,
             conf,
@@ -268,7 +268,7 @@ impl PhysicsEngine {
     # Return
     * Tank index
     */
-    fn add_tank(&mut self, tank_position: Isometry2<Real>, name: String) -> usize {
+    fn add_tank(&mut self, tank_position: Pose, name: String) -> usize {
         //This tank index is used to set userdata of all collider to skip detection.
         let tank_index = self.tanks.len();
         let tank = Tank::new(self, tank_position, tank_index, name);
@@ -336,7 +336,7 @@ impl PhysicsEngine {
             }
         }
         self.physics_pipeline.step(
-            &self.gravity_vector,
+            self.gravity_vector,
             &self.integration_parameters,
             &mut self.island_manager,
             &mut self.broad_phase,
@@ -355,7 +355,7 @@ impl PhysicsEngine {
             //Tank body
             let tank_rigid_body = &self.rigid_body_set[tank.phy_body_handle];
             tank.position = *tank_rigid_body.position();
-            tank.linvel = *tank_rigid_body.linvel();
+            tank.linvel = tank_rigid_body.linvel();
             tank.angular_velocity = tank_rigid_body.angvel();
             let collider = &self.collider_set[tank.collider_handle];
             tank.shape_polyline = Self::get_collider_polyline_cuboid(collider);
@@ -372,7 +372,7 @@ impl PhysicsEngine {
                 /*Skip if no contact. This should be false for bullet in contact
                 with tank that has fired the same bullet. See physics hook.
                 */
-                if !contact_pair.has_any_active_contact {
+                if !contact_pair.has_any_active_contact() {
                     continue;
                 }
                 let other_collider = if contact_pair.collider1 == bullet.collider_handle {
@@ -468,11 +468,11 @@ impl PhysicsEngine {
         let angle = cannon_position.rotation.angle();
         debug!("Created bullet angle:{}", angle * 180.0 / PI);
         //Compute bullet speed and sum cannon edge speed (world speed)
-        let velocity = (cannon_position * vector![conf.bullet_speed, 0.0]) + velocity_cannon_edge;
+        let velocity = (cannon_position.rotation * Vector::new(conf.bullet_speed, 0.0)) + velocity_cannon_edge;
         //bullet shall be created in front of cannon and outside of the tank
-        let bullet_position = cannon_position * Point::new(1.8, 0.0);
+        let bullet_position = cannon_position * Vector::new(1.8, 0.0);
         let bullet_body = RigidBodyBuilder::dynamic()
-            .translation(bullet_position.coords)
+            .translation(bullet_position)
             .linvel(velocity)
             .rotation(angle)
             .ccd_enabled(true)
@@ -480,7 +480,7 @@ impl PhysicsEngine {
             .angular_damping(0.0)
             .build();
 
-        let bullet_collider = ColliderBuilder::cuboid(0.05, 0.2)
+        let bullet_collider = ColliderBuilder::cuboid(0.2, 0.05)
             .density(0.1)
             .collision_groups(BULLET_GROUP)
             .active_hooks(ActiveHooks::FILTER_CONTACT_PAIRS)
@@ -497,12 +497,12 @@ impl PhysicsEngine {
      * `max_num_tanks` - Maximum number of expected tanks
      */
     fn add_tank_in_circle(&mut self, name: String, max_num_tanks: usize) -> usize {
-        let position_vector = Vector2::new(self.conf.start_distance, 0.0);
+        let position_vector = Vector::new(self.conf.start_distance, 0.0);
         //Compute position of new tank
         let tank_pos_angle = (2.0 * PI / max_num_tanks as f32) * (self.tanks.len() + 1) as f32;
-        let tank_vector_position = Isometry2::rotation(tank_pos_angle) * position_vector;
+        let tank_vector_position = Pose::rotation(tank_pos_angle) * position_vector;
         //Angle to compute starting position of tank
-        let tank_position = Isometry2::new(tank_vector_position, tank_pos_angle);
+        let tank_position = Pose::new(tank_vector_position, tank_pos_angle);
         self.add_tank(tank_position, name)
     }
 
@@ -526,11 +526,11 @@ impl PhysicsEngine {
     fn apply_engine_power(tank_rigid_body: &mut RigidBody, tank: &Tank) {
         //We don't have infinite force at 0 speed.
         let force = tank.engine_power / (tank.forward_velocity().abs() + 0.5);
-        let force_forward_vector = tank_rigid_body.position() * vector![force, 0.0];
+        let force_forward_vector = tank.position().rotation * Vector::from_array([force, 0.0]);
         tank_rigid_body.add_force(force_forward_vector, true);
     }
 
-    fn get_collider_polyline_cuboid(collider: &Collider) -> Vec<Point2<Real>> {
+    fn get_collider_polyline_cuboid(collider: &Collider) -> Vec<Vector> {
         let cuboid = collider.shape().as_cuboid().unwrap();
         let mut vertexs = cuboid.to_polyline();
         let position = collider.position();
@@ -570,15 +570,16 @@ impl PhysicsEngine {
             let target_tank = &self.tanks[index];
             // This is the vector from this tank to target tank
             let relative_vector =
-                target_tank.position.translation.vector - tank.position.translation.vector;
-            let distance = relative_vector.norm();
+                target_tank.position.translation - tank.position.translation;
+            let distance = relative_vector.length();
 
             if distance < target_tank.radar_max_detection_distance {
                 let radar_vector =
-                    Isometry2::rotation(tank.radar_position + tank.position.rotation.angle())
-                        * Vector2::<Real>::x();
+                    Vector::from_angle(tank.radar_position + tank.position.rotation.angle());
                 //angle from radar vector to target_tank vector
-                let angle = Rotation2::rotation_between(&radar_vector, &relative_vector).angle();
+                let angle = radar_vector.angle_to(relative_vector);
+                // Check the angle distance between radar and vector pointing to enemy tank is withing
+                // radar width set / 2
                 if angle.abs() < tank.radar_width() / 2.0 {
                     result.push((target_tank, distance));
                 }
@@ -603,7 +604,7 @@ mod tests {
     use clap::Parser;
     use float_eq::assert_float_eq;
 
-    pub use rapier2d::na::Vector2;
+    use rapier2d::math::Vector;
     use std::f32::consts::PI;
 
     fn setup_engine(num: u32, distance: Option<f32>) -> PhysicsEngine {
@@ -637,7 +638,7 @@ mod tests {
         // Check velocity
         let vel_lin = tank0.linvel();
         let vel_ang = tank0.angular_velocity();
-        assert_eq!(vel_lin, Vector2::new(0.0, 0.0));
+        assert_eq!(vel_lin, Vector::new(0.0, 0.0));
         assert_eq!(vel_ang, 0.0);
     }
     #[test]
@@ -690,7 +691,7 @@ mod tests {
         // Set maximum forward and check that value is wrapped
         tank0.set_engine_power(0.1);
         assert_eq!(tank0.engine_power_fraction(), 0.1);
-        assert_eq!(tank0.linvel().norm(), 0.0);
+        assert_eq!(tank0.linvel().length(), 0.0);
         assert_eq!(engine.tick, 0, "Wrong tick number");
         for _ in 0..400 {
             engine.step()
@@ -700,7 +701,7 @@ mod tests {
         {
             // Tank angle and velocity angle shall be almost the same
             let velocity_vector = tank0.linvel();
-            assert_float_eq!(velocity_vector.norm(), 8.001642, r2nd <= 0.0001);
+            assert_float_eq!(velocity_vector.length(), 8.001642, r2nd <= 0.0001);
             let velocity_angle = velocity_vector.y.atan2(velocity_vector.x);
             assert_float_eq!(velocity_angle, 2.0795524, r2nd <= 0.001);
             let tank_angle = tank0.position().rotation.angle();
@@ -709,13 +710,13 @@ mod tests {
         }
 
         // Check position api by computing the distance traveled by tank in 60 min.
-        let pos1 = tank0.position().translation.vector;
+        let pos1 = tank0.position().translation;
         for _ in 0..60 {
             engine.step()
         }
         let tank0 = engine.tank_mut(0);
-        let pos2 = tank0.position().translation.vector;
-        let distance = (pos1 - pos2).norm();
+        let pos2 = tank0.position().translation;
+        let distance = (pos1 - pos2).length();
         assert_float_eq!(distance, 8.086, r2nd <= 0.001);
 
         // Stop tank
@@ -725,7 +726,7 @@ mod tests {
         }
 
         let tank0 = engine.tank_mut(0);
-        assert_eq!(tank0.linvel().norm(), 0.0, "Wrong speed");
+        assert_eq!(tank0.linvel().length(), 0.0, "Wrong speed");
         //Invert direction
         tank0.set_engine_power(-0.1);
         for _ in 0..400 {
@@ -734,7 +735,7 @@ mod tests {
 
         let tank0 = engine.tank_mut(0);
         let velocity_vector = tank0.linvel();
-        assert_float_eq!(velocity_vector.norm(), 8.001644, r2nd <= 0.000_02);
+        assert_float_eq!(velocity_vector.length(), 8.001644, r2nd <= 0.000_02);
         let velocity_angle = velocity_vector.y.atan2(velocity_vector.x);
         assert_float_eq!(velocity_angle, -1.0620875, r2nd <= 0.002);
     }
@@ -800,7 +801,7 @@ mod tests {
         let turret1 = tank1.turret_mut();
         turret1.fire();
         let turret_angle_at_file = turret1.angle();
-        let tank_position_at_fire = tank1.position().translation.vector;
+        let tank_position_at_fire = tank1.position().translation;
         for _ in 0..1 {
             //engine.tank_mut(1).turret_mut().set_cannon_position(-1.5);
             engine.step();
@@ -814,12 +815,12 @@ mod tests {
         );
 
         // Compute velocity vector and angle
-        let bullet_position0 = bullet1.position().translation.vector;
+        let bullet_position0 = bullet1.position().translation;
         engine.step();
-        let bullet_position1 = engine.bullets[0].position().translation.vector;
+        let bullet_position1 = engine.bullets[0].position().translation;
         let velocity_vector = (bullet_position1 - bullet_position0) * 60.0;
-        let velocity_abs = velocity_vector.norm();
-        let angle = velocity_vector.angle(&nalgebra::vector![1.0, 0.0]);
+        let velocity_abs = velocity_vector.length();
+        let angle = velocity_vector.angle_to(Vector::X);
         // Speed as defined in conf
         assert_float_eq!(velocity_abs, &engine.conf.bullet_speed, abs <= 0.001);
         // angle the same as the turret when fired.
@@ -828,11 +829,11 @@ mod tests {
         // Check that hit and damage other tank
         let mut last_position = bullet_position1;
         while !engine.bullets.is_empty() {
-            last_position = engine.bullets[0].position().translation.vector;
+            last_position = engine.bullets[0].position().translation;
             engine.step();
         }
         assert!(
-            (last_position - tank_position_at_fire).norm()
+            (last_position - tank_position_at_fire).length()
                 <= engine.conf.bullet_max_range + engine.conf.bullet_speed / 60.0
         );
         println!("{}", last_position - tank_position_at_fire);

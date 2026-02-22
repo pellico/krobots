@@ -1,18 +1,19 @@
 use super::*;
 use crate::physics::{Point2, Real};
 use bevy::color::palettes::css::{GREEN,YELLOW};
+use rapier2d::math::Vector;
 
-fn draw_polyline(gizmos: &mut Gizmos, polyline: &[Point2<Real>], scaling_factor: f32) {
+fn draw_polyline(gizmos: &mut Gizmos, polyline: &[Vector], scaling_factor: f32) {
     let polyline_size = polyline.len();
     let poly_vec: Vec<Vec2> = polyline
         .iter()
-        .map(|&x| <Point2<Real> as Into<Vec2>>::into(x) * scaling_factor)
+        .map(|&x| x * scaling_factor)
         .collect();
     gizmos.linestrip_2d(poly_vec,  Color::Srgba( bevy::color::palettes::css::RED));
     //Close shape
     gizmos.line_2d(
-        <Point2<Real> as Into<Vec2>>::into(polyline[polyline_size - 1]) * scaling_factor,
-        <Point2<Real> as Into<Vec2>>::into(polyline[0]) * scaling_factor,
+        polyline[polyline_size - 1] * scaling_factor,
+        polyline[0] * scaling_factor,
         Color::Srgba( bevy::color::palettes::css::RED),
     );
 }
@@ -42,18 +43,16 @@ pub(super) fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
             .resolution(10);
 
         // Draw side of radar detection area
-        let v1 = tank.position().translation.vector * physical_scaling_factor;
+        let v1 = tank.position().translation * physical_scaling_factor;
         let (min_angle, max_angle) = tank.min_max_radar_angle();
 
-        let v2 = (nalgebra::Isometry2::rotation(min_angle)
-            * nalgebra::vector![scaled_radar_range, 0.0])
+        let v2 = Vector::from_angle(min_angle).rotate(Vector::new(scaled_radar_range, 0.0))
             + v1;
-        let v3 = (nalgebra::Isometry2::rotation(max_angle)
-            * nalgebra::vector![scaled_radar_range, 0.0])
+        let v3 = Vector::from_angle(max_angle).rotate(Vector::new(scaled_radar_range, 0.0))
             + v1;
 
-        gizmos.line_2d(v1.into(), v2.into(), Color::Srgba(YELLOW));
-        gizmos.line_2d(v1.into(), v3.into(), Color::Srgba(YELLOW));
+        gizmos.line_2d(v1, v2, Color::Srgba(YELLOW));
+        gizmos.line_2d(v1, v3, Color::Srgba(YELLOW));
     }
 
     // Draw bullets

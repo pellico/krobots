@@ -15,14 +15,14 @@ pub fn wrap_value<T: PartialOrd + Copy>(value: T, lower: T, upper: T) -> T {
 Velocity of a point of rigidbody
 # Arguments
 
-* `x` - x coordinates relative to rigid body
-* `y` - y coordinates relative to rigid body
+* `x` - x coordinates relative to rigid body 
+* `y` - y coordinates relative to rigid body 
 * `body` - rigidbody
 */
-pub fn get_velocity_at_point(x: f32, y: f32, rigid_body: &RigidBody) -> Vector<Real> {
-    let point_relative = Point::new(x, y);
+pub fn get_velocity_at_point(x: f32, y: f32, rigid_body: &RigidBody) -> Vector {
+    let point_relative = Vector::new(x, y);
     let point_world = rigid_body.position() * point_relative;
-    rigid_body.velocity_at_point(&point_world)
+    rigid_body.velocity_at_point(point_world)
 }
 
 /// Wrap angle in range ]-PI,PI]

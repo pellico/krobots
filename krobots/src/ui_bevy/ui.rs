@@ -94,8 +94,8 @@ pub(super) fn ui_update(
                 });
             if let Some(tank) = selected_tank {
                 let position = (
-                    tank.position().translation.vector.x,
-                    tank.position().translation.vector.y,
+                    tank.position().translation.x,
+                    tank.position().translation.y,
                 );
                 let rotation = tank.position().rotation.angle();
                 let power = tank.engine_power();

@@ -1,6 +1,7 @@
 use bevy::log;
 use bevy::math::bool;
 use futures::future::{BoxFuture, FutureExt};
+use rapier2d::math::Vector;
 use wasmtime::{StoreLimits, StoreLimitsBuilder};
 
 use crate::physics::tank_wasm::krobots::krobots::tank::PolarVector;
@@ -81,7 +82,7 @@ impl TankStatus {
         // Command result is not updated because it will be done during command processing
         self.tick = p_engine.tick();
         self.velocity = krobots::krobots::tank::PolarVector {
-            r: vel.norm(),
+            r: vel.length(),
             p: vel.y.atan2(vel.x),
         };
 
@@ -91,12 +92,9 @@ impl TankStatus {
         self.damage = tank.damage();
         self.cannon_angle = tank.turret().angle();
         self.power_source = krobots::krobots::tank::PolarVector {
-            r: tank_position.translation.vector.norm(),
-            p: Rotation2::rotation_between(
-                &Vector2::<Real>::x(),
-                &(-tank_position.translation.vector),
-            )
-            .angle(),
+            r: tank_position.translation.length(),
+            p: (-tank_position.translation).to_angle()
+           
         };
 
         self.cannon_temp = tank.turret().cannon_temperature();
