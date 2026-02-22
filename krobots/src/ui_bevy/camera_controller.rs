@@ -2,7 +2,7 @@ use crate::physics::UICommand;
 use crate::ui_bevy::SimulatorTx;
 
 use super::{PhysicsState, UiState};
-use bevy::input::mouse::MouseMotion;
+use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions};
 use std::fmt;
@@ -24,8 +24,8 @@ pub struct CameraController {
     pub friction: f32,
     pub velocity: Vec3,
     pub track_tank_enabled: bool,
-    pub key_enable_disable_debug_mode:KeyCode,
-    pub key_next_step_debug_mode:KeyCode,
+    pub key_enable_disable_debug_mode: KeyCode,
+    pub key_next_step_debug_mode: KeyCode,
 }
 
 impl Default for CameraController {
@@ -46,10 +46,8 @@ impl Default for CameraController {
             friction: 0.5,
             velocity: Vec3::ZERO,
             track_tank_enabled: false,
-            key_enable_disable_debug_mode:KeyCode::F1,
-            key_next_step_debug_mode:KeyCode::F2
-
-
+            key_enable_disable_debug_mode: KeyCode::F1,
+            key_next_step_debug_mode: KeyCode::F2,
         }
     }
 }
@@ -90,6 +88,7 @@ pub fn camera_controller(
     time: Res<Time>,
     key_input: Res<ButtonInput<KeyCode>>,
     simulator_tx: Res<SimulatorTx>,
+    mut evr_scroll: MessageReader<MouseWheel>,
     mut query: Query<(&mut Transform, &mut CameraController, &mut Projection), With<Camera>>,
     (ui_state, physics_state): (Res<UiState>, Res<PhysicsState>),
 ) {
@@ -107,6 +106,30 @@ pub fn camera_controller(
         }
         if key_input.pressed(options.key_zoom_in) {
             projection.scale *= 1.01f32.powf(-1.0);
+        }
+
+        for ev in evr_scroll.read() {
+            match ev.unit {
+                MouseScrollUnit::Line => {
+                    println!(
+                        "Scroll (line units): vertical: {}, horizontal: {}",
+                        ev.y, ev.x
+                    );
+                    if ev.y < 0.0 {
+                        let num_scrool = 2 * ev.y.abs() as u32;
+                        (0..num_scrool).for_each(|_| projection.scale *= 1.01f32.powf(1.0));
+                    } else {
+                        let num_scrool = 2 * ev.y.abs() as u32;
+                        (0..num_scrool).for_each(|_| projection.scale *= 1.01f32.powf(-1.0));
+                    }
+                }
+                MouseScrollUnit::Pixel => {
+                    println!(
+                        "Scroll (pixel units): vertical: {}, horizontal: {}",
+                        ev.y, ev.x
+                    );
+                }
+            }
         }
 
         // always ensure you end up with sane values
@@ -131,7 +154,7 @@ pub fn camera_controller(
             options.track_tank_enabled = !options.track_tank_enabled;
         }
 
-        if key_input.pressed(options.key_enable_disable_debug_mode) {
+        if key_input.just_pressed(options.key_enable_disable_debug_mode) {
             simulator_tx
                 .tx_ui_command
                 .lock()
