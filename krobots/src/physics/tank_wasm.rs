@@ -22,7 +22,7 @@ const FUEL_INTERVAL: u64 = 10000;
 bindgen!({
     world:"krobot",
     imports:{
-        "krobots:krobots/tank/execute-command":async
+        "krobots:krobots/tank.execute-command":async
     },
     exports:{
         default:async

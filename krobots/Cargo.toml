@@ -37,7 +37,7 @@ confy = "2"
 bevy = { version = "0.18" }
 bevy_egui = { version = "0.39" }
 bevy_embedded_assets = { version = "0.15" }
-wasmtime = { version = "36.0.3", features = ["call-hook"] }
+wasmtime = { version = "42.0.0", features = ["call-hook"] }
 indexmap = "2.9.0"
 anyhow = "1.0.98"
 futures = { version = "0.3.31", features = ["async-await"] }
