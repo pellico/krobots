@@ -214,6 +214,11 @@ impl Tank {
     }
 
     #[inline]
+    pub fn tank_energy_fraction(&self) -> f32 {
+        self.energy / self.tank_energy_max
+    }
+
+    #[inline]
     pub fn turret(&self) -> &Turret {
         &self.turret
     }
@@ -391,7 +396,7 @@ impl Tank {
 
     #[inline]
     pub fn is_dead(&self) -> bool {
-        self.damage > self.damage_max
+        self.damage > self.damage_max || self.energy <= 0.0
     }
 
     /// Update radar position and decrease energy if there is enough energy available

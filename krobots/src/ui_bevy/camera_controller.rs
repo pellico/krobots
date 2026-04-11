@@ -84,11 +84,10 @@ Freecam Controls:
     }
 }
 
-pub fn camera_controller(
+pub fn camera_controller_keys(
     time: Res<Time>,
     key_input: Res<ButtonInput<KeyCode>>,
     simulator_tx: Res<SimulatorTx>,
-    mut evr_scroll: MessageReader<MouseWheel>,
     mut query: Query<(&mut Transform, &mut CameraController, &mut Projection), With<Camera>>,
     (ui_state, physics_state): (Res<UiState>, Res<PhysicsState>),
 ) {
@@ -106,30 +105,6 @@ pub fn camera_controller(
         }
         if key_input.pressed(options.key_zoom_in) {
             projection.scale *= 1.01f32.powf(-1.0);
-        }
-
-        for ev in evr_scroll.read() {
-            match ev.unit {
-                MouseScrollUnit::Line => {
-                    println!(
-                        "Scroll (line units): vertical: {}, horizontal: {}",
-                        ev.y, ev.x
-                    );
-                    if ev.y < 0.0 {
-                        let num_scrool = 2 * ev.y.abs() as u32;
-                        (0..num_scrool).for_each(|_| projection.scale *= 1.01f32.powf(1.0));
-                    } else {
-                        let num_scrool = 2 * ev.y.abs() as u32;
-                        (0..num_scrool).for_each(|_| projection.scale *= 1.01f32.powf(-1.0));
-                    }
-                }
-                MouseScrollUnit::Pixel => {
-                    println!(
-                        "Scroll (pixel units): vertical: {}, horizontal: {}",
-                        ev.y, ev.x
-                    );
-                }
-            }
         }
 
         // always ensure you end up with sane values
@@ -213,11 +188,39 @@ pub fn camera_controller(
 pub fn camera_controller_mouse(
     mut windows_options: Query<(&mut Window, &mut CursorOptions)>,
     mut mouse_events: MessageReader<MouseMotion>,
+    mut evr_scroll: MessageReader<MouseWheel>,
     mouse_button_input: Res<ButtonInput<MouseButton>>,
-    mut query: Query<(&mut Transform, &mut CameraController), With<Camera>>,
+    mut query: Query<(&mut Transform, &mut CameraController, &mut Projection), With<Camera>>,
 ) {
-    if let Ok((mut transform, options)) = query.single_mut() {
-        // Handle key input
+    if let Ok((mut transform, options, projection_enum)) = query.single_mut() {
+        let projection = match projection_enum.into_inner() {
+            Projection::Orthographic(a) => a,
+            _ => return,
+        };
+
+        for ev in evr_scroll.read() {
+            match ev.unit {
+                MouseScrollUnit::Line => {
+                    // println!(
+                    //     "Scroll (line units): vertical: {}, horizontal: {}",
+                    //     ev.y, ev.x
+                    // );
+                    if ev.y < 0.0 {
+                        let num_scrool = 2 * ev.y.abs() as u32;
+                        (0..num_scrool).for_each(|_| projection.scale *= 1.01f32.powf(1.0));
+                    } else {
+                        let num_scrool = 2 * ev.y.abs() as u32;
+                        (0..num_scrool).for_each(|_| projection.scale *= 1.01f32.powf(-1.0));
+                    }
+                }
+                MouseScrollUnit::Pixel => {
+                    // println!(
+                    //     "Scroll (pixel units): vertical: {}, horizontal: {}",
+                    //     ev.y, ev.x
+                    // );
+                }
+            }
+        }
 
         // Handle mouse input
         let mut mouse_delta = Vec2::ZERO;

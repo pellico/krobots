@@ -87,6 +87,7 @@ pub(super) fn ui_update(
                     tank.position().translation.x,
                     tank.position().translation.y,
                 );
+                let energy = tank.energy();
                 let rotation = tank.position().rotation.angle();
                 let power = tank.engine_power();
                 let power_fraction = tank.engine_power_fraction();
@@ -117,6 +118,16 @@ pub(super) fn ui_update(
                     ui.label("Angular Vel");
                     ui.label(format!("{:.2e}", angular_velocity));
                     ui.end_row();
+                });
+                ui.horizontal(|ui| {
+                    ui.add(
+                        egui::ProgressBar::new(tank.tank_energy_fraction())
+                            .show_percentage()
+                            .text("Energy")
+                            .desired_width(150.0)
+                            .fill(egui::Color32::ORANGE),
+                    );
+                    ui.label(format!("{:.1}", tank.energy()));
                 });
                 ui.horizontal(|ui| {
                     ui.add(
