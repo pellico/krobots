@@ -1,5 +1,4 @@
 use super::*;
-use crate::physics::{Point2, Real};
 use bevy::color::palettes::css::{GREEN,YELLOW};
 use rapier2d::math::Vector;
 
@@ -34,7 +33,7 @@ pub(super) fn gizmos(mut gizmos: Gizmos, physics_state: Res<PhysicsState>) {
         let scaled_radar_range = tank.radar_range() * physical_scaling_factor;
         gizmos
             .arc_2d(
-                Isometry2d::new(tank.position().translation.into(),Rot2::radians(tank.position().rotation.angle() + tank.radar_position() - PI / 2.0 - tank.radar_width() *0.5)),
+                Isometry2d::new(tank.position().translation,Rot2::radians(tank.position().rotation.angle() + tank.radar_position() - PI / 2.0 - tank.radar_width() *0.5)),
                 
                 tank.radar_width(),
                 scaled_radar_range,

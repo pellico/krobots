@@ -16,13 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-use confy;
+use anyhow::{Result, anyhow};
 use indexmap::IndexMap;
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
-use anyhow::{Result,anyhow};
-#[derive(Serialize, Deserialize)]
+use std::{
+    collections::HashMap, fs, io::ErrorKind, path::{Path, PathBuf}
+};
+#[derive(Serialize, Deserialize,Debug)]
 pub struct Conf {
     pub tank_width_m: f32,
     pub tank_depth_m: f32,
@@ -63,30 +64,46 @@ pub struct Conf {
     /// When high temp. tank can fire 1 bullet each second  
     pub cannon_temp_decrease_step: f32,
     /// Map of path to tanks to execute
-    /// this is ignored if tank folder is specified in command line
-    pub tanks_list:IndexMap<String,PathBuf>
+    pub tanks: HashMap<String, PathBuf>,
+    pub tanks_list:Vec<(String,usize)>
 }
 
 impl Conf {
     /// Load configuration file. If file doesn't exist create a new one
     pub fn load_configuration(path: &str) -> Result<Conf> {
-        let path_full = Path::new(path).canonicalize()?;
-        debug!(
-            "Writing or reading configuration from path {}",
-            path_full.display()
-        );
-        let mut conf: Conf = confy::load_path(&path_full)?;
-
-        //resolve path of tank list relative to location of configuration file
-        let folder_conf = path_full.parent().ok_or_else(||anyhow!("No parent of folder"))?;
-        let resolved_paths:IndexMap<String,PathBuf> = conf.tanks_list.into_iter().map(|(name,p)| {
-            match p.is_absolute() {
-                true => (name,p),
-                false => (name,folder_conf.join(p))
+        let typed_path = Path::new(path);
+        match typed_path.canonicalize() {
+            Ok(path_full) => {
+                debug!("Reading configuration from path {}", path_full.display());
+                let configuration = fs::read_to_string(&path_full)?;
+                let mut conf: Conf = serde_saphyr::from_str(&configuration)?;
+                //resolve path of tank list relative to location of configuration file
+                let folder_conf = path_full
+                    .parent()
+                    .ok_or_else(|| anyhow!("No parent of folder"))?;
+                let resolved_paths: HashMap<String, PathBuf> = conf
+                    .tanks
+                    .into_iter()
+                    .map(|(name, p)| match p.is_absolute() {
+                        true => (name, p),
+                        false => (name, folder_conf.join(p)),
+                    })
+                    .collect();
+                conf.tanks = resolved_paths;
+                Ok(conf)
             }
-        }).collect();
-        conf.tanks_list=resolved_paths;
-        Ok(conf)
+            Err(error) if error.kind() == ErrorKind::NotFound => {
+                
+                let default_configuration = Conf::default();
+                let result = serde_saphyr::to_string(&default_configuration)?;
+                fs::write(typed_path, result)?;
+                Err(anyhow!(
+                    "File not found created a yaml file here {} with default configuration",
+                    typed_path.display()
+                ))
+            },
+            Err(e) => Err(e)?
+        }
     }
 }
 
@@ -134,7 +151,20 @@ impl Default for Conf {
             // Temperature decrease for each simulation step
             // When high temp. tank can fire 1 bullet each second
             cannon_temp_decrease_step: CANNON_FIRE_TEMP_INCREASE / 60.0,
-            tanks_list:IndexMap::new()
+            tanks_list: Vec::new(),
+            tanks: HashMap::from([("example_tank".to_string(), PathBuf::from("example_tank.yaml"))]),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_default_file_creation() {
+        let res = Conf::load_configuration("test_conf.yaml");
+        println!("{:?}", res);
+        assert!(Conf::load_configuration("test_conf.yaml").is_ok());
     }
 }

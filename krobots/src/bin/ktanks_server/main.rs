@@ -47,11 +47,6 @@ fn main() {
         },
     };
 
-    // add to conf wasm files in tank folder and sort them.
-    if let Some(ref tank_folder) = opts.tank_folder {
-        let tanks_in_folder = get_tanks_file_from_folder(tank_folder);
-        conf.tanks_list.extend(tanks_in_folder);
-    }
     if opts.no_gui {
         let tx_state =
             remote_ch::UISender::new(opts.remote_gui_port, opts.max_num_remote_gui as usize);

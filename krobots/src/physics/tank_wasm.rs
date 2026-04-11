@@ -1,14 +1,15 @@
 use bevy::log;
 use bevy::math::bool;
+use bevy::platform::collections::HashMap;
 use futures::future::{BoxFuture, FutureExt};
-use rapier2d::math::Vector;
 use wasmtime::{StoreLimits, StoreLimitsBuilder};
 
 use crate::physics::tank_wasm::krobots::krobots::tank::PolarVector;
-use crate::physics::{PhysicsEngine, Real, Rotation2, Vector2};
+use crate::physics::{PhysicsEngine};
 use indexmap::IndexMap;
 use krobots::krobots::tank;
 use krobots::krobots::tank::{RadarResult, SimulationConfig, TankRadar, TankStatus};
+use core::num;
 use std::{
     path::Path,
     pin::Pin,
@@ -144,7 +145,6 @@ impl Default for WasmTanks {
         // Instantiate the engine and store
         let mut config = wasmtime::Config::new();
         config.consume_fuel(true);
-        config.async_support(true);
         config.debug_info(true);
         config.cranelift_opt_level(wasmtime::OptLevel::None);
         let engine = Engine::new(&config).expect("Failed instantiating engine");
@@ -244,19 +244,25 @@ impl WasmTanks {
         Ok(())
     }
 
+    /// Create a new WasmTanks instance and load tanks specified in configuration file
     pub fn new(p_engine: &mut PhysicsEngine) -> WasmTanks {
         let mut result = WasmTanks::default();
-        let num_tanks = p_engine.conf.tanks_list.len();
-        p_engine
-            .conf
-            .tanks_list
-            .clone()
-            .iter()
-            .for_each(|(tank_name,path_wasm)| {
-                result
-                    .new_tank(path_wasm, tank_name, &mut *p_engine, num_tanks)
-                    .unwrap()
-            });
+        let mut tanks_counter:HashMap<String,usize> = HashMap::new();
+        
+        let mut unrolled_tanks:Vec<(String, std::path::PathBuf)> = Vec::new();
+        for (tank_name, count) in p_engine.conf.tanks_list.clone().iter() {
+            for _ in 0..*count {
+                let counter = tanks_counter.entry(tank_name.clone()).or_insert(0);
+                let name = format!("{}-{}", tank_name, counter);
+                let path_wasm = p_engine.conf.tanks.get(tank_name).expect("Tank name not found in tanks map");
+                *counter += 1;
+                unrolled_tanks.push((name, path_wasm.clone()));
+            }
+        }
+        let num_tanks = unrolled_tanks.len();
+        unrolled_tanks.iter().for_each(|(tank_name,path_wasm)| result
+                .new_tank(path_wasm, tank_name, &mut *p_engine, num_tanks)
+                .unwrap());
         result
     }
     pub fn next_step(&mut self, p_engine: &mut PhysicsEngine) -> anyhow::Result<()> {

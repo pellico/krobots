@@ -29,8 +29,6 @@ pub(super) fn configure_ui_state_system(mut ui_state: ResMut<UiState>) {
 
 pub(super) fn ui_update(
     mut ui_state: ResMut<UiState>,
-    //key_input: Res<ButtonInput<KeyCode>>,
-    mut is_initialized: Local<bool>,
     mut contexts: EguiContexts,
     physics_state: Res<PhysicsState>,
     simulator_tx: Res<SimulatorTx>,
@@ -40,14 +38,6 @@ pub(super) fn ui_update(
     let mut remove = false;
     let mut invert = false;
 
-    if !*is_initialized {
-        for (id, tank) in &physics_state.tanks {
-            ui_state.tank_messages.insert(*id, VecDeque::new());
-        }
-        copy_tank_msg_in_buffer(&mut ui_state, &physics_state);
-        ui_state.last_tick = physics_state.tick;
-        *is_initialized = true;
-    }
 
     // Copy messages in buffer avoiding duplicates.
     if ui_state.last_tick < physics_state.tick {
@@ -74,7 +64,7 @@ pub(super) fn ui_update(
     let selected_tank_name = selected_tank.map_or("", |x| &x.name);
 
     ui_state.last_tick = physics_state.tick;
-    /// Render gui using egui
+
     egui::SidePanel::left("side_panel")
         .default_width(200.0)
         .show(ctx, |ui| {
@@ -259,10 +249,10 @@ fn copy_tank_msg_in_buffer(
     physics_state: &Res<'_, PhysicsState>,
 ) {
     for (id, tank) in &physics_state.tanks {
-        let mut messages = ui_state
+        let messages = ui_state
             .tank_messages
-            .get_mut(id)
-            .expect("Added a tank after initialization ?");
+            .entry(*id)
+            .or_default();
 
         for msg in tank.log_messages() {
             messages.push_back(msg.clone());

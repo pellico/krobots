@@ -8,8 +8,7 @@
         "**/target/**": true
     },
     "rust-analyzer.check.command": "clippy",
-    "editor.codeLens": false,
-    "rust-analyzer.lens.enable": false,
+
     "lldb.launch.env": {
         "_NO_DEBUG_HEAP": "1"
     },

@@ -2,11 +2,11 @@ use super::util::*;
 use super::PhysicsEngine;
 use crate::conf::*;
 use crate::physics::TickType;
-use rapier2d::na::Isometry2;
-use rapier2d::na::{Point2, Vector2};
 use rapier2d::prelude::*;
 use serde::{Deserialize, Serialize};
 
+
+/// Unique id for tank and bullet. It is derived from RigidBodyHandle so it is unique globally
 #[repr(transparent)]
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Default)]
 pub struct ObjUID(u64);

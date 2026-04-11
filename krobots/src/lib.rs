@@ -31,9 +31,6 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Parser)]
 #[clap(version = VERSION, author = "Oreste Bernardi")]
 pub struct Opts {
-    // Tanks folder
-    #[clap(short, default_value = None)]
-    pub tank_folder: Option<PathBuf>,
     //Log level to be used if environmental variable RUST_LOG is not set.
     #[clap(short, long, default_value = "warn",value_parser=["error","warn","info","debug","trace"])]
     pub log_level: String,
