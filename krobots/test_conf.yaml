@@ -32,7 +32,7 @@ tanks:
   "hunter": "test_tanks/hunter/target/wasm32-unknown-unknown/debug/hunter_comp.wasm"
   "simple": "test_tanks/simple/target/wasm32-unknown-unknown/debug/simple_comp.wasm"
 tanks_list:
-  - ["dumb",10]
-  - ["hunter",10]
-  - ["simple",10]
+  - ["dumb",100]
+  - ["hunter",100]
+  - ["simple",100]
 

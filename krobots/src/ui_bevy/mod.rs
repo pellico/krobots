@@ -1,17 +1,15 @@
-use crate::physics::{
-    GameStateReceiver, ObjUID, SimulationState, UICommand, UICommandSender,
-};
+use crate::physics::{GameStateReceiver, ObjUID, SimulationState, UICommand, UICommandSender};
 use bevy::app::AppExit;
 use bevy::color::palettes::css::GOLD;
+use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use bevy::window::WindowCloseRequested;
-use bevy::{prelude::*};
-use bevy_egui::{EguiPlugin, EguiPrimaryContextPass,input:: egui_wants_any_pointer_input};
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass, input::egui_wants_any_pointer_input};
 use std::collections::{HashMap, HashSet};
 use std::f32::consts::PI;
 use std::sync::Mutex;
 mod camera_controller;
-use camera_controller::{CameraController,camera_controller_keys,camera_controller_mouse};
+use camera_controller::{CameraController, camera_controller_keys, camera_controller_mouse};
 mod gizmos;
 use gizmos::gizmos;
 mod ui;
@@ -32,11 +30,11 @@ pub fn start_gui(
     physical_scaling_factor: f32,
 ) {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin{
-            close_when_requested:false,
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            close_when_requested: false,
             ..default()
         }))
-        .add_plugins( EguiPlugin::default())
+        .add_plugins(EguiPlugin::default())
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .init_resource::<UiState>()
         .insert_resource(Time::<Fixed>::from_seconds(TIME_STEP))
@@ -59,12 +57,15 @@ pub fn start_gui(
             tank_scaling_factor: physical_scaling_factor,
         })
         .add_systems(Startup, setup)
-        .add_systems(Update,camera_controller_mouse.run_if(not( egui_wants_any_pointer_input)))
-         .add_systems(Update, camera_controller_keys)
+        .add_systems(
+            Update,
+            camera_controller_mouse.run_if(not(egui_wants_any_pointer_input)),
+        )
+        .add_systems(Update, camera_controller_keys)
         .add_systems(Update, get_physical_state)
         .add_systems(Update, gizmos.after(get_physical_state))
         .add_systems(Update, bullet_spawn_update.after(get_physical_state))
-        .add_systems(Update, tank_spawn_update.after(get_physical_state))
+        // .add_systems(Update, tank_spawn_update.after(get_physical_state))
         .add_systems(Startup, configure_ui_state_system)
         .add_systems(EguiPrimaryContextPass, ui_update)
         .add_systems(Update, tank_label)
@@ -116,7 +117,7 @@ struct TankTextBundle {
     text_anchor: Anchor,
     text_color: TextColor,
     text_font: TextFont,
-    text_layout:TextLayout
+    text_layout: TextLayout,
 }
 
 #[derive(Resource)]
@@ -204,15 +205,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         tank_turret_sprite,
         tank_radar_sprite,
         bullet_sprite,
-        
     });
 
     // 2D orthographic camera
     let camera_controller = CameraController::default();
     info!("{}", camera_controller);
     commands.spawn((Camera2d, camera_controller));
-
-
 }
 
 fn bullet_spawn_update(
@@ -396,7 +394,7 @@ fn tank_label(
                 },
                 text_color: TextColor(Color::Srgba(GOLD)),
                 text_anchor: bevy::sprite::Anchor(tank_text_offset),
-                text_layout:TextLayout::new_with_justify(Justify::Center),
+                text_layout: TextLayout::new_with_justify(Justify::Center),
                 transform: Transform::IDENTITY.with_translation(Vec3 {
                     x: tank.position().translation.x,
                     y: tank.position().translation.y,
@@ -409,15 +407,15 @@ fn tank_label(
 }
 
 fn handle_close_window_event(
-  events: MessageReader<WindowCloseRequested>,simulator_tx: Res<SimulatorTx>
+    events: MessageReader<WindowCloseRequested>,
+    simulator_tx: Res<SimulatorTx>,
 ) {
     if !events.is_empty() {
-         simulator_tx
+        simulator_tx
             .tx_ui_command
             .lock()
             .unwrap()
             .send(UICommand::QUIT)
             .unwrap();
     }
-
 }

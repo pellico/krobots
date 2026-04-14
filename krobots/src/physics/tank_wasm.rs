@@ -10,6 +10,7 @@ use indexmap::IndexMap;
 use krobots::krobots::tank;
 use krobots::krobots::tank::{RadarResult, SimulationConfig, TankRadar, TankStatus};
 use core::num;
+use std::path::PathBuf;
 use std::{
     path::Path,
     pin::Pin,
@@ -138,6 +139,8 @@ impl krobots::krobots::tank::Host for Arc<Mutex<MyState>> {
 pub struct WasmTanks {
     engine: Engine,
     tanks: IndexMap<String, WasmTank>,
+    linker: Linker<Arc<Mutex<MyState>>>,
+    component_cache: HashMap<PathBuf, Component>,
 }
 
 impl Default for WasmTanks {
@@ -148,27 +151,39 @@ impl Default for WasmTanks {
         config.debug_info(true);
         config.cranelift_opt_level(wasmtime::OptLevel::None);
         let engine = Engine::new(&config).expect("Failed instantiating engine");
+          let mut linker = Linker::new(&engine);
+        krobots::krobots::tank::add_to_linker::<_, HasSelf<_>>(
+            &mut linker,
+            |state: &mut Arc<Mutex<MyState>>| state,
+        ).expect("Failed to add Mystate to linker");
         WasmTanks {
             tanks: Default::default(),
             engine,
+            linker,
+            component_cache: Default::default(),
         }
     }
 }
 
 impl WasmTanks {
-    pub fn new_tank<P: AsRef<Path>>(
+    pub fn new_tank(
         &mut self,
-        path: P,
+        path: &PathBuf,
         name: &str,
         p_engine: &mut PhysicsEngine,
         num_tanks: usize,
     ) -> anyhow::Result<()> {
-        let component = Component::from_file(&self.engine, path)?;
-        let mut linker = Linker::new(&self.engine);
-        krobots::krobots::tank::add_to_linker::<_, HasSelf<_>>(
-            &mut linker,
-            |state: &mut Arc<Mutex<MyState>>| state,
-        )?;
+     
+        let component=match self.component_cache.get(path){
+            Some(component) => component,
+            None => {
+                let component = Component::from_file(&self.engine, path)?;
+                self.component_cache.insert(path.clone(), component);
+                self.component_cache.get(path).unwrap()
+            }
+        };
+        //let component = Component::from_file(&self.engine, path)?;
+      
         let tank_index = p_engine.add_tank_in_circle(name.to_string(), num_tanks);
 
         let simulation_config = SimulationConfig {
@@ -225,7 +240,7 @@ impl WasmTanks {
             .fuel_async_yield_interval(Some(FUEL_INTERVAL))
             .expect("Failed to set yield interval");
         let bindings = futures::executor::block_on(Krobot::instantiate_async(
-            &mut store, &component, &linker,
+            &mut store, &component, &self.linker,
         ))?;
         let bindings = Box::pin(bindings);
 
@@ -380,7 +395,6 @@ impl WasmTank {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     #[test]
     fn simple_tank() {
@@ -388,7 +402,7 @@ mod tests {
         let mut all_tanks = WasmTanks::default();
         all_tanks
             .new_tank(
-                "./test_tanks/simple/target/wasm32-unknown-unknown/debug/simple_comp.wasm",
+                &Path::new("./test_tanks/simple/target/wasm32-unknown-unknown/debug/simple_comp.wasm").into(),
                 "simple-tank",
                 &mut physics_engine,
                 1,
