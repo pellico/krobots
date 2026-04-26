@@ -4,12 +4,12 @@ use bevy::platform::collections::HashMap;
 use futures::future::{BoxFuture, FutureExt};
 use wasmtime::{StoreLimits, StoreLimitsBuilder};
 
+use crate::physics::PhysicsEngine;
 use crate::physics::tank_wasm::krobots::krobots::tank::PolarVector;
-use crate::physics::{PhysicsEngine};
+use core::num;
 use indexmap::IndexMap;
 use krobots::krobots::tank;
 use krobots::krobots::tank::{RadarResult, SimulationConfig, TankRadar, TankStatus};
-use core::num;
 use std::path::PathBuf;
 use std::{
     path::Path,
@@ -28,7 +28,7 @@ bindgen!({
     },
     exports:{
         default:async
-    }, 
+    },
      require_store_data_send: true,
       //additional_derives: [Default],
     include_generated_code_from_file: false,
@@ -95,8 +95,7 @@ impl TankStatus {
         self.cannon_angle = tank.turret().angle();
         self.power_source = krobots::krobots::tank::PolarVector {
             r: tank_position.translation.length(),
-            p: (-tank_position.translation).to_angle()
-           
+            p: (-tank_position.translation).to_angle(),
         };
 
         self.cannon_temp = tank.turret().cannon_temperature();
@@ -109,7 +108,7 @@ struct MyState {
     simulation_config: tank::SimulationConfig,
     tank_status: tank::TankStatus,
     limits: StoreLimits,
-    log_messages:Vec<String>
+    log_messages: Vec<String>,
 }
 
 impl krobots::krobots::tank::Host for Arc<Mutex<MyState>> {
@@ -117,7 +116,7 @@ impl krobots::krobots::tank::Host for Arc<Mutex<MyState>> {
         let state = self.lock().unwrap();
         state.simulation_config
     }
- 
+
     async fn execute_command(&mut self, command: tank::Command) -> TankStatus {
         {
             let mut state = self.lock().unwrap();
@@ -127,13 +126,11 @@ impl krobots::krobots::tank::Host for Arc<Mutex<MyState>> {
         futures::pending!();
         let state = self.lock().unwrap();
         state.tank_status.clone()
-
     }
     fn log_message(&mut self, message: std::string::String) {
         let mut state = self.lock().unwrap();
         state.log_messages.push(message);
-     }
-
+    }
 }
 
 pub struct WasmTanks {
@@ -151,11 +148,12 @@ impl Default for WasmTanks {
         config.debug_info(true);
         config.cranelift_opt_level(wasmtime::OptLevel::None);
         let engine = Engine::new(&config).expect("Failed instantiating engine");
-          let mut linker = Linker::new(&engine);
+        let mut linker = Linker::new(&engine);
         krobots::krobots::tank::add_to_linker::<_, HasSelf<_>>(
             &mut linker,
             |state: &mut Arc<Mutex<MyState>>| state,
-        ).expect("Failed to add Mystate to linker");
+        )
+        .expect("Failed to add Mystate to linker");
         WasmTanks {
             tanks: Default::default(),
             engine,
@@ -173,8 +171,7 @@ impl WasmTanks {
         p_engine: &mut PhysicsEngine,
         num_tanks: usize,
     ) -> anyhow::Result<()> {
-     
-        let component=match self.component_cache.get(path){
+        let component = match self.component_cache.get(path) {
             Some(component) => component,
             None => {
                 let component = Component::from_file(&self.engine, path)?;
@@ -183,7 +180,7 @@ impl WasmTanks {
             }
         };
         //let component = Component::from_file(&self.engine, path)?;
-      
+
         let tank_index = p_engine.add_tank_in_circle(name.to_string(), num_tanks);
 
         let simulation_config = SimulationConfig {
@@ -213,7 +210,7 @@ impl WasmTanks {
                 .table_elements(1000)
                 .trap_on_grow_failure(true)
                 .build(),
-            log_messages:vec![]
+            log_messages: vec![],
         }));
         let mut store = Store::new(&self.engine, state.clone());
         // store.call_hook(|mut cx, call_hook| {
@@ -240,7 +237,9 @@ impl WasmTanks {
             .fuel_async_yield_interval(Some(FUEL_INTERVAL))
             .expect("Failed to set yield interval");
         let bindings = futures::executor::block_on(Krobot::instantiate_async(
-            &mut store, &component, &self.linker,
+            &mut store,
+            &component,
+            &self.linker,
         ))?;
         let bindings = Box::pin(bindings);
 
@@ -262,22 +261,28 @@ impl WasmTanks {
     /// Create a new WasmTanks instance and load tanks specified in configuration file
     pub fn new(p_engine: &mut PhysicsEngine) -> WasmTanks {
         let mut result = WasmTanks::default();
-        let mut tanks_counter:HashMap<String,usize> = HashMap::new();
-        
-        let mut unrolled_tanks:Vec<(String, std::path::PathBuf)> = Vec::new();
+        let mut tanks_counter: HashMap<String, usize> = HashMap::new();
+
+        let mut unrolled_tanks: Vec<(String, std::path::PathBuf)> = Vec::new();
         for (tank_name, count) in p_engine.conf.tanks_list.clone().iter() {
             for _ in 0..*count {
                 let counter = tanks_counter.entry(tank_name.clone()).or_insert(0);
                 let name = format!("{}-{}", tank_name, counter);
-                let path_wasm = p_engine.conf.tanks.get(tank_name).expect("Tank name not found in tanks map");
+                let path_wasm = p_engine
+                    .conf
+                    .tanks
+                    .get(tank_name)
+                    .expect("Tank name not found in tanks map");
                 *counter += 1;
                 unrolled_tanks.push((name, path_wasm.clone()));
             }
         }
         let num_tanks = unrolled_tanks.len();
-        unrolled_tanks.iter().for_each(|(tank_name,path_wasm)| result
+        unrolled_tanks.iter().for_each(|(tank_name, path_wasm)| {
+            result
                 .new_tank(path_wasm, tank_name, &mut *p_engine, num_tanks)
-                .unwrap());
+                .unwrap()
+        });
         result
     }
     pub fn next_step(&mut self, p_engine: &mut PhysicsEngine) -> anyhow::Result<()> {
@@ -337,9 +342,7 @@ fn process_command(
                 false => tank::CommandResult::Fail,
             }
         }
-        tank::Command::GetStatus =>  tank::CommandResult::Success
-        
-    
+        tank::Command::GetStatus => tank::CommandResult::Success,
     }
 }
 
@@ -385,8 +388,12 @@ impl WasmTank {
             }
         };
         // Move messages to tank object
-        
-        let messages = state.log_messages.drain(0..).map(|m| (p_engine.tick,m)).collect();
+
+        let messages = state
+            .log_messages
+            .drain(0..)
+            .map(|m| (p_engine.tick, m))
+            .collect();
         let tank = p_engine.tank_mut(tank_index);
         tank.set_log_messages(messages);
         result
@@ -402,7 +409,10 @@ mod tests {
         let mut all_tanks = WasmTanks::default();
         all_tanks
             .new_tank(
-                &Path::new("./test_tanks/simple/target/wasm32-unknown-unknown/debug/simple_comp.wasm").into(),
+                &Path::new(
+                    "./test_tanks/simple/target/wasm32-unknown-unknown/debug/simple_comp.wasm",
+                )
+                .into(),
                 "simple-tank",
                 &mut physics_engine,
                 1,

@@ -38,7 +38,6 @@ pub(super) fn ui_update(
     let mut remove = false;
     let mut invert = false;
 
-
     // Copy messages in buffer avoiding duplicates.
     if ui_state.last_tick < physics_state.tick {
         copy_tank_msg_in_buffer(&mut ui_state, &physics_state);
@@ -83,10 +82,7 @@ pub(super) fn ui_update(
                     }
                 });
             if let Some(tank) = selected_tank {
-                let position = (
-                    tank.position().translation.x,
-                    tank.position().translation.y,
-                );
+                let position = (tank.position().translation.x, tank.position().translation.y);
                 let energy = tank.energy();
                 let rotation = tank.position().rotation.angle();
                 let power = tank.engine_power();
@@ -260,10 +256,7 @@ fn copy_tank_msg_in_buffer(
     physics_state: &Res<'_, PhysicsState>,
 ) {
     for (id, tank) in &physics_state.tanks {
-        let messages = ui_state
-            .tank_messages
-            .entry(*id)
-            .or_default();
+        let messages = ui_state.tank_messages.entry(*id).or_default();
 
         for msg in tank.log_messages() {
             messages.push_back(msg.clone());

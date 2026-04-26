@@ -21,9 +21,12 @@ use indexmap::IndexMap;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap, fs, io::ErrorKind, path::{Path, PathBuf}
+    collections::HashMap,
+    fs,
+    io::ErrorKind,
+    path::{Path, PathBuf},
 };
-#[derive(Serialize, Deserialize,Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Conf {
     pub tank_width_m: f32,
     pub tank_depth_m: f32,
@@ -65,7 +68,7 @@ pub struct Conf {
     pub cannon_temp_decrease_step: f32,
     /// Map of path to tanks to execute
     pub tanks: HashMap<String, PathBuf>,
-    pub tanks_list:Vec<(String,usize)>
+    pub tanks_list: Vec<(String, usize)>,
 }
 
 impl Conf {
@@ -93,7 +96,6 @@ impl Conf {
                 Ok(conf)
             }
             Err(error) if error.kind() == ErrorKind::NotFound => {
-                
                 let default_configuration = Conf::default();
                 let result = serde_saphyr::to_string(&default_configuration)?;
                 fs::write(typed_path, result)?;
@@ -101,8 +103,8 @@ impl Conf {
                     "File not found created a yaml file here {} with default configuration",
                     typed_path.display()
                 ))
-            },
-            Err(e) => Err(e)?
+            }
+            Err(e) => Err(e)?,
         }
     }
 }
@@ -152,7 +154,10 @@ impl Default for Conf {
             // When high temp. tank can fire 1 bullet each second
             cannon_temp_decrease_step: CANNON_FIRE_TEMP_INCREASE / 60.0,
             tanks_list: Vec::new(),
-            tanks: HashMap::from([("example_tank".to_string(), PathBuf::from("example_tank.yaml"))]),
+            tanks: HashMap::from([(
+                "example_tank".to_string(),
+                PathBuf::from("example_tank.yaml"),
+            )]),
         }
     }
 }

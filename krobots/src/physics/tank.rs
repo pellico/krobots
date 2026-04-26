@@ -1,10 +1,9 @@
-use super::util::*;
 use super::PhysicsEngine;
+use super::util::*;
 use crate::conf::*;
 use crate::physics::TickType;
 use rapier2d::prelude::*;
 use serde::{Deserialize, Serialize};
-
 
 /// Unique id for tank and bullet. It is derived from RigidBodyHandle so it is unique globally
 #[repr(transparent)]
@@ -62,7 +61,7 @@ pub struct Tank {
     pub(super) radar_max_detection_distance: f32,
     bullet_damage: f32,
     // Buffer of log message with tick stamp.
-    log_messages:Vec<(TickType,String)>
+    log_messages: Vec<(TickType, String)>,
 }
 
 impl Tank {
@@ -178,7 +177,7 @@ impl Tank {
             radar_width_max: p_engine.conf.radar_width_max,
             radar_max_detection_distance: p_engine.conf.radar_max_detection_distance,
             bullet_damage: p_engine.conf.bullet_damage,
-            log_messages:vec![]
+            log_messages: vec![],
         }
     }
 
@@ -315,7 +314,7 @@ impl Tank {
     ) {
         if let Some(angle) = self.turret.new_angle {
             let joint = joint_set
-                .get_mut(self.cannon_joint_handle,true)
+                .get_mut(self.cannon_joint_handle, true)
                 .expect("Unable to get cannon joint");
             let ball_joint = joint
                 .data
@@ -423,14 +422,12 @@ impl Tank {
         self.radar_width = radar_w;
         true
     }
-    pub fn set_log_messages(&mut self,messages:Vec<(TickType,String)>) {
-        self.log_messages=messages;
-
+    pub fn set_log_messages(&mut self, messages: Vec<(TickType, String)>) {
+        self.log_messages = messages;
     }
-    pub fn log_messages(&self)-> &Vec<(TickType,String)> {
+    pub fn log_messages(&self) -> &Vec<(TickType, String)> {
         &self.log_messages
     }
-
 }
 
 impl Turret {
@@ -474,7 +471,6 @@ impl Turret {
             false
         }
     }
-
 }
 
 impl Bullet {

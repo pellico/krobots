@@ -30,7 +30,7 @@ use log::{debug, error, info, warn};
 pub use rapier2d::na::{Isometry2, Rotation2};
 pub use rapier2d::na::{Point2, Vector2};
 use rapier2d::prelude::*;
-pub use rapier2d::prelude::{Real, RigidBodyHandle,vector};
+pub use rapier2d::prelude::{Real, RigidBodyHandle, vector};
 use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 use std::thread::{JoinHandle, spawn};
@@ -40,12 +40,21 @@ use tank_wasm::WasmTanks;
 /**
 Tank body collision group used in colliders.
 */
-const TANK_GROUP: InteractionGroups =
-    InteractionGroups::new(Group::GROUP_1, Group::GROUP_1.union(Group::GROUP_3),InteractionTestMode::And);
-const TURRET_GROUP: InteractionGroups =
-    InteractionGroups::new(Group::GROUP_2, Group::GROUP_2.union(Group::GROUP_3),InteractionTestMode::And);
-const BULLET_GROUP: InteractionGroups =
-    InteractionGroups::new(Group::GROUP_3, Group::GROUP_1.union(Group::GROUP_2),InteractionTestMode::And);
+const TANK_GROUP: InteractionGroups = InteractionGroups::new(
+    Group::GROUP_1,
+    Group::GROUP_1.union(Group::GROUP_3),
+    InteractionTestMode::And,
+);
+const TURRET_GROUP: InteractionGroups = InteractionGroups::new(
+    Group::GROUP_2,
+    Group::GROUP_2.union(Group::GROUP_3),
+    InteractionTestMode::And,
+);
+const BULLET_GROUP: InteractionGroups = InteractionGroups::new(
+    Group::GROUP_3,
+    Group::GROUP_1.union(Group::GROUP_2),
+    InteractionTestMode::And,
+);
 
 struct MyPhysicsHooks;
 pub type TickType = u32;
@@ -204,14 +213,11 @@ impl PhysicsEngine {
                     //Check if received command to exit
                     match command_receiver.receive() {
                         Some(UICommand::QUIT) => p_engine.exit_simulation(),
-                        Some(UICommand::ToggleDebugMode) => {
-                            match p_engine.state {
-                                SimulationState::DebugMode => p_engine.state=SimulationState::Running,
-                                SimulationState::Running => p_engine.state=SimulationState::DebugMode,
-                                SimulationState::WaitingConnection => ()
-                            }
-              
-                        }
+                        Some(UICommand::ToggleDebugMode) => match p_engine.state {
+                            SimulationState::DebugMode => p_engine.state = SimulationState::Running,
+                            SimulationState::Running => p_engine.state = SimulationState::DebugMode,
+                            SimulationState::WaitingConnection => (),
+                        },
                         Some(UICommand::NextStep) => next_debug_step = true,
                         None => (),
                     };
@@ -468,7 +474,8 @@ impl PhysicsEngine {
         let angle = cannon_position.rotation.angle();
         debug!("Created bullet angle:{}", angle * 180.0 / PI);
         //Compute bullet speed and sum cannon edge speed (world speed)
-        let velocity = (cannon_position.rotation * Vector::new(conf.bullet_speed, 0.0)) + velocity_cannon_edge;
+        let velocity =
+            (cannon_position.rotation * Vector::new(conf.bullet_speed, 0.0)) + velocity_cannon_edge;
         //bullet shall be created in front of cannon and outside of the tank
         let bullet_position = cannon_position * Vector::new(1.8, 0.0);
         let bullet_body = RigidBodyBuilder::dynamic()
@@ -569,8 +576,7 @@ impl PhysicsEngine {
             }
             let target_tank = &self.tanks[index];
             // This is the vector from this tank to target tank
-            let relative_vector =
-                target_tank.position.translation - tank.position.translation;
+            let relative_vector = target_tank.position.translation - tank.position.translation;
             let distance = relative_vector.length();
 
             if distance < target_tank.radar_max_detection_distance {

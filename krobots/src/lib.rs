@@ -7,7 +7,9 @@ pub mod ui_bevy;
 use clap::Parser;
 use indexmap::IndexMap;
 use std::{
-    ffi, fs, path::{Path, PathBuf}, sync::atomic::{AtomicBool, Ordering}
+    ffi, fs,
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 // Flag to true to signal to all thread to exit
@@ -53,7 +55,7 @@ pub struct Opts {
     #[clap(long)]
     pub no_gui: bool,
     /// Configuration file
-    #[clap(short,long)]
+    #[clap(short, long)]
     pub configuration_file: Option<String>,
     /// Scaling factor of ui graphics compared to physical simulation dimension.
     /// Increment the value to see bigger graphics compared to physical collider
@@ -63,7 +65,7 @@ pub struct Opts {
 
 pub fn enable_human_panic() {
     #[allow(unused_imports)]
-    use human_panic::{handle_dump, print_msg, Metadata};
+    use human_panic::{Metadata, handle_dump, print_msg};
     #[allow(unused_imports)]
     use std::panic::{self, PanicHookInfo};
 
@@ -88,8 +90,7 @@ pub fn enable_human_panic() {
     }
 }
 
-
-pub fn get_tanks_file_from_folder<P: AsRef<Path>>(path: P) -> IndexMap<String,std::path::PathBuf> {
+pub fn get_tanks_file_from_folder<P: AsRef<Path>>(path: P) -> IndexMap<String, std::path::PathBuf> {
     let paths = fs::read_dir(path.as_ref()).unwrap();
     let mut tank_path_entries = IndexMap::new();
     for f in paths {
@@ -104,13 +105,13 @@ pub fn get_tanks_file_from_folder<P: AsRef<Path>>(path: P) -> IndexMap<String,st
                         .and_then(|s| s.to_str())
                         .expect("stem of wasm file is an empty string")
                         .to_string();
-               
-                    tank_path_entries.insert(file_name,path_wasm);
+
+                    tank_path_entries.insert(file_name, path_wasm);
                 }
             }
             Err(_) => continue,
         }
     }
-    tank_path_entries.sort_by(|k1,_,k2,_| k1.cmp(k2));
+    tank_path_entries.sort_by(|k1, _, k2, _| k1.cmp(k2));
     tank_path_entries
 }

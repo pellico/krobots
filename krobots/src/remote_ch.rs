@@ -1,10 +1,11 @@
 use crate::is_exit_application;
 use crate::physics::*;
-use bincode;
+
 use log::{debug, error, info};
 use message_io::events::EventReceiver;
 use message_io::network::{Endpoint, NetEvent, Transport};
 use message_io::node::{self, NodeEvent, NodeHandler, NodeTask, StoredNetEvent, StoredNodeEvent};
+use postcard;
 use std;
 use std::collections::HashSet;
 use std::net::SocketAddr;
@@ -66,7 +67,7 @@ impl UISender {
                     handler.stop();
                 }
                 let data =
-                    bincode::serialize(&signal).expect("Unable to serialize game state for UI");
+                    postcard::to_stdvec(&signal).expect("Unable to serialize game state for UI");
                 for endpoint in endpoints.iter() {
                     match handler.network().is_ready(endpoint.resource_id()) {
                         Some(true) => {
@@ -145,7 +146,7 @@ impl GameStateReceiver for UIReceiver {
                 }
                 StoredNetEvent::Accepted(_, _) => unreachable!(), // Only generated when a listener accepts
                 StoredNetEvent::Message(_endpoint, input_data) => {
-                    let message: UIGameState = bincode::deserialize(&input_data).unwrap();
+                    let message: UIGameState = postcard::from_bytes(&input_data).unwrap();
                     result = Some(message);
                 }
                 StoredNetEvent::Disconnected(_) => {
